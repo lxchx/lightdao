@@ -23,8 +23,8 @@ android {
         applicationId = "com.lxchx.lightdao"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 21
-        versionName = "1.0.21"
+        versionCode = 22
+        versionName = "1.1.0"
     }
 
     buildTypes {
