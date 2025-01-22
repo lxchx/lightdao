@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lightdao/data/const_data.dart';
 import 'package:lightdao/data/setting.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({
@@ -57,6 +58,12 @@ class AboutPage extends StatelessWidget {
             ListTile(
               title: Text('作者'),
               subtitle: Text('9ionKfO'),
+            ),
+            ListTile(
+              title: Text('项目地址'),
+              subtitle: Text('https://github.com/lxchx/lightdao'),
+              onTap: () => launchUrl(Uri.parse('https://github.com/lxchx/lightdao'),
+              )
             ),
           ],
         ),
