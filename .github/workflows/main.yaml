@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - 'ci-test*'
     tags:
       - '*'
   pull_request:
@@ -31,7 +32,7 @@ jobs:
 
   apk:
     name: Generate APK
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/ci-test')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -54,7 +55,7 @@ jobs:
   release:
     name: Release APK
     needs: apk
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - name: Download APK from build
@@ -63,7 +64,6 @@ jobs:
           name: apk
       - name: Display structure of downloaded files
         run: ls -R
-
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1.1.4
