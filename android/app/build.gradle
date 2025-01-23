@@ -5,6 +5,15 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+} else {
+    println("⚠️ key.properties not found, using fallback config")
+}
+
 android {
     namespace = "com.lxchx.lightdao"
     compileSdk = flutter.compileSdkVersion
@@ -27,11 +36,23 @@ android {
         versionName = "1.1.1"
     }
 
+    signingConfigs {
+        release {
+            storeFile file(keystoreProperties.getProperty("storeFile") ?: System.getenv("STORE_FILE") ?: "lightdao-app.jks")
+            storePassword keystoreProperties.getProperty("storePassword") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias keystoreProperties.getProperty("keyAlias") ?: System.getenv("KEY_ALIAS") ?: ""
+            keyPassword keystoreProperties.getProperty("keyPassword") ?: System.getenv("KEY_PASSWORD") ?: ""
+            
+            // 如果使用本地jks但没有设置密码，则自动回退到debug
+            if (storePassword.isEmpty() || keyAlias.isEmpty() || keyPassword.isEmpty()) {
+                initWith debug
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            signingConfig signingConfigs.release
         }
     }
 }

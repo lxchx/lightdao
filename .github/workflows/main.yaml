@@ -6,7 +6,7 @@ on:
       - master
       - 'ci-test*'
     tags:
-      - '*'
+      - 'v*'
   pull_request:
     paths-ignore:
       - '**/*.md'
@@ -28,30 +28,55 @@ jobs:
         with:
           flutter-version: '3.22.2'
       - run: flutter pub get
-      - run: bash ./scripts/first-build.sh
+      - run: bash ./scripts/first-build.sh --debug
 
   apk:
     name: Generate APK
-    if: startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/ci-test')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+  
       - name: Setup JDK
         uses: actions/setup-java@v2
         with:
           distribution: 'zulu'
           java-version: 17
-      - uses: subosito/flutter-action@v1
+  
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v1
         with:
           flutter-version: '3.22.2'
-      - run: flutter pub get
-      - run: bash ./scripts/first-build.sh
+  
+      - name: Conditional Restore JKS
+        if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/heads/ci-test')
+        run: |
+          echo "使用GitHub Secrets签名配置"
+          echo ${{ secrets.JKS_KEYSTORE_BASE64 }} | base64 -d > android/app/lightdao-app.jks
+        env:
+          JKS_KEYSTORE_BASE64: ${{ secrets.JKS_KEYSTORE_BASE64 }}
+  
+      - name: Build APK
+        run: |
+          flutter pub get
+          if [[ "${{ secrets.KEYSTORE_PASSWORD }}" != "" && ("${{ github.ref }}" == refs/tags/v* || "${{ github.ref }}" == refs/heads/ci-test*) ]]; then
+            echo "使用GitHub Secrets签名"
+            bash ./scripts/first-build.sh --secrets
+          elif [ -f "android/app/lightdao-app.jks" ]; then
+            echo "尝试使用本地JKS文件签名"
+            bash ./scripts/first-build.sh --local
+          fi
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: apk
           path: build/app/outputs/apk/release/app-release.apk
+
   release:
     name: Release APK
     needs: apk
@@ -62,8 +87,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: apk
+
       - name: Display structure of downloaded files
         run: ls -R
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1.1.4
@@ -72,6 +99,7 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: ${{ github.ref }}
+
       - name: Upload Release APK
         id: upload_release_asset
         uses: actions/upload-release-asset@v1.0.1
