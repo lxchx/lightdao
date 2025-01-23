@@ -6,7 +6,7 @@ on:
       - master
       - 'ci-test*'
     tags:
-      - '*'
+      - 'v*'
   pull_request:
     paths-ignore:
       - '**/*.md'
@@ -32,33 +32,43 @@ jobs:
 
   apk:
     name: Generate APK
-    if: startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/ci-test')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-
+  
       - name: Setup JDK
         uses: actions/setup-java@v2
         with:
           distribution: 'zulu'
           java-version: 17
-
+  
       - name: Set up Flutter
         uses: subosito/flutter-action@v1
         with:
           flutter-version: '3.22.2'
-
-      - name: Restore JKS
+  
+      - name: Conditional Restore JKS
+        if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/heads/ci-test')
         run: |
+          echo "使用GitHub Secrets签名配置"
           echo ${{ secrets.JKS_KEYSTORE_BASE64 }} | base64 -d > android/app/lightdao-app.jks
         env:
           JKS_KEYSTORE_BASE64: ${{ secrets.JKS_KEYSTORE_BASE64 }}
-
-      - name: Build Signed APK
+  
+      - name: Build APK
         run: |
           flutter pub get
-          bash ./scripts/first-build.sh
+          if [[ "${{ secrets.KEYSTORE_PASSWORD }}" != "" && ("${{ github.ref }}" == refs/tags/v* || "${{ github.ref }}" == refs/heads/ci-test*) ]]; then
+            echo "使用GitHub Secrets签名"
+            bash ./scripts/first-build.sh --secrets
+          elif [ -f "android/app/lightdao-app.jks" ]; then
+            echo "使用本地JKS文件签名"
+            bash ./scripts/first-build.sh --local
+          else
+            echo "使用调试签名"
+            bash ./scripts/first-build.sh --debug
+          fi
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}

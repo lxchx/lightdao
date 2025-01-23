@@ -29,12 +29,18 @@ android {
 
     signingConfigs {
         release {
-            storeFile file("lightdao-app.jks")
-            storePassword System.getenv("KEYSTORE_PASSWORD")
-            keyAlias System.getenv("KEY_ALIAS")
-            keyPassword System.getenv("KEY_PASSWORD")
+            storeFile file(System.getenv("STORE_FILE") ?: "lightdao-app.jks")
+            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias System.getenv("KEY_ALIAS") ?: ""
+            keyPassword System.getenv("KEY_PASSWORD") ?: ""
+            
+            // 如果使用本地jks但没有设置密码，则自动回退到debug
+            if (storePassword.isEmpty() || keyAlias.isEmpty() || keyPassword.isEmpty()) {
+                initWith debug
+            }
         }
     }
+
     buildTypes {
         release {
             signingConfig signingConfigs.release
