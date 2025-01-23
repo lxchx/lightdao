@@ -6,6 +6,7 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --secrets) MODE="secrets" ;;
         --local) MODE="local" ;;
+        --debug) MODE="debug" ;;
         *) ;;
     esac
     shift
@@ -43,5 +44,9 @@ case $MODE in
     "local")
         echo '尝试使用使用本地JKS文件构建...'
         flutter build apk --release
+        ;;
+    "debug"|*)
+        echo '使用调试签名构建...'
+        flutter build apk --debug
         ;;
 esac
