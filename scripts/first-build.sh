@@ -13,8 +13,8 @@ sed -i '/<!-- START: build-first-time-comment -->/,/<!-- END: build-first-time-c
     # 匹配结束行（</intent-filter>-->）
     s/^\([[:space:]]*\)\(.*intent-filter.*\)-->/\1\2/
 }' "$MANIFEST_PATH"
-
 # 构建APK，此时将有两个启动图标
+echo "flutter build apk --release"
 flutter build apk --release
 
 # 重新注释
@@ -24,6 +24,6 @@ sed -i '/<!-- START: build-first-time-comment -->/,/<!-- END: build-first-time-c
     # 匹配结束行（</intent-filter>）
     s/^\([[:space:]]*\)\(<\/intent-filter>\)/\1\2-->/
 }' "$MANIFEST_PATH"
-
 # 正确构建APK
+echo "flutter build apk --release"
 flutter build apk --release
