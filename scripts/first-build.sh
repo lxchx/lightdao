@@ -23,7 +23,20 @@ sed -i '/<!-- START: build-first-time-comment -->/,/<!-- END: build-first-time-c
 
 # 第一次构建
 echo '运行首次构建...'
-flutter build apk --release
+case $MODE in
+    "secrets")
+        flutter build apk --release \
+            --dart-define=KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD \
+            --dart-define=KEY_ALIAS=$KEY_ALIAS \
+            --dart-define=KEY_PASSWORD=$KEY_PASSWORD
+        ;;
+    "local")
+        flutter build apk --release
+        ;;
+    "debug"|*)
+        flutter build apk --debug
+        ;;
+esac
 rm "$SCRIPT_DIR/../build/app/outputs/flutter-apk/app-release.apk"
 
 # 重新注释
