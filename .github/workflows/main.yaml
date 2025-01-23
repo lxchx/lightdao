@@ -28,7 +28,7 @@ jobs:
         with:
           flutter-version: '3.22.2'
       - run: flutter pub get
-      - run: bash ./scripts/first-build.sh
+      - run: bash ./scripts/first-build.sh --local
 
   apk:
     name: Generate APK

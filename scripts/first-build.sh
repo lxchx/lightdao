@@ -6,7 +6,6 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --secrets) MODE="secrets" ;;
         --local) MODE="local" ;;
-        --debug) MODE="debug" ;;
         *) ;;
     esac
     shift
