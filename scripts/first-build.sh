@@ -42,11 +42,7 @@ case $MODE in
             --dart-define=KEY_PASSWORD=$KEY_PASSWORD
         ;;
     "local")
-        echo '使用本地JKS文件构建...'
+        echo '尝试使用使用本地JKS文件构建...'
         flutter build apk --release
-        ;;
-    "debug"|*)
-        echo '使用调试签名构建...'
-        flutter build apk --release --debug
         ;;
 esac
