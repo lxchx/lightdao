@@ -129,6 +129,7 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
   @override
   Widget build(BuildContext context) {
     return TsukuyomiScrollView(
+      // 第二个_SliverLayout作为center，其上的sliver是反向排列的
       center: _centerKey,
       controller: _scrollController,
       physics: widget.physics,
@@ -266,6 +267,11 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
     return widget.debugMask ? Colors.purple.withOpacity(0.33) : null;
   }
 
+  /// 绿色调试遮罩
+  Color? get _greenDebugMask {
+    return widget.debugMask ? Colors.green.withOpacity(0.33) : null;
+  }
+
   /// 列表末尾空白部分占比
   double get trailingFraction => _trailingFraction;
   double _trailingFraction = 1.0;
@@ -339,7 +345,11 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
             width: widget.scrollDirection == Axis.horizontal ? extent : null,
             height: widget.scrollDirection == Axis.vertical ? extent : null,
             foregroundDecoration: BoxDecoration(
-              color: index == _anchorIndex ? _pinkDebugMask : null,
+              color: index == _anchorIndex
+                  ? _pinkDebugMask
+                  : index == _centerIndex
+                      ? _greenDebugMask
+                      : null,
             ),
             child: widget.itemBuilder(context, index),
           );
@@ -501,6 +511,118 @@ class TsukuyomiListController {
     if (_tsukuyomiListState == state) {
       _tsukuyomiListState = null;
     }
+  }
+
+  /// 获取当前锚点索引
+  int get anchorIndex {
+    assert(_tsukuyomiListState != null, 'Controller is not attached to TsukuyomiList');
+    return _tsukuyomiListState!._anchorIndex;
+  }
+
+  /// 在给定index插入item，保持滚动位置
+  void onInsertItem(int index, void Function() doInsert) {
+    // 修正_centerIndex和_anchorIndex
+    if (index <= _tsukuyomiListState!._centerIndex) {
+      _tsukuyomiListState!._centerIndex++;
+    }
+    if (index < _tsukuyomiListState!._anchorIndex) {
+      _tsukuyomiListState!._anchorIndex--;
+    }
+
+    // 如待插入item不在上半部且会影响anchor scroll offset
+    // 调整centerIndex以满足条件
+    if (index > _tsukuyomiListState!._centerIndex &&
+        index < _tsukuyomiListState!._anchorIndex) {
+      _tsukuyomiListState!._centerIndex = index;
+    }
+    doInsert();
+  }
+
+  /// 批量插入items，保持滚动位置
+  /// [startIndex] 开始插入的索引位置
+  /// [count] 插入的数量
+  /// [doInsert] 执行插入操作的回调
+  void onBatchInsertItems(int startIndex, int count, void Function() doInsert) {
+    assert(count > 0, 'Insert count must be greater than 0');
+    
+    // 修正_centerIndex
+    if (startIndex <= _tsukuyomiListState!._centerIndex) {
+      _tsukuyomiListState!._centerIndex += count;
+    }
+    
+    // 修正_anchorIndex
+    if (startIndex < _tsukuyomiListState!._anchorIndex) {
+      _tsukuyomiListState!._anchorIndex -= count;
+    }
+    
+    // 如果待插入items不在上半部且会影响anchor scroll offset
+    // 调整centerIndex以满足条件
+    if (startIndex > _tsukuyomiListState!._centerIndex &&
+        startIndex < _tsukuyomiListState!._anchorIndex) {
+      _tsukuyomiListState!._centerIndex = startIndex;
+    }
+    
+    doInsert();
+  } 
+
+  /// 在给定index移除item，保持滚动位置
+  void onRemoveItem(int index, void Function() doRemove) {
+    // 修正_centerIndex和_anchorIndex
+    if (index <= _tsukuyomiListState!._centerIndex) {
+      _tsukuyomiListState!._centerIndex--;
+    }
+    if (index < _tsukuyomiListState!._anchorIndex) {
+      _tsukuyomiListState!._anchorIndex++;
+    }
+
+    // 如待插入item不在上半部且会影响anchor scroll offset
+    // 调整centerIndex以满足条件
+    if (index > _tsukuyomiListState!._centerIndex &&
+        index < _tsukuyomiListState!._anchorIndex) {
+      _tsukuyomiListState!._centerIndex = index;
+    }
+    doRemove();
+  }
+
+  /// 批量删除items，保持滚动位置
+  /// [startIndex] 开始删除的索引位置
+  /// [count] 删除的数量
+  /// [doRemove] 执行删除操作的回调
+  void onBatchRemoveItems(int startIndex, int count, void Function() doRemove) {
+    assert(count > 0, 'Remove count must be greater than 0');
+    
+    final endIndex = startIndex + count - 1;
+    
+    // 修正_centerIndex
+    if (startIndex <= _tsukuyomiListState!._centerIndex) {
+      if (endIndex < _tsukuyomiListState!._centerIndex) {
+        // 删除范围完全在_centerIndex之前
+        _tsukuyomiListState!._centerIndex -= count;
+      } else {
+        // 删除范围包含_centerIndex
+        _tsukuyomiListState!._centerIndex = startIndex - 1;
+      }
+    }
+    
+    // 修正_anchorIndex
+    if (startIndex <= _tsukuyomiListState!._anchorIndex) {
+      if (endIndex < _tsukuyomiListState!._anchorIndex) {
+        // 删除范围完全在_anchorIndex之前
+        _tsukuyomiListState!._anchorIndex += count;
+      } else {
+        // 删除范围包含_anchorIndex
+        _tsukuyomiListState!._anchorIndex = _tsukuyomiListState!._centerIndex;
+      }
+    }
+    
+    // 如果待删除items不在上半部且会影响anchor scroll offset
+    // 调整centerIndex以满足条件
+    if (startIndex > _tsukuyomiListState!._centerIndex &&
+        startIndex < _tsukuyomiListState!._anchorIndex) {
+      _tsukuyomiListState!._centerIndex = startIndex - 1;
+    }
+    
+    doRemove();
   }
 
   @internal

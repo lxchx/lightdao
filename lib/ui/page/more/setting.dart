@@ -1,14 +1,12 @@
-import 'dart:io';
-
 import 'package:breakpoint/breakpoint.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:hive/hive.dart';
 import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/const_data.dart';
 import 'package:lightdao/data/phrase.dart';
 import 'package:lightdao/ui/page/more/icon_select.dart';
+import 'package:lightdao/ui/page/more/test.dart';
 import 'package:provider/provider.dart';
 import 'package:swipeable_page_route/swipeable_page_route.dart';
 import 'package:file_picker/file_picker.dart';
@@ -422,6 +420,17 @@ class SettingsPage extends StatelessWidget {
                     );
                   }
                 },
+              ),
+              ListTile(
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+                title: Text('调试'),
+                onTap: () async {
+                  Navigator.push(
+                    context,
+                    pageRoute(builder: (context) => const TestPage()),
+                  );
+                }
               )
             ],
           )
