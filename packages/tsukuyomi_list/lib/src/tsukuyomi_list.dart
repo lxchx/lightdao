@@ -6,7 +6,6 @@ import 'package:flutter/physics.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/rendering.dart' show RenderProxySliver, SliverGeometry;
 import 'package:flutter/scheduler.dart';
-import 'package:meta/meta.dart';
 import 'package:sliver_tools/sliver_tools.dart';
 import 'package:tsukuyomi_list/src/tsukuyomi/rendering/viewport.dart';
 import 'package:tsukuyomi_list/src/tsukuyomi/widgets/scroll_activity.dart';
@@ -34,6 +33,8 @@ class TsukuyomiList extends StatefulWidget {
     this.scrollDirection = Axis.vertical,
     this.initialScrollIndex = 0,
     this.onItemsChanged,
+    this.sliverLeading = const <Widget>[],
+    this.sliverTrailing = const <Widget>[],
   })  : assert(initialScrollIndex >= 0),
         assert(initialScrollIndex < itemCount || itemCount == 0),
         assert(anchor == null || (anchor >= 0.0 && anchor <= 1.0));
@@ -45,7 +46,7 @@ class TsukuyomiList extends StatefulWidget {
   final IndexedWidgetBuilder itemBuilder;
 
   /// 列表控制器
-  final TsukuyomiListController? controller;
+  final TsukuyomiListScrollController? controller;
 
   /// 物理滚动效果
   final ScrollPhysics? physics;
@@ -77,6 +78,12 @@ class TsukuyomiList extends StatefulWidget {
   /// 列表项更新
   final ValueChanged<List<TsukuyomiListItem>>? onItemsChanged;
 
+  /// 列表头部自定义 Sliver 列表，注意list等item会反转，需要自己反转回去
+  final List<Widget> sliverLeading;
+
+  /// 列表尾部自定义 Sliver 列表
+  final List<Widget> sliverTrailing;
+
   @override
   State<TsukuyomiList> createState() => _TsukuyomiListState();
 }
@@ -89,7 +96,7 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
   final _centerKey = UniqueKey();
   final _elements = <Element>{};
   final _extents = <int, _TsukuyomiListItemExtent>{};
-  final _scrollController = _TsukuyomiListScrollController();
+  late TsukuyomiListScrollController _scrollController;
 
   /// 在列表中心之前的滚动区域范围
   double _scrollExtentBeforeCenter = 0.0;
@@ -101,8 +108,12 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
   void initState() {
     super.initState();
     _centerIndex = _anchorIndex = widget.initialScrollIndex;
-    _scrollController.addListener(_scheduleUpdateItems);
-    widget.controller?._attach(this);
+    if (widget.controller != null) {
+      _scrollController = widget.controller!;
+      widget.controller!._attach(this);
+    } else {
+      _scrollController = TsukuyomiListScrollController();
+    }
   }
 
   @override
@@ -136,6 +147,7 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
       ignorePointer: widget.ignorePointer,
       scrollDirection: widget.scrollDirection,
       slivers: [
+        ...widget.sliverLeading,
         SliverToBoxAdapter(
           child: _TsukuyomiListItem(
             onPerformLayout: (box, oldSize, newSize) {
@@ -145,7 +157,8 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
                 Axis.horizontal => (oldSize.width, newSize.width),
               };
               final delta = newExtent - oldExtent;
-              final viewport = RenderAbstractViewport.maybeOf(box) as RenderViewportBase?;
+              final viewport =
+                  RenderAbstractViewport.maybeOf(box) as RenderViewportBase?;
               // 只在尺寸变小时需要修正滚动偏移
               if (delta >= 0 || viewport == null) return;
               final offset = viewport.getOffsetToReveal(box, 0.0).offset;
@@ -229,12 +242,15 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
                 Axis.horizontal => (oldSize.width, newSize.width),
               };
               final delta = newExtent - oldExtent;
-              final viewport = RenderAbstractViewport.maybeOf(box) as RenderViewportBase?;
+              final viewport =
+                  RenderAbstractViewport.maybeOf(box) as RenderViewportBase?;
               // 只在尺寸变小时需要修正滚动偏移
               if (delta >= 0 || viewport == null) return;
               final offset = viewport.getOffsetToReveal(box, 0.0).offset;
-              final viewportDimension = _scrollController.position.viewportDimension;
-              final leading = offset - viewport.offset.pixels - viewportDimension;
+              final viewportDimension =
+                  _scrollController.position.viewportDimension;
+              final leading =
+                  offset - viewport.offset.pixels - viewportDimension;
               // 如果占位区域顶部可见
               if (-leading > Tolerance.defaultTolerance.distance) {
                 _scrollController.position.correctImmediate(delta);
@@ -253,6 +269,7 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
             ),
           ),
         ),
+        ...widget.sliverTrailing,
       ],
     );
   }
@@ -500,7 +517,28 @@ class TsukuyomiListItem {
   }
 }
 
-class TsukuyomiListController {
+class TsukuyomiListScrollController extends ScrollController {
+  @override
+  TsukuyomiListScrollPosition get position {
+    return super.position as TsukuyomiListScrollPosition;
+  }
+
+  @override
+  TsukuyomiListScrollPosition createScrollPosition(
+    ScrollPhysics physics,
+    ScrollContext context,
+    ScrollPosition? oldPosition,
+  ) {
+    return TsukuyomiListScrollPosition(
+      physics: physics,
+      context: context,
+      initialPixels: initialScrollOffset,
+      keepScrollOffset: keepScrollOffset,
+      oldPosition: oldPosition,
+      debugLabel: debugLabel,
+    );
+  }
+
   _TsukuyomiListState? _tsukuyomiListState;
 
   void _attach(_TsukuyomiListState state) {
@@ -515,7 +553,8 @@ class TsukuyomiListController {
 
   /// 获取当前锚点索引
   int get anchorIndex {
-    assert(_tsukuyomiListState != null, 'Controller is not attached to TsukuyomiList');
+    assert(_tsukuyomiListState != null,
+        'Controller is not attached to TsukuyomiList');
     return _tsukuyomiListState!._anchorIndex;
   }
 
@@ -544,26 +583,26 @@ class TsukuyomiListController {
   /// [doInsert] 执行插入操作的回调
   void onBatchInsertItems(int startIndex, int count, void Function() doInsert) {
     assert(count > 0, 'Insert count must be greater than 0');
-    
+
     // 修正_centerIndex
     if (startIndex <= _tsukuyomiListState!._centerIndex) {
       _tsukuyomiListState!._centerIndex += count;
     }
-    
+
     // 修正_anchorIndex
     if (startIndex < _tsukuyomiListState!._anchorIndex) {
       _tsukuyomiListState!._anchorIndex -= count;
     }
-    
+
     // 如果待插入items不在上半部且会影响anchor scroll offset
     // 调整centerIndex以满足条件
     if (startIndex > _tsukuyomiListState!._centerIndex &&
         startIndex < _tsukuyomiListState!._anchorIndex) {
       _tsukuyomiListState!._centerIndex = startIndex;
     }
-    
+
     doInsert();
-  } 
+  }
 
   /// 在给定index移除item，保持滚动位置
   void onRemoveItem(int index, void Function() doRemove) {
@@ -590,9 +629,9 @@ class TsukuyomiListController {
   /// [doRemove] 执行删除操作的回调
   void onBatchRemoveItems(int startIndex, int count, void Function() doRemove) {
     assert(count > 0, 'Remove count must be greater than 0');
-    
+
     final endIndex = startIndex + count - 1;
-    
+
     // 修正_centerIndex
     if (startIndex <= _tsukuyomiListState!._centerIndex) {
       if (endIndex < _tsukuyomiListState!._centerIndex) {
@@ -603,7 +642,7 @@ class TsukuyomiListController {
         _tsukuyomiListState!._centerIndex = startIndex - 1;
       }
     }
-    
+
     // 修正_anchorIndex
     if (startIndex <= _tsukuyomiListState!._anchorIndex) {
       if (endIndex < _tsukuyomiListState!._anchorIndex) {
@@ -614,21 +653,15 @@ class TsukuyomiListController {
         _tsukuyomiListState!._anchorIndex = _tsukuyomiListState!._centerIndex;
       }
     }
-    
+
     // 如果待删除items不在上半部且会影响anchor scroll offset
     // 调整centerIndex以满足条件
     if (startIndex > _tsukuyomiListState!._centerIndex &&
         startIndex < _tsukuyomiListState!._anchorIndex) {
       _tsukuyomiListState!._centerIndex = startIndex - 1;
     }
-    
-    doRemove();
-  }
 
-  @internal
-  ScrollPosition get position {
-    assert(_tsukuyomiListState != null);
-    return _tsukuyomiListState!._scrollController.position;
+    doRemove();
   }
 
   void jumpToIndex(int index) {
@@ -650,31 +683,8 @@ class TsukuyomiListController {
   }
 }
 
-class _TsukuyomiListScrollController extends ScrollController {
-  @override
-  _TsukuyomiListScrollPosition get position {
-    return super.position as _TsukuyomiListScrollPosition;
-  }
-
-  @override
-  _TsukuyomiListScrollPosition createScrollPosition(
-    ScrollPhysics physics,
-    ScrollContext context,
-    ScrollPosition? oldPosition,
-  ) {
-    return _TsukuyomiListScrollPosition(
-      physics: physics,
-      context: context,
-      initialPixels: initialScrollOffset,
-      keepScrollOffset: keepScrollOffset,
-      oldPosition: oldPosition,
-      debugLabel: debugLabel,
-    );
-  }
-}
-
-class _TsukuyomiListScrollPosition extends ScrollPositionWithSingleContext {
-  _TsukuyomiListScrollPosition({
+class TsukuyomiListScrollPosition extends ScrollPositionWithSingleContext {
+  TsukuyomiListScrollPosition({
     required super.physics,
     required super.context,
     super.initialPixels,
@@ -693,7 +703,8 @@ class _TsukuyomiListScrollPosition extends ScrollPositionWithSingleContext {
 
   @override
   @protected
-  bool correctForNewDimensions(ScrollMetrics oldPosition, ScrollMetrics newPosition) {
+  bool correctForNewDimensions(
+      ScrollMetrics oldPosition, ScrollMetrics newPosition) {
     // 是否需要修正滚动偏移
     if (_corrected) {
       return _corrected = false;
@@ -781,7 +792,8 @@ class _TsukuyomiListItem extends SingleChildRenderObjectWidget {
   }
 
   @override
-  void updateRenderObject(BuildContext context, _RenderTsukuyomiListItem renderObject) {
+  void updateRenderObject(
+      BuildContext context, _RenderTsukuyomiListItem renderObject) {
     renderObject.onPerformLayout = onPerformLayout;
   }
 }
@@ -835,7 +847,8 @@ class _SliverLayout extends SingleChildRenderObjectWidget {
   }
 
   @override
-  void updateRenderObject(BuildContext context, _RenderSliverLayout renderObject) {
+  void updateRenderObject(
+      BuildContext context, _RenderSliverLayout renderObject) {
     renderObject.onPerformLayout = onPerformLayout;
   }
 }

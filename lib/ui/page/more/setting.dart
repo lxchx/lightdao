@@ -6,7 +6,7 @@ import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/const_data.dart';
 import 'package:lightdao/data/phrase.dart';
 import 'package:lightdao/ui/page/more/icon_select.dart';
-import 'package:lightdao/ui/page/more/test.dart';
+import 'package:lightdao/ui/page/debug/test.dart';
 import 'package:provider/provider.dart';
 import 'package:swipeable_page_route/swipeable_page_route.dart';
 import 'package:file_picker/file_picker.dart';

@@ -1,5 +1,6 @@
-import 'package:breakpoint/breakpoint.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:lightdao/ui/widget/slivding_app_bar.dart';
 import 'dart:math';
 import 'package:tsukuyomi_list/tsukuyomi_list.dart';
 
@@ -29,8 +30,8 @@ class TestPage extends StatefulWidget {
 }
 
 class _TestPageState extends State<TestPage> {
-  ScrollController scrollController = ScrollController();
-  TsukuyomiListController? tsukuyomiListController;
+  final tsukuyomiListController = TsukuyomiListScrollController();
+  bool shouldShowBar = true;
 
   List<ChatItem> chatListContents = List.generate(
     30,
@@ -44,9 +45,6 @@ class _TestPageState extends State<TestPage> {
   void initState() {
     super.initState();
 
-      tsukuyomiListController = TsukuyomiListController();
-
-
     for (var item in chatListContents) {
       Future.delayed(Duration(seconds: Random().nextInt(3) + 3), () {
         setState(() {
@@ -56,10 +54,27 @@ class _TestPageState extends State<TestPage> {
         });
       });
     }
+
+    tsukuyomiListController.addListener(() {
+      setState(() {
+        switch (tsukuyomiListController.position.userScrollDirection) {
+          case ScrollDirection.forward:
+            shouldShowBar = true;
+            break;
+          case ScrollDirection.reverse:
+            shouldShowBar = false;
+            break;
+          case ScrollDirection.idle:
+            shouldShowBar = true;
+            break;
+        }
+      });
+    });
   }
 
   @override
   void dispose() {
+    tsukuyomiListController.dispose();
     super.dispose();
   }
 
@@ -73,8 +88,8 @@ class _TestPageState extends State<TestPage> {
         id: newIndex.toString(),
         msg: 'Message $newIndex',
       );
-        tsukuyomiListController!
-            .onInsertItem(pos, () => chatListContents.insert(pos, newItem));
+      tsukuyomiListController.onInsertItem(
+          pos, () => chatListContents.insert(pos, newItem));
 
       Future.delayed(Duration(seconds: Random().nextInt(3) + 3), () {
         setState(() {
@@ -131,30 +146,39 @@ class _TestPageState extends State<TestPage> {
         );
 
     return TsukuyomiList.builder(
-            itemCount: chatListContents.length,
-            itemBuilder: itemBuilder,
-            controller: tsukuyomiListController,
-            physics: null,
-            anchor: null,
-            trailing: true,
-            debugMask: true,
-            ignorePointer: false,
-            scrollDirection: Axis.vertical,
-            initialScrollIndex: chatListContents.length > 10 ? 10 : 0);
+        itemCount: chatListContents.length,
+        itemBuilder: itemBuilder,
+        controller: tsukuyomiListController,
+        trailing: true,
+        debugMask: true,
+        sliverLeading: [
+          SliverToBoxAdapter(
+            child: Text('1'),
+          ),
+          SliverToBoxAdapter(
+            child: Text('2'),
+          ),
+          SliverList.list(children: [
+            Text('3'),
+            Text('4'),
+            Text('5'),
+            Text('6'),
+          ])
+        ],
+        initialScrollIndex: chatListContents.length > 10 ? 10 : 0);
   }
 
   @override
   Widget build(BuildContext context) {
-    final breakpoint = Breakpoint.fromMediaQuery(context);
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text('测试页面'),
+      appBar: SlidingAppBar(
+        visible: shouldShowBar,
+        duration: Durations.long4,
+        child: AppBar(
+          title: const Text('TsukuyomiList Example'),
+        ),
       ),
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
-        child: _renderList(),
-      ),
+      body: _renderList(),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
@@ -213,7 +237,7 @@ class _TestPageState extends State<TestPage> {
             onPressed: () {
               setState(() {
                 if (chatListContents.isNotEmpty) {
-                  tsukuyomiListController!.onRemoveItem(
+                  tsukuyomiListController.onRemoveItem(
                     1,
                     () => chatListContents.removeAt(1),
                   );
@@ -241,7 +265,9 @@ class _TestPageState extends State<TestPage> {
                             value: selectedPosition.toDouble(),
                             min: 0,
                             max: (chatListContents.length - 1).toDouble(),
-                            divisions: chatListContents.isEmpty ? 1 : chatListContents.length - 1,
+                            divisions: chatListContents.isEmpty
+                                ? 1
+                                : chatListContents.length - 1,
                             label: selectedPosition.toString(),
                             onChanged: (double value) {
                               setState(() {
@@ -255,9 +281,10 @@ class _TestPageState extends State<TestPage> {
                               onPressed: () {
                                 Navigator.pop(context);
                                 if (chatListContents.isNotEmpty) {
-                                  tsukuyomiListController!.onRemoveItem(
+                                  tsukuyomiListController.onRemoveItem(
                                     selectedPosition,
-                                    () => chatListContents.removeAt(selectedPosition),
+                                    () => chatListContents
+                                        .removeAt(selectedPosition),
                                   );
                                 }
                               },
@@ -275,6 +302,28 @@ class _TestPageState extends State<TestPage> {
             label: const Text('删除'),
           ),
         ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: !shouldShowBar ? 0 : 67,
+          child: NavigationBar(
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.search),
+                label: 'Search',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person),
+                label: 'Profile',
+              ),
+            ]
+          ),
+        ),
       ),
     );
   }
