@@ -31,12 +31,15 @@ class TsukuyomiList extends StatefulWidget {
     this.debugMask = false,
     this.ignorePointer = false,
     this.scrollDirection = Axis.vertical,
-    this.initialScrollIndex = 0,
+    this.initialScrollIndex,
     this.onItemsChanged,
     this.sliverLeading = const <Widget>[],
     this.sliverTrailing = const <Widget>[],
-  })  : assert(initialScrollIndex >= 0),
-        assert(initialScrollIndex < itemCount || itemCount == 0),
+    this.cacheExtent,  // 添加这一行
+  })  : assert(initialScrollIndex == null || initialScrollIndex >= 0),
+        assert(initialScrollIndex == null ||
+            initialScrollIndex < itemCount ||
+            itemCount == 0),
         assert(anchor == null || (anchor >= 0.0 && anchor <= 1.0));
 
   /// 列表项数量
@@ -73,7 +76,7 @@ class TsukuyomiList extends StatefulWidget {
   final Axis scrollDirection;
 
   /// 列表初始位置索引
-  final int initialScrollIndex;
+  final int? initialScrollIndex;
 
   /// 列表项更新
   final ValueChanged<List<TsukuyomiListItem>>? onItemsChanged;
@@ -83,6 +86,9 @@ class TsukuyomiList extends StatefulWidget {
 
   /// 列表尾部自定义 Sliver 列表
   final List<Widget> sliverTrailing;
+
+  /// 预渲染区域大小
+  final double? cacheExtent;
 
   @override
   State<TsukuyomiList> createState() => _TsukuyomiListState();
@@ -107,13 +113,10 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
   @override
   void initState() {
     super.initState();
-    _centerIndex = _anchorIndex = widget.initialScrollIndex;
-    if (widget.controller != null) {
-      _scrollController = widget.controller!;
-      widget.controller!._attach(this);
-    } else {
-      _scrollController = TsukuyomiListScrollController();
-    }
+    _centerIndex = _anchorIndex = widget.initialScrollIndex ?? 0;
+
+    _scrollController = widget.controller ?? TsukuyomiListScrollController();
+    _scrollController._attach(this);
   }
 
   @override
@@ -122,7 +125,7 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
     // 更新列表控制器
     if (widget.controller != oldWidget.controller) {
       oldWidget.controller?._detach(this);
-      widget.controller?._attach(this);
+      _scrollController._attach(this);
     }
     // 重置列表项尺寸
     if (widget.scrollDirection != oldWidget.scrollDirection) {
@@ -146,6 +149,7 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
       physics: widget.physics,
       ignorePointer: widget.ignorePointer,
       scrollDirection: widget.scrollDirection,
+      cacheExtent: widget.cacheExtent,
       slivers: [
         ...widget.sliverLeading,
         SliverToBoxAdapter(
@@ -558,6 +562,20 @@ class TsukuyomiListScrollController extends ScrollController {
     return _tsukuyomiListState!._anchorIndex;
   }
 
+  /// 设置当前锚点索引
+  ///
+  /// [index] 新的锚点索引
+  set anchorIndex(int index) {
+    assert(_tsukuyomiListState != null,
+        'Controller is not attached to TsukuyomiList');
+    assert(index >= 0 && index < _tsukuyomiListState!.widget.itemCount,
+        'Index out of range');
+
+    if (_tsukuyomiListState!._anchorIndex != index) {
+      _tsukuyomiListState!._anchorIndex = index;
+    }
+  }
+
   /// 在给定index插入item，保持滚动位置
   void onInsertItem(int index, void Function() doInsert) {
     // 修正_centerIndex和_anchorIndex
@@ -590,15 +608,15 @@ class TsukuyomiListScrollController extends ScrollController {
     }
 
     // 修正_anchorIndex
-    if (startIndex < _tsukuyomiListState!._anchorIndex) {
-      _tsukuyomiListState!._anchorIndex -= count;
+    if (startIndex <= _tsukuyomiListState!._anchorIndex) {
+      _tsukuyomiListState!._anchorIndex += count;
     }
 
     // 如果待插入items不在上半部且会影响anchor scroll offset
     // 调整centerIndex以满足条件
-    if (startIndex > _tsukuyomiListState!._centerIndex &&
-        startIndex < _tsukuyomiListState!._anchorIndex) {
-      _tsukuyomiListState!._centerIndex = startIndex;
+    if (startIndex + count > _tsukuyomiListState!._centerIndex &&
+        startIndex + count < _tsukuyomiListState!._anchorIndex) {
+      _tsukuyomiListState!._centerIndex = startIndex + count;
     }
 
     doInsert();
@@ -611,7 +629,7 @@ class TsukuyomiListScrollController extends ScrollController {
       _tsukuyomiListState!._centerIndex--;
     }
     if (index < _tsukuyomiListState!._anchorIndex) {
-      _tsukuyomiListState!._anchorIndex++;
+      _tsukuyomiListState!._anchorIndex--;
     }
 
     // 如待插入item不在上半部且会影响anchor scroll offset
@@ -639,7 +657,7 @@ class TsukuyomiListScrollController extends ScrollController {
         _tsukuyomiListState!._centerIndex -= count;
       } else {
         // 删除范围包含_centerIndex
-        _tsukuyomiListState!._centerIndex = startIndex - 1;
+        _tsukuyomiListState!._centerIndex = startIndex;
       }
     }
 
@@ -647,7 +665,7 @@ class TsukuyomiListScrollController extends ScrollController {
     if (startIndex <= _tsukuyomiListState!._anchorIndex) {
       if (endIndex < _tsukuyomiListState!._anchorIndex) {
         // 删除范围完全在_anchorIndex之前
-        _tsukuyomiListState!._anchorIndex += count;
+        _tsukuyomiListState!._anchorIndex -= count;
       } else {
         // 删除范围包含_anchorIndex
         _tsukuyomiListState!._anchorIndex = _tsukuyomiListState!._centerIndex;
@@ -656,9 +674,9 @@ class TsukuyomiListScrollController extends ScrollController {
 
     // 如果待删除items不在上半部且会影响anchor scroll offset
     // 调整centerIndex以满足条件
-    if (startIndex > _tsukuyomiListState!._centerIndex &&
+    if (endIndex > _tsukuyomiListState!._centerIndex &&
         startIndex < _tsukuyomiListState!._anchorIndex) {
-      _tsukuyomiListState!._centerIndex = startIndex - 1;
+      _tsukuyomiListState!._centerIndex = startIndex;
     }
 
     doRemove();
