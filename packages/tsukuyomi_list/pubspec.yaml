@@ -1,0 +1,20 @@
+name: tsukuyomi_list
+description: List views for Tsukuyomi.
+publish_to: 'none'
+version: 0.0.1
+
+environment:
+  sdk: '>=3.1.5 <4.0.0'
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  meta: any
+  vector_math: any
+  sliver_tools: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
