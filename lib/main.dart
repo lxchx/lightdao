@@ -254,7 +254,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                       context.loaderOverlay.show();
                       final appState =
                           Provider.of<MyAppState>(context, listen: false);
-                      appState.navigateThreadPage(context, threadId, true);
+                      appState.navigateThreadPage2(context, threadId, true);
                       setState(() {
                         isDialogShown = false;
                       });

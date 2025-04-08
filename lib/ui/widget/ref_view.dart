@@ -448,7 +448,7 @@ class _RefViewState extends State<RefView> with SingleTickerProviderStateMixin {
                                                   final threadId =
                                                       snapshot.data?.threadId;
                                                   if (threadId == null) return;
-                                                  appState.navigateThreadPage(
+                                                  appState.navigateThreadPage2(
                                                       context, threadId, false);
                                                 },
                                                 child: Text('查看原串',

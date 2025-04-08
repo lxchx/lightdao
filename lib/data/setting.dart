@@ -5,6 +5,7 @@ import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/data/trend_data.dart';
 import 'package:lightdao/data/xdao/reply.dart';
 import 'package:lightdao/data/xdao/thread.dart';
+import 'package:lightdao/ui/page/thread2.dart';
 import 'package:lightdao/utils/status.dart';
 import 'package:lightdao/data/xdao/timeline.dart';
 import 'package:lightdao/ui/page/thread.dart';
@@ -451,11 +452,13 @@ class MyAppState with ChangeNotifier {
     return _store.put(0, setting);
   }
 
-  Future<void> navigateThreadPage(
+  Future<void> navigateThreadPage2(
       BuildContext context, int threadId, bool popIfFinish,
       {ThreadJson? thread, bool? fullThread}) async {
     final threadHistory = setting.viewHistory.get(threadId);
-    pageRoute({required Widget Function(BuildContext) builder,}) {
+    pageRoute({
+      required Widget Function(BuildContext) builder,
+    }) {
       if (setting.enableSwipeBack) {
         return SwipeablePageRoute(builder: builder);
       } else {
@@ -468,13 +471,10 @@ class MyAppState with ChangeNotifier {
       Navigator.push(
         context,
         pageRoute(
-          builder: (context) => ThreadPage(
-            withWholePage: false,
+          builder: (context) => ThreadPage2(
+            headerThread: ThreadJson.fromReplyJson(threadHistory.thread, []),
             startPage: threadHistory.page,
             startReplyId: threadHistory.reply.id,
-            thread: ThreadJson.fromReplyJson(threadHistory.thread, []),
-            threadForumName:
-                forumMap[threadHistory.thread.fid]?.getShowName() ?? '未知',
           ),
         ),
       );
@@ -483,18 +483,15 @@ class MyAppState with ChangeNotifier {
       Navigator.push(
         context,
         pageRoute(
-          builder: (context) => ThreadPage(
-            withWholePage: fullThread ?? false,
+          builder: (context) => ThreadPage2(
+            headerThread: thread,
             startPage: 1,
-            thread: thread,
-            threadForumName:
-                forumMap[thread.fid]?.getShowName() ?? '未知',
+            isCompletePage: fullThread ?? false,
           ),
         ),
       );
     } else {
-      //TODO: 将获取threadForumName和Thread的逻辑放进ThreadPage中
-      context.loaderOverlay.show();
+            context.loaderOverlay.show();
       final thread = getThread(threadId, 1, getCurrentCookie());
       thread.then((thread) {
         if (popIfFinish) Navigator.pop(context);
@@ -502,11 +499,10 @@ class MyAppState with ChangeNotifier {
         Navigator.push(
           context,
           pageRoute(
-            builder: (context) => ThreadPage(
-              withWholePage: true,
+            builder: (context) => ThreadPage2(
+              headerThread: thread,
               startPage: 1,
-              thread: thread,
-              threadForumName: forumMap[thread.fid]?.getShowName() ?? '未知',
+              isCompletePage: true,
             ),
           ),
         );

@@ -246,7 +246,7 @@ class _ForumPageState extends State<ForumPage> {
         );
         final navigator = Navigator.of(context);
         onTapThread() =>
-            appState.navigateThreadPage(context, _posts[index].id, false,
+            appState.navigateThreadPage2(context, _posts[index].id, false,
                 thread: _posts[index]);
 
         onLongPressThread() {
@@ -352,7 +352,7 @@ class _ForumPageState extends State<ForumPage> {
                           : Icons.favorite_border,
                     )),
                 IconButton.filledTonal(
-                    onPressed: () => appState.navigateThreadPage(
+                    onPressed: () => appState.navigateThreadPage2(
                         context, _posts[index].id, false,
                         thread: _posts[index]),
                     icon: _posts[index].replyCount == 0
