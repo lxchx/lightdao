@@ -115,13 +115,15 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
       initForumOrTimelineName:
           fields[35] == null ? '综合线' : fields[35] as String,
       predictiveBack: fields[36] == null ? false : fields[36] as bool,
+      columnWidth: fields[37] == null ? 445 : fields[37] as double,
+      isMultiColumn: fields[38] == null ? true : fields[38] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, LightDaoSetting obj) {
     writer
-      ..writeByte(37)
+      ..writeByte(39)
       ..writeByte(0)
       ..write(obj.cookies)
       ..writeByte(1)
@@ -195,7 +197,11 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
       ..writeByte(35)
       ..write(obj.initForumOrTimelineName)
       ..writeByte(36)
-      ..write(obj.predictiveBack);
+      ..write(obj.predictiveBack)
+      ..writeByte(37)
+      ..write(obj.columnWidth)
+      ..writeByte(38)
+      ..write(obj.isMultiColumn);
   }
 
   @override

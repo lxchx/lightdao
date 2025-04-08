@@ -906,10 +906,9 @@ class _ForumPageState extends State<ForumPage> {
               : SafeArea(
                   top: false,
                   child: LayoutBuilder(builder: (context, constraints) {
-                    final forumRowCount =
-                        (constraints.maxWidth / 445).toInt() + 1;
+                    final forumRowCount = appState.setting.isMultiColumn ?
+                        (constraints.maxWidth / appState.setting.columnWidth).toInt() + 1 : 1;
                     final initSkeletonizerCount = forumRowCount * 7;
-                    print(breakpoint.window);
                     return RefreshIndicator(
                       onRefresh: () {
                         _flushPosts();

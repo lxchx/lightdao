@@ -157,6 +157,14 @@ class LightDaoSetting extends HiveObject {
   @HiveField(36, defaultValue: false)
   bool predictiveBack;
 
+  // 分栏宽度
+  @HiveField(37, defaultValue: 445)
+  double columnWidth;
+
+  // 是否分栏
+  @HiveField(38, defaultValue: true)
+  bool isMultiColumn;
+
   LightDaoSetting({
     required this.cookies,
     required this.currentCookie,
@@ -195,6 +203,8 @@ class LightDaoSetting extends HiveObject {
     required this.initIsTimeline,
     required this.initForumOrTimelineName,
     required this.predictiveBack,
+    required this.columnWidth,
+    required this.isMultiColumn,
   }) : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
 }
 
@@ -443,6 +453,8 @@ class MyAppState with ChangeNotifier {
           initIsTimeline: true,
           initForumOrTimelineName: '综合线',
           predictiveBack: false,
+          columnWidth: 445,
+          isMultiColumn: true,
         );
     setting.phrases = mergePhraseLists(setting.phrases, xDaoPhrases);
     notifyListeners();
@@ -465,7 +477,7 @@ class MyAppState with ChangeNotifier {
         return MaterialPageRoute(builder: builder);
       }
     }
-    
+
     if (threadHistory != null) {
       if (popIfFinish) Navigator.pop(context);
       Navigator.push(
@@ -491,7 +503,7 @@ class MyAppState with ChangeNotifier {
         ),
       );
     } else {
-            context.loaderOverlay.show();
+      context.loaderOverlay.show();
       final thread = getThread(threadId, 1, getCurrentCookie());
       thread.then((thread) {
         if (popIfFinish) Navigator.pop(context);

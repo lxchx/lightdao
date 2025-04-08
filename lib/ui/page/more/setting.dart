@@ -230,6 +230,30 @@ class SettingsPage extends StatelessWidget {
               ),
               SettingsTile.switchTile(
                 contentPadding: breakpoint.gutters,
+                title: '启用分栏布局',
+                subtitle: '在宽屏设备上显示多列内容',
+                switchValue: appState.setting.isMultiColumn,
+                onToggle: (bool value) {
+                  appState.setState((state) {
+                    state.setting.isMultiColumn = value;
+                  });
+                },
+              ),
+              SettingsTile.sliderTile(
+                contentPadding: breakpoint.gutters,
+                title: '分栏宽度(${appState.setting.columnWidth.toInt()}px)',
+                min: 300,
+                max: 800,
+                value: appState.setting.columnWidth,
+                divisions: 10,
+                onChanged: (double value) {
+                  appState.setState((state) {
+                    state.setting.columnWidth = value;
+                  });
+                },
+              ),
+              SettingsTile.switchTile(
+                contentPadding: breakpoint.gutters,
                 title: '显示精确时间',
                 subtitle: '格式: YYYY/MM/DD hh:mm',
                 switchValue: appState.setting.displayExactTime,

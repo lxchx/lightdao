@@ -724,6 +724,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                             'Image ${widget.headerThread.img}${widget.headerThread.ext}',
                         imageInitIndex: widget.headerThread.img == '' ? null : 0,
                         imageNames: allImageNames,
+                        refCache: _refCache,
                       ),
                     ),
                   ),
