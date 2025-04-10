@@ -52,6 +52,9 @@ abstract class PageManager<T> {
   /// 后页加载回调
   PageLoadCallback<T>? _nextPageCallback;
 
+  /// 检查是否为空
+bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
+
   /// 构造函数
   PageManager({
     required this.initialPage,
@@ -69,7 +72,7 @@ abstract class PageManager<T> {
     required this.pageMaxSize,
     required List<T> initialItems,
   })  : _minLoadedPage = initialPage,
-        _maxLoadedPage = initialPage {
+        _maxLoadedPage = initialPage{
     _pageItems[initialPage] = initialItems;
 
     // 如果初始数据不足一页，标记没有更多后页
@@ -118,8 +121,6 @@ abstract class PageManager<T> {
   /// 子类需要实现的获取页面数据的方法
   Future<List<T>> fetchPage(int page);
 
-  /// 子类可以重写的比较两个项目是否相同的方法
-  /// 
   /// 子类可以重写此方法以提供自定义的比较逻辑
   bool isSameItem(T item1, T item2) {
     return item1 == item2;
@@ -396,24 +397,25 @@ abstract class PageManager<T> {
         final oldItems = lastPageItems ?? [];
         final oldItemsCount = oldItems.length;
         final newItems = await fetchPage(_maxLoadedPage);
-        
+
         // 智能合并新旧数据
         List<T> mergedItems;
         int actualNewItemCount;
-        
+
         if (oldItemsCount > 0) {
           // 尝试找到旧数据中最后一项在新数据中的位置
           final lastOldItem = oldItems.last;
           int lastOldItemIndex = -1;
-          
+
           for (int i = 0; i < newItems.length; i++) {
             if (isSameItem(newItems[i], lastOldItem)) {
               lastOldItemIndex = i;
               break;
             }
           }
-          
-          if (lastOldItemIndex != -1 && lastOldItemIndex < newItems.length - 1) {
+
+          if (lastOldItemIndex != -1 &&
+              lastOldItemIndex < newItems.length - 1) {
             // 找到了匹配项，只添加新数据中匹配项之后的数据
             mergedItems = List<T>.from(oldItems);
             mergedItems.addAll(newItems.sublist(lastOldItemIndex + 1));
@@ -421,16 +423,15 @@ abstract class PageManager<T> {
           } else {
             // 没找到匹配项或匹配项是新数据的最后一项，直接使用新数据
             mergedItems = newItems;
-            actualNewItemCount = newItems.length - oldItemsCount;
+            actualNewItemCount = max(0, newItems.length - oldItemsCount);
           }
         } else {
           // 旧数据为空，直接使用新数据
           mergedItems = newItems;
           actualNewItemCount = newItems.length;
         }
-        
-        newItemCount = actualNewItemCount > 0 ? actualNewItemCount : 0;
-        
+        newItemCount = actualNewItemCount;
+
         bool insertExecuted = false;
 
         // 创建插入数据的回调函数
@@ -448,8 +449,7 @@ abstract class PageManager<T> {
 
         // 如果有回调，则调用回调并让回调决定何时执行doInsert
         if (_nextPageCallback != null && newItemCount > 0) {
-          _nextPageCallback!(
-              _maxLoadedPage, newItemCount, true, doInsert);
+          _nextPageCallback!(_maxLoadedPage, newItemCount, true, doInsert);
 
           // 检查回调是否执行了doInsert
           if (!insertExecuted) {
@@ -522,6 +522,7 @@ class ThreadPageManager extends PageManager<ReplyJson> {
   final int threadId;
   final String? cookie;
   final LRUCache<int, Future<RefHtml>>? refCache;
+  final bool isPoOnly;
 
   /// fetchPage 时顺带获取最大页数，逻辑比较特殊，放到子类这里实现
   late int _threadMaxPage;
@@ -535,6 +536,7 @@ class ThreadPageManager extends PageManager<ReplyJson> {
     required super.initialPage,
     int? fid,
     this.refCache,
+    this.isPoOnly = false,
   }) : super(pageMaxSize: 19) {
     _threadMaxPage = initialPage;
     _fid = fid;
@@ -546,6 +548,7 @@ class ThreadPageManager extends PageManager<ReplyJson> {
     required super.initialPage,
     required super.initialItems,
     this.refCache,
+    this.isPoOnly = false,
   }) : super.withInitialItems(
           pageMaxSize: 19,
         ) {
@@ -556,7 +559,8 @@ class ThreadPageManager extends PageManager<ReplyJson> {
 
   @override
   Future<List<ReplyJson>> fetchPage(int page) async {
-    final pageThread = await getThread(threadId, page, cookie);
+    final getItems = isPoOnly ? getThreadPoOnly : getThread;
+    final pageThread = await getItems(threadId, page, cookie);
     _threadMaxPage = max(_threadMaxPage, pageThread.replyCount ~/ 19 + 1);
     _fid ??= pageThread.fid;
 
@@ -566,13 +570,13 @@ class ThreadPageManager extends PageManager<ReplyJson> {
     }
     if (refCache != null) {
       for (final reply in pageThread.replies) {
-        refCache!.put(reply.id, Future.value(RefHtml.fromReplyJson(reply))); 
+        refCache!.put(reply.id, Future.value(RefHtml.fromReplyJson(reply)));
       }
     }
-    
+
     return pageThread.replies;
   }
-  
+
   @override
   bool isSameItem(ReplyJson item1, ReplyJson item2) {
     return item1.id == item2.id;

@@ -220,7 +220,7 @@ class SettingsPage extends StatelessWidget {
             children: [
               SettingsTile.switchTile(
                 contentPadding: breakpoint.gutters,
-                title: '固定底栏',
+                title: '固定底栏&顶栏',
                 switchValue: appState.setting.fixedBottomBar,
                 onToggle: (bool value) {
                   appState.setState((state) {

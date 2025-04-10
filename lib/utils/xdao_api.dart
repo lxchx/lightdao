@@ -204,9 +204,10 @@ Future<List<ThreadJson>> fetchTimelineThreads(
 //  return 2; // from http
 //}
 
-Future<ThreadJson> getThread(int threadId, int page, String? cookie) async {
-  final url = Uri.parse('https://api.nmb.best/api/thread').replace(
+Future<ThreadJson> _getThreadGeneric(String baseUrl, int threadId, int page, String? cookie) async {
+  final url = Uri.parse(baseUrl).replace(
       queryParameters: {'id': threadId.toString(), 'page': page.toString()});
+  
   // 1. 从cache拿
   final threadJsonFile = await MyThreadCacheManager().getFileFromCache(
     url.toString(),
@@ -221,6 +222,7 @@ Future<ThreadJson> getThread(int threadId, int page, String? cookie) async {
     }
     return thread;
   }
+  
   // 2. 从http拿
   late Map<String, String>? headers;
   if (cookie != null) {
@@ -230,6 +232,7 @@ Future<ThreadJson> getThread(int threadId, int page, String? cookie) async {
   } else {
     headers = null;
   }
+  
   final response = await http.get(
     url,
     headers: headers,
@@ -244,6 +247,14 @@ Future<ThreadJson> getThread(int threadId, int page, String? cookie) async {
     throw Exception(
         'Failed to fetch thread, http status code: ${response.statusCode}');
   }
+}
+
+Future<ThreadJson> getThread(int threadId, int page, String? cookie) async {
+  return _getThreadGeneric('https://api.nmb.best/api/thread', threadId, page, cookie);
+}
+
+Future<ThreadJson> getThreadPoOnly(int threadId, int page, String? cookie) async {
+  return _getThreadGeneric('https://api.nmb.best/api/po', threadId, page, cookie);
 }
 
 //Future<ThreadJson> getThreadFromCache(

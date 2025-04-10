@@ -1,3 +1,5 @@
+import 'package:lightdao/data/xdao/ref.dart';
+
 import 'reply.dart';
 
 class ThreadJson extends ReplyJson {
@@ -74,6 +76,25 @@ class ThreadJson extends ReplyJson {
       admin: reply.admin,
       hide: reply.hide,
       replies: replies,
+    );
+  }
+
+  factory ThreadJson.fromRefHtml(RefHtml refHtml) {
+    return ThreadJson(
+      id: refHtml.id,
+      fid: refHtml.fid,
+      replyCount: refHtml.replyCount,
+      img: refHtml.img,
+      ext: refHtml.ext,
+      now: refHtml.now,
+      userHash: refHtml.userHash,
+      name: refHtml.name,
+      title: refHtml.title,
+      content: refHtml.content,
+      sage: refHtml.sage,
+      admin: refHtml.admin,
+      hide: refHtml.hide,
+      replies: [], // 设置为空列表
     );
   }
 }

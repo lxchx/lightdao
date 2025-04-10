@@ -930,7 +930,7 @@ class _ForumPageState extends State<ForumPage> {
                                 : kToolbarHeight,
                             automaticallyImplyLeading:
                                 breakpoint.window < WindowSize.small,
-                            pinned: breakpoint.window >= WindowSize.small,
+                            pinned: appState.setting.fixedBottomBar || breakpoint.window >= WindowSize.small,
                             snap: false,
                             floating: breakpoint.window < WindowSize.small,
                             actions: [

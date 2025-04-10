@@ -4,6 +4,7 @@ import 'package:breakpoint/breakpoint.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/setting.dart';
 import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/data/xdao/ref.dart';
@@ -16,6 +17,7 @@ import 'package:lightdao/ui/widget/slivding_app_bar.dart';
 import 'package:lightdao/ui/widget/util_funtions.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/throttle.dart';
+import 'package:lightdao/utils/xdao_api.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:skeletonizer/skeletonizer.dart';
@@ -82,9 +84,11 @@ class ThreadPage2 extends StatefulWidget {
 class _ThreadPage2State extends State<ThreadPage2> {
   final _scrollController = TsukuyomiListScrollController();
   late ThreadPageManager _pageManager;
+  ThreadPageManager? _poPageManager;
 
+  bool _isPoOnlyMode = false;
   bool _showBar = true;
-  final __saveHistoryThrottle = Throttle(interval: Duration(seconds: 1));
+  final _saveHistoryThrottle = Throttle(interval: Duration(seconds: 1));
   bool _isRawPicMode = false;
 
   final _refCache = LRUCache<int, Future<RefHtml>>(100);
@@ -95,15 +99,27 @@ class _ThreadPage2State extends State<ThreadPage2> {
   final _replyTitleControler = TextEditingController();
   final _replyAuthorControler = TextEditingController();
 
-  int? get _anchorReplyIndex => _scrollController.anchorIndex == 0
-      ? _pageManager.totalItemsCount == 0
-          ? null
-          : 0
-      : _scrollController.anchorIndex - 1;
+  ThreadPageManager get _curPageManager {
+    return _isPoOnlyMode ? _poPageManager! : _pageManager;
+  }
+
+  int? get _anchorReplyIndex {
+    if (_curPageManager.totalItemsCount == 0) return null;
+
+    final anchorIndex = _scrollController.anchorIndex;
+    // 处理特殊情况：顶部和底部
+    if (anchorIndex == 0) return 0;
+    if (anchorIndex == _curPageManager.totalItemsCount + 1) {
+      return _curPageManager.totalItemsCount - 1;
+    }
+
+    // 普通情况：减1得到实际回复索引
+    return anchorIndex - 1;
+  }
 
   int get _anchorPage => _anchorReplyIndex == null
       ? 1
-      : _pageManager.getItemByIndex(_anchorReplyIndex!)!.$2;
+      : _curPageManager.getItemByIndex(_anchorReplyIndex!)?.$2 ?? 1;
 
   void _showFontSizeDialog(BuildContext context) {
     final appState = Provider.of<MyAppState>(context, listen: false);
@@ -153,10 +169,10 @@ class _ThreadPage2State extends State<ThreadPage2> {
       appState.setState((_) {
         final history = ReplyJsonWithPage(
           _anchorPage,
-          _pageManager.getItemByIndex(_anchorReplyIndex!)!.$3,
+          _curPageManager.getItemByIndex(_anchorReplyIndex!)!.$3,
           widget.headerThread.id,
           widget.headerThread,
-          _pageManager.getItemByIndex(_anchorReplyIndex!)!.$1,
+          _curPageManager.getItemByIndex(_anchorReplyIndex!)!.$1,
         );
 
         appState.setting.starHistory.add(history);
@@ -166,7 +182,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
   void _showPageJumpDialog(BuildContext context) {
     final currentPage = _anchorPage;
-    final maxPage = _pageManager.maxPage ?? 1;
+    final maxPage = _curPageManager.maxPage ?? 1;
 
     int selectedPage = currentPage;
     bool jumpToEnd = false;
@@ -308,48 +324,83 @@ class _ThreadPage2State extends State<ThreadPage2> {
     );
   }
 
+  Future<T?> _handlePageManagerError<T>(Future<T> future) {
+    return future.then((value) {
+      setState(() {});
+      return value;
+    }).onError((error, stackTrace) {
+      if (error is XDaoApiNotSuccussException || error is XDaoApiMsgException) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString()),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return Future.value(null);
+      }
+
+      // 对于其他类型的错误，显示吐司但仍然抛出
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('发生错误: ${error.toString()}'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        throw error; // 重新抛出错误
+      }
+      return Future.value(null);
+    });
+  }
+
   void _jumpToPage(int page, bool jumpToEnd) {
-    final loadedRange = _pageManager.loadedPageRange;
+    final loadedRange = _curPageManager.loadedPageRange;
 
     // 检查页面是否已加载
     if (page >= loadedRange.start && page <= loadedRange.end) {
       // 页面已加载，直接跳转
       int targetIndex;
-      if (jumpToEnd && page == _pageManager.maxPage) {
+      if (jumpToEnd && page == _curPageManager.maxPage) {
         // 跳到页尾
-        targetIndex = _pageManager.getLastItemIndexByPage(page);
+        targetIndex = _curPageManager.getLastItemIndexByPage(page);
       } else {
         // 跳到页首
-        targetIndex = _pageManager.getFirstItemIndexByPage(page);
+        targetIndex = _curPageManager.getFirstItemIndexByPage(page);
       }
 
       if (targetIndex != -1) {
         // TsukuyomiList的索引需要+1（因为第一项是头部）
         _scrollController.jumpToIndex(targetIndex + 1);
+        if (jumpToEnd) {
+          _handlePageManagerError(_curPageManager.tryLoadNextPage());
+        }
       }
     } else {
       // 页面未加载，使用jumpToPage方法
-      _pageManager.jumpToPage(page).then((_) {
+      _handlePageManagerError(_curPageManager.jumpToPage(page)).then((_) {
         if (jumpToEnd) {
-          _scrollController.jumpToIndex(_pageManager.totalItemsCount - 1);
+          _scrollController.jumpToIndex(_curPageManager.totalItemsCount - 1);
+          _handlePageManagerError(_curPageManager.tryLoadNextPage());
         }
-        setState(() {});
       });
-    }
-    if (jumpToEnd) {
-      _pageManager.tryLoadNextPage().then((_) => setState(() {}));
     }
   }
 
   _saveHistory() {
+    if (_pageManager.isEmpty ||
+        _anchorReplyIndex == null ||
+        (_anchorReplyIndex != null &&
+            _anchorReplyIndex! > _curPageManager.totalItemsCount)) {
+      return;
+    }
     final appState = Provider.of<MyAppState>(context, listen: false);
     final history = _anchorReplyIndex != null
         ? ReplyJsonWithPage(
             _anchorPage,
-            _pageManager.getItemByIndex(_anchorReplyIndex!)!.$3,
+            _curPageManager.getItemByIndex(_anchorReplyIndex!)!.$3,
             widget.headerThread.id,
             widget.headerThread,
-            _pageManager.getItemByIndex(_anchorReplyIndex!)!.$1,
+            _curPageManager.getItemByIndex(_anchorReplyIndex!)!.$1,
           )
         : null;
     if (history == null) {
@@ -357,13 +408,17 @@ class _ThreadPage2State extends State<ThreadPage2> {
     }
 
     appState.setState((_) {
-      if (appState.setting.starHistory
-          .any(((rply) => rply.threadId == widget.headerThread.id))) {
-        appState.setting.starHistory
-            .removeWhere((rply) => rply.threadId == widget.headerThread.id);
-        appState.setting.starHistory.insert(0, history);
+      if (_isPoOnlyMode) {
+        appState.setting.viewPoOnlyHistory.put(widget.headerThread.id, history);
+      } else {
+        if (appState.setting.starHistory
+            .any(((rply) => rply.threadId == widget.headerThread.id))) {
+          appState.setting.starHistory
+              .removeWhere((rply) => rply.threadId == widget.headerThread.id);
+          appState.setting.starHistory.insert(0, history);
+        }
+        appState.setting.viewHistory.put(widget.headerThread.id, history);
       }
-      appState.setting.viewHistory.put(widget.headerThread.id, history);
     });
   }
 
@@ -387,33 +442,39 @@ class _ThreadPage2State extends State<ThreadPage2> {
                   context,
                   false,
                   widget.headerThread.id,
-                  _pageManager.maxPage ?? 1,
+                  _curPageManager.maxPage ?? 1,
                   widget.headerThread,
                   _replyImageFile,
                   (image) => _replyImageFile = image,
                   _replyTitleControler,
                   _replyAuthorControler,
                   _replyTextControler, () {
+                // 在回调中首先检查组件是否仍然挂载
+                if (!mounted) return;
+
                 // 如果已经加载到最后一页，重新加载以刷出自己的回复
-                if (_anchorPage >= (_pageManager.maxPage ?? 1)) {
-                  _pageManager.forceLoadNextPage().then((_) => setState(() {}));
+                if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
+                  _handlePageManagerError(_curPageManager.forceLoadNextPage());
                 }
 
                 // 显示发送成功提示
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('发送成功'),
-                    duration: Duration(seconds: 2),
-                    behavior: SnackBarBehavior.floating,
-                    action: SnackBarAction(
-                      label: '查看回复',
-                      onPressed: () {
-                        // 跳转到最后一页
-                        _jumpToPage(_pageManager.maxPage ?? 1, true);
-                      },
+                if (mounted) {
+                  scaffoldMessengerKey.currentState?.showSnackBar(
+                    SnackBar(
+                      content: Text('发送成功'),
+                      duration: Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                      action: SnackBarAction(
+                        label: '查看回复',
+                        onPressed: () {
+                          // 跳转到最后一页前检查组件是否仍然挂载
+                          if (!mounted) return;
+                          _jumpToPage(_curPageManager.maxPage ?? 1, true);
+                        },
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
               });
             },
           );
@@ -452,12 +513,21 @@ class _ThreadPage2State extends State<ThreadPage2> {
                             Padding(
                                 padding:
                                     const EdgeInsets.symmetric(horizontal: 16),
-                                child: ReplyItem(
-                                  poUserHash: widget.headerThread.userHash,
-                                  threadJson: reply,
-                                  contentNeedCollapsed: false,
-                                  noMoreParse: true,
-                                  contentHeroTag: "reply${reply.id}",
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                      textTheme: Theme.of(context)
+                                          .textTheme
+                                          .apply(
+                                            fontSizeFactor:
+                                                appState.setting.fontSizeFactor,
+                                          )),
+                                  child: ReplyItem(
+                                    poUserHash: widget.headerThread.userHash,
+                                    threadJson: reply,
+                                    contentNeedCollapsed: false,
+                                    noMoreParse: true,
+                                    contentHeroTag: "reply${reply.id}",
+                                  ),
                                 )),
                           ],
                         ),
@@ -564,18 +634,19 @@ class _ThreadPage2State extends State<ThreadPage2> {
       final viewportDimension = position.viewportDimension;
 
       if (maxScrollExtent - currentPixels <= viewportDimension) {
-        _pageManager.tryLoadNextPage().then((_) => setState(() {}));
+        _handlePageManagerError(_curPageManager.tryLoadNextPage());
       }
     });
     _scrollController.addListener(() {
-      __saveHistoryThrottle.run(() async => _saveHistory());
+      _saveHistoryThrottle.run(() async => _saveHistory());
     });
 
     Future.microtask(() async {
-      await _pageManager.initialize();
+      await _handlePageManagerError(_pageManager.initialize());
       setState(() {});
       // 预加载下一页
-      _pageManager.tryLoadNextPage().then((_) => setState(() {}));
+      _handlePageManagerError(
+          _pageManager.tryLoadNextPage().then((_) => setState(() {})));
       Future.delayed(Duration(milliseconds: 100), () {
         if (!mounted) return;
 
@@ -611,18 +682,25 @@ class _ThreadPage2State extends State<ThreadPage2> {
     final appState = Provider.of<MyAppState>(context);
     final breakpoint = Breakpoint.fromMediaQuery(context);
 
-    final replyCount = _pageManager.totalItemsCount;
+    final replyCount = _curPageManager.totalItemsCount;
 
     final initReplyIndex = !widget.isCompletePage
         ? null
         : widget.headerThread.replies
             .indexWhere((rply) => rply.id == widget.startReplyId);
 
+    // 确保索引有效（大于0且小于总项数）
+    final validInitReplyIndex = initReplyIndex != null &&
+            initReplyIndex > 0 &&
+            initReplyIndex < replyCount + 2
+        ? initReplyIndex
+        : null;
+
     late List<String> allImageNames;
     allImageNames = [
-      if (widget.headerThread.img != '') 
+      if (widget.headerThread.img != '')
         '${widget.headerThread.img}${widget.headerThread.ext}',
-      ..._pageManager.allLoadedItems
+      ..._curPageManager.allLoadedItems
           .where((rply) => rply.img != '')
           .map((rply) => '${rply.img}${rply.ext}')
     ];
@@ -663,9 +741,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 HtmlWidget(
-                  _pageManager.fid == null
-                      ? '${widget.headerThread.id}'
-                      : '${appState.forumMap[_pageManager.fid]!.getShowName()}・${widget.headerThread.id}',
+                  '${appState.forumMap[widget.headerThread.fid]?.getShowName() ?? '未知'}・${widget.headerThread.id}',
                 ),
                 Text(
                   'X岛・nmbxd.com',
@@ -683,22 +759,64 @@ class _ThreadPage2State extends State<ThreadPage2> {
                 onPressed: () async => await Share.share(
                     'https://www.nmbxd1.com/t/${widget.headerThread.id}'),
                 icon: Icon(Icons.share)),
-            IconButton(
-                tooltip: '切换原图模式',
-                onPressed: () => setState(() {
+            PopupMenuButton<String>(
+              tooltip: '更多选项',
+              onSelected: (value) async {
+                switch (value) {
+                  case 'raw_mode':
+                    setState(() {
                       _isRawPicMode = !_isRawPicMode;
-                    }),
-                icon: Icon(_isRawPicMode
-                    ? Icons.raw_on
-                    : Icons.photo_size_select_actual)),
+                    });
+                    break;
+                  case 'po_mode':
+                    if (_poPageManager == null) {
+                      final threadHistory = appState.setting.viewPoOnlyHistory
+                          .get(widget.headerThread.id);
+
+                      _poPageManager = ThreadPageManager(
+                        threadId: widget.headerThread.id,
+                        initialPage: threadHistory?.page ?? 1,
+                        cookie: appState.getCurrentCookie(),
+                        refCache: _refCache,
+                        isPoOnly: true,
+                      );
+
+                      _handlePageManagerError(_poPageManager!.initialize());
+
+                      _poPageManager!.registerPreviousPageCallback(
+                          (page, newItemCount, _, doInsert) {
+                        _scrollController.onBatchInsertItems(
+                            0, newItemCount, () => doInsert());
+                      });
+                    }
+                    await _scrollController.animateTo(0,
+                        duration: Durations.long1, curve: Curves.easeOut);
+                    setState(() => _isPoOnlyMode = !_isPoOnlyMode);
+                    //setState(() {});
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                CheckedPopupMenuItem(
+                  value: 'raw_mode',
+                  checked: _isRawPicMode,
+                  child: Text('原图模式'),
+                ),
+                CheckedPopupMenuItem(
+                  value: 'po_mode',
+                  checked: _isPoOnlyMode,
+                  child: Text('仅看Po'),
+                ),
+              ],
+            ),
           ],
         ),
       ),
       body: TsukuyomiList.builder(
         cacheExtent: MediaQuery.of(context).size.height * 3,
         controller: _scrollController,
-        initialScrollIndex: initReplyIndex,
-        itemCount: replyCount + 1,
+        initialScrollIndex: validInitReplyIndex,
+        itemCount: replyCount + 2,
         itemBuilder: (context, index) {
           if (index == 0) {
             return Column(
@@ -714,32 +832,40 @@ class _ThreadPage2State extends State<ThreadPage2> {
                     child: FilterableThreadWidget(
                       reply: widget.headerThread,
                       isTimeLineFilter: false,
-                      child: ReplyItem(
-                        isRawPicMode: _isRawPicMode,
-                        isThreadFirstOrForumPreview: true,
-                        threadJson: widget.headerThread,
-                        contentNeedCollapsed: false,
-                        contentHeroTag: 'ThreadCard ${widget.headerThread.id}',
-                        imageHeroTag:
-                            'Image ${widget.headerThread.img}${widget.headerThread.ext}',
-                        imageInitIndex: widget.headerThread.img == '' ? null : 0,
-                        imageNames: allImageNames,
-                        refCache: _refCache,
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                            textTheme: Theme.of(context).textTheme.apply(
+                                  fontSizeFactor:
+                                      appState.setting.fontSizeFactor,
+                                )),
+                        child: ReplyItem(
+                          poUserHash: widget.headerThread.userHash,
+                          isRawPicMode: _isRawPicMode,
+                          isThreadFirstOrForumPreview: true,
+                          threadJson: widget.headerThread,
+                          contentNeedCollapsed: false,
+                          contentHeroTag:
+                              'ThreadCard ${widget.headerThread.id}',
+                          imageHeroTag:
+                              'Image ${widget.headerThread.img}${widget.headerThread.ext}',
+                          imageInitIndex:
+                              widget.headerThread.img == '' ? null : 0,
+                          imageNames: allImageNames,
+                        ),
                       ),
                     ),
                   ),
                 ),
                 const Divider(),
-                if (_pageManager.isLoadingPreviousPage)
+                if (_curPageManager.isLoadingPreviousPage)
                   myDividerWrapper(child: loadingReply)
-                else if (_pageManager.hasMorePreviousPages)
+                else if (_curPageManager.hasMorePreviousPages)
                   myDividerWrapper(
                       child: InkWell(
                     onTap: () {
                       _scrollController.jumpToIndex(1);
-                      _pageManager
-                          .tryLoadPreviousPage()
-                          .then((_) => setState(() {}));
+                      _handlePageManagerError(
+                          _curPageManager.tryLoadPreviousPage());
                     },
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -747,9 +873,8 @@ class _ThreadPage2State extends State<ThreadPage2> {
                         ElevatedButton(
                             onPressed: () {
                               _scrollController.jumpToIndex(1);
-                              _pageManager
-                                  .tryLoadPreviousPage()
-                                  .then((_) => setState(() {}));
+                              _handlePageManagerError(
+                                  _curPageManager.tryLoadPreviousPage());
                             },
                             child: Text('加载前页的回复')),
                       ],
@@ -757,40 +882,12 @@ class _ThreadPage2State extends State<ThreadPage2> {
                   ))
               ],
             );
-          }
-          final replyIndex = index - 1;
-          final reply = _pageManager.getItemByIndex(replyIndex)!.$1;
-          final imageName = '${reply.img}${reply.ext}';
-          final imageIndex = allImageNames.indexOf(imageName);
-          return myDividerWrapper(
-            child: InkWell(
-              onLongPress: () => _showThreadActionMenu(context, reply, false),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal: breakpoint.gutters,
-                    vertical: breakpoint.gutters / 2),
-                child: FilterableThreadWidget(
-                  reply: reply,
-                  isTimeLineFilter: false,
-                  child: ReplyItem(
-                    isRawPicMode: _isRawPicMode,
-                    threadJson: reply,
-                    contentNeedCollapsed: false,
-                    imageHeroTag: 'Image ${reply.img}${reply.ext}',
-                    imageInitIndex: imageIndex,
-                    imageNames: allImageNames,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-        sliverTrailing: [
-          SliverToBoxAdapter(
-            child: Column(
+          } else if (index == replyCount + 1) {
+            return Column(
               children: [
-                if (_pageManager.isLoadingNextPage) loadingReply,
-                if (!_pageManager.hasMoreNextPages)
+                if (_curPageManager.isLoadingNextPage)
+                  loadingReply
+                else
                   Column(
                     children: [
                       if (!appState.setting.dividerBetweenReply)
@@ -803,20 +900,19 @@ class _ThreadPage2State extends State<ThreadPage2> {
                         width: double.infinity,
                         child: InkWell(
                           onTap: () {
-                            _pageManager
-                                .forceLoadNextPage()
-                                .then((replyCount) => setState(() {
-                                      if (replyCount == 0) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text('没有更多回复了！'),
-                                            duration: Durations.long1,
-                                            behavior: SnackBarBehavior.floating,
-                                          ),
-                                        );
-                                      }
-                                    }));
+                            _handlePageManagerError(
+                                    _curPageManager.forceLoadNextPage())
+                                .then((replyCount) {
+                              if (replyCount == 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('没有更多回复了！'),
+                                    duration: Durations.long1,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            });
                           },
                           child: Padding(
                             padding: EdgeInsets.symmetric(
@@ -841,9 +937,48 @@ class _ThreadPage2State extends State<ThreadPage2> {
                   ),
                 //const Text('这里是尾部'),
               ],
+            );
+          }
+          final replyIndex = index - 1;
+          // 有的时候因为数据不同步会导致index越界，简单处理一下
+          if (replyIndex >= _curPageManager.totalItemsCount) {
+            return SizedBox.shrink();
+          }
+          final (reply, page, _) = _curPageManager.getItemByIndex(replyIndex)!;
+          final imageName = '${reply.img}${reply.ext}';
+          final imageIndex = allImageNames.indexOf(imageName);
+          return myDividerWrapper(
+            child: InkWell(
+              onLongPress: () => _showThreadActionMenu(context, reply, false),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                    horizontal: breakpoint.gutters,
+                    vertical: breakpoint.gutters / 2),
+                child: FilterableThreadWidget(
+                  reply: reply,
+                  isTimeLineFilter: false,
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                        textTheme: Theme.of(context).textTheme.apply(
+                              fontSizeFactor: appState.setting.fontSizeFactor,
+                            )),
+                    child: ReplyItem(
+                      key: ValueKey('threadCard ${reply.id} in Page $page'),
+                      poUserHash: widget.headerThread.userHash,
+                      isRawPicMode: _isRawPicMode,
+                      threadJson: reply,
+                      contentNeedCollapsed: false,
+                      imageHeroTag: 'Image ${reply.img}${reply.ext}',
+                      imageInitIndex: imageIndex,
+                      imageNames: allImageNames,
+                      refCache: _refCache,
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-        ],
+          );
+        },
       ),
       bottomNavigationBar: SafeArea(
         child: AnimatedContainer(
@@ -884,39 +1019,46 @@ class _ThreadPage2State extends State<ThreadPage2> {
           ? null
           : FloatingActionButton(
               shape: CircleBorder(),
+              tooltip: '回复',
+              child: Icon(Icons.create),
               onPressed: () => showReplyBottomSheet(
                   context,
                   false,
                   widget.headerThread.id,
-                  _pageManager.maxPage ?? 1,
+                  _curPageManager.maxPage ?? 1,
                   widget.headerThread,
                   _replyImageFile,
                   (image) => _replyImageFile = image,
                   _replyTitleControler,
                   _replyAuthorControler,
                   _replyTextControler, () {
+                // 在回调中首先检查组件是否仍然挂载
+                if (!mounted) return;
+
                 // 如果已经加载到最后一页，重新加载以刷出自己的回复
-                if (_anchorPage >= (_pageManager.maxPage ?? 1)) {
-                  _pageManager.forceLoadNextPage().then((_) => setState(() {}));
+                if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
+                  _handlePageManagerError(_curPageManager.forceLoadNextPage());
                 }
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('发送成功'),
-                    duration: Duration(seconds: 2),
-                    behavior: SnackBarBehavior.floating,
-                    action: SnackBarAction(
-                      label: '查看回复',
-                      onPressed: () {
-                        // 跳转到最后一页
-                        _jumpToPage(_pageManager.maxPage ?? 1, true);
-                      },
+                // 显示发送成功提示
+                if (mounted) {
+                  scaffoldMessengerKey.currentState?.showSnackBar(
+                    SnackBar(
+                      content: Text('发送成功'),
+                      duration: Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                      action: SnackBarAction(
+                        label: '查看回复',
+                        onPressed: () {
+                          // 跳转到最后一页前检查组件是否仍然挂载
+                          if (!mounted) return;
+                          _jumpToPage(_curPageManager.maxPage ?? 1, true);
+                        },
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
               }),
-              tooltip: '回复',
-              child: Icon(Icons.create),
             ),
     );
   }

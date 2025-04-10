@@ -165,6 +165,9 @@ class LightDaoSetting extends HiveObject {
   @HiveField(38, defaultValue: true)
   bool isMultiColumn;
 
+  @HiveField(39)
+  LRUCache<int, ReplyJsonWithPage> viewPoOnlyHistory;
+
   LightDaoSetting({
     required this.cookies,
     required this.currentCookie,
@@ -205,7 +208,10 @@ class LightDaoSetting extends HiveObject {
     required this.predictiveBack,
     required this.columnWidth,
     required this.isMultiColumn,
-  }) : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
+    LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
+  })  : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
+        viewPoOnlyHistory =
+            viewPoOnlyHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
 }
 
 class MaterialColorAdapter extends TypeAdapter<MaterialColor> {
@@ -455,6 +461,7 @@ class MyAppState with ChangeNotifier {
           predictiveBack: false,
           columnWidth: 445,
           isMultiColumn: true,
+          viewPoOnlyHistory: LRUCache<int, ReplyJsonWithPage>(5000),
         );
     setting.phrases = mergePhraseLists(setting.phrases, xDaoPhrases);
     notifyListeners();
