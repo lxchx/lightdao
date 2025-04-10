@@ -49,9 +49,10 @@ class ReplyItem extends StatelessWidget {
     this.imageInitIndex,
   }) {
     assert(
-        (imageNames == null || imageNames!.isEmpty) && imageInitIndex == null ||
-            (imageNames != null && imageNames!.isNotEmpty) &&
-                imageInitIndex != null);
+        // 如果imageInitIndex有效（非null且>=0），则imageNames必须有效（非null且非空）
+        (imageInitIndex == null || (imageInitIndex != null && imageInitIndex! < 0)) ||
+        (imageNames != null && imageNames!.isNotEmpty),
+        'imageInitIndex有效时，imageNames必须非空');
   }
 
   @override
