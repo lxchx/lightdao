@@ -59,6 +59,9 @@ dependencies:
   swipeable_page_route: ^0.4.4
   package_info_plus: ^8.1.2
   chewie: 1.8.5
+  dio: ^5.8.0+1
+  install_plugin: ^2.1.0
+  flutter_markdown: ^0.6.18
 
 dev_dependencies:
   flutter_test:
