@@ -5,6 +5,7 @@ import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/data/trend_data.dart';
 import 'package:lightdao/data/xdao/reply.dart';
 import 'package:lightdao/data/xdao/thread.dart';
+import 'package:lightdao/ui/page/thread2.dart';
 import 'package:lightdao/utils/status.dart';
 import 'package:lightdao/data/xdao/timeline.dart';
 import 'package:lightdao/ui/page/thread.dart';
@@ -156,6 +157,17 @@ class LightDaoSetting extends HiveObject {
   @HiveField(36, defaultValue: false)
   bool predictiveBack;
 
+  // 分栏宽度
+  @HiveField(37, defaultValue: 445)
+  double columnWidth;
+
+  // 是否分栏
+  @HiveField(38, defaultValue: true)
+  bool isMultiColumn;
+
+  @HiveField(39)
+  LRUCache<int, ReplyJsonWithPage> viewPoOnlyHistory;
+
   LightDaoSetting({
     required this.cookies,
     required this.currentCookie,
@@ -194,7 +206,12 @@ class LightDaoSetting extends HiveObject {
     required this.initIsTimeline,
     required this.initForumOrTimelineName,
     required this.predictiveBack,
-  }) : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
+    required this.columnWidth,
+    required this.isMultiColumn,
+    LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
+  })  : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
+        viewPoOnlyHistory =
+            viewPoOnlyHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
 }
 
 class MaterialColorAdapter extends TypeAdapter<MaterialColor> {
@@ -442,6 +459,9 @@ class MyAppState with ChangeNotifier {
           initIsTimeline: true,
           initForumOrTimelineName: '综合线',
           predictiveBack: false,
+          columnWidth: 445,
+          isMultiColumn: true,
+          viewPoOnlyHistory: LRUCache<int, ReplyJsonWithPage>(5000),
         );
     setting.phrases = mergePhraseLists(setting.phrases, xDaoPhrases);
     notifyListeners();
@@ -451,30 +471,29 @@ class MyAppState with ChangeNotifier {
     return _store.put(0, setting);
   }
 
-  Future<void> navigateThreadPage(
+  Future<void> navigateThreadPage2(
       BuildContext context, int threadId, bool popIfFinish,
       {ThreadJson? thread, bool? fullThread}) async {
     final threadHistory = setting.viewHistory.get(threadId);
-    pageRoute({required Widget Function(BuildContext) builder,}) {
+    pageRoute({
+      required Widget Function(BuildContext) builder,
+    }) {
       if (setting.enableSwipeBack) {
         return SwipeablePageRoute(builder: builder);
       } else {
         return MaterialPageRoute(builder: builder);
       }
     }
-    
+
     if (threadHistory != null) {
       if (popIfFinish) Navigator.pop(context);
       Navigator.push(
         context,
         pageRoute(
-          builder: (context) => ThreadPage(
-            withWholePage: false,
+          builder: (context) => ThreadPage2(
+            headerThread: ThreadJson.fromReplyJson(threadHistory.thread, []),
             startPage: threadHistory.page,
             startReplyId: threadHistory.reply.id,
-            thread: ThreadJson.fromReplyJson(threadHistory.thread, []),
-            threadForumName:
-                forumMap[threadHistory.thread.fid]?.getShowName() ?? '未知',
           ),
         ),
       );
@@ -483,17 +502,14 @@ class MyAppState with ChangeNotifier {
       Navigator.push(
         context,
         pageRoute(
-          builder: (context) => ThreadPage(
-            withWholePage: fullThread ?? false,
+          builder: (context) => ThreadPage2(
+            headerThread: thread,
             startPage: 1,
-            thread: thread,
-            threadForumName:
-                forumMap[thread.fid]?.getShowName() ?? '未知',
+            isCompletePage: fullThread ?? false,
           ),
         ),
       );
     } else {
-      //TODO: 将获取threadForumName和Thread的逻辑放进ThreadPage中
       context.loaderOverlay.show();
       final thread = getThread(threadId, 1, getCurrentCookie());
       thread.then((thread) {
@@ -502,11 +518,10 @@ class MyAppState with ChangeNotifier {
         Navigator.push(
           context,
           pageRoute(
-            builder: (context) => ThreadPage(
-              withWholePage: true,
+            builder: (context) => ThreadPage2(
+              headerThread: thread,
               startPage: 1,
-              thread: thread,
-              threadForumName: forumMap[thread.fid]?.getShowName() ?? '未知',
+              isCompletePage: true,
             ),
           ),
         );

@@ -246,7 +246,7 @@ class _ForumPageState extends State<ForumPage> {
         );
         final navigator = Navigator.of(context);
         onTapThread() =>
-            appState.navigateThreadPage(context, _posts[index].id, false,
+            appState.navigateThreadPage2(context, _posts[index].id, false,
                 thread: _posts[index]);
 
         onLongPressThread() {
@@ -352,7 +352,7 @@ class _ForumPageState extends State<ForumPage> {
                           : Icons.favorite_border,
                     )),
                 IconButton.filledTonal(
-                    onPressed: () => appState.navigateThreadPage(
+                    onPressed: () => appState.navigateThreadPage2(
                         context, _posts[index].id, false,
                         thread: _posts[index]),
                     icon: _posts[index].replyCount == 0
@@ -906,10 +906,9 @@ class _ForumPageState extends State<ForumPage> {
               : SafeArea(
                   top: false,
                   child: LayoutBuilder(builder: (context, constraints) {
-                    final forumRowCount =
-                        (constraints.maxWidth / 445).toInt() + 1;
+                    final forumRowCount = appState.setting.isMultiColumn ?
+                        (constraints.maxWidth / appState.setting.columnWidth).toInt() + 1 : 1;
                     final initSkeletonizerCount = forumRowCount * 7;
-                    print(breakpoint.window);
                     return RefreshIndicator(
                       onRefresh: () {
                         _flushPosts();
@@ -931,7 +930,7 @@ class _ForumPageState extends State<ForumPage> {
                                 : kToolbarHeight,
                             automaticallyImplyLeading:
                                 breakpoint.window < WindowSize.small,
-                            pinned: breakpoint.window >= WindowSize.small,
+                            pinned: appState.setting.fixedBottomBar || breakpoint.window >= WindowSize.small,
                             snap: false,
                             floating: breakpoint.window < WindowSize.small,
                             actions: [

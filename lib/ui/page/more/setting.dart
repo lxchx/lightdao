@@ -220,11 +220,35 @@ class SettingsPage extends StatelessWidget {
             children: [
               SettingsTile.switchTile(
                 contentPadding: breakpoint.gutters,
-                title: '固定底栏',
+                title: '固定底栏&顶栏',
                 switchValue: appState.setting.fixedBottomBar,
                 onToggle: (bool value) {
                   appState.setState((state) {
                     state.setting.fixedBottomBar = value;
+                  });
+                },
+              ),
+              SettingsTile.switchTile(
+                contentPadding: breakpoint.gutters,
+                title: '启用分栏布局',
+                subtitle: '在宽屏设备上显示多列内容',
+                switchValue: appState.setting.isMultiColumn,
+                onToggle: (bool value) {
+                  appState.setState((state) {
+                    state.setting.isMultiColumn = value;
+                  });
+                },
+              ),
+              SettingsTile.sliderTile(
+                contentPadding: breakpoint.gutters,
+                title: '分栏宽度(${appState.setting.columnWidth.toInt()}px)',
+                min: 300,
+                max: 800,
+                value: appState.setting.columnWidth,
+                divisions: 10,
+                onChanged: (double value) {
+                  appState.setState((state) {
+                    state.setting.columnWidth = value;
                   });
                 },
               ),

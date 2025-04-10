@@ -103,7 +103,7 @@ class _TrendPageState extends State<TrendPage> {
                     TextButton(
                       onPressed: () {
                         Navigator.pop(context);
-                        appState.navigateThreadPage(
+                        appState.navigateThreadPage2(
                             context, 50248044, false);
                       },
                       child: const Text('查看原串'),

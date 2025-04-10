@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:breakpoint/breakpoint.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lightdao/data/xdao/thread.dart';
 import 'package:lightdao/ui/page/pop_ref_view_page.dart';
 import 'package:lightdao/ui/widget/line_limited_html_widget.dart';
 import 'package:lightdao/ui/widget/reply_item.dart';
@@ -448,8 +449,12 @@ class _RefViewState extends State<RefView> with SingleTickerProviderStateMixin {
                                                   final threadId =
                                                       snapshot.data?.threadId;
                                                   if (threadId == null) return;
-                                                  appState.navigateThreadPage(
-                                                      context, threadId, false);
+                                                  appState.navigateThreadPage2(
+                                                      context, threadId, false,
+                                                      thread: ThreadJson
+                                                          .fromRefHtml(
+                                                              snapshot.data!),
+                                                      fullThread: false);
                                                 },
                                                 child: Text('查看原串',
                                                     style: TextStyle(

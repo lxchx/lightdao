@@ -362,7 +362,7 @@ Widget starPage(BuildContext context) {
                 );
               },
             ),
-            onTap: () => appState.navigateThreadPage(
+            onTap: () => appState.navigateThreadPage2(
                 context, re.threadId, false,
                 thread: ThreadJson.fromReplyJson(re.thread, [])),
           );
@@ -406,7 +406,7 @@ Widget replyPage(BuildContext context) {
                 );
               },
             ),
-            onTap: () => appState.navigateThreadPage(
+            onTap: () => appState.navigateThreadPage2(
                 context, re.threadId, false,
                 thread: ThreadJson.fromReplyJson(re.thread, [])),
           );
@@ -497,7 +497,7 @@ class MorePage extends StatelessWidget {
                                           return HistoryReply(
                                             re: re,
                                             onTap: () =>
-                                                appState.navigateThreadPage(
+                                                appState.navigateThreadPage2(
                                                     context, re.threadId, false,
                                                     thread: ThreadJson
                                                         .fromReplyJson(
@@ -584,7 +584,7 @@ class MorePage extends StatelessWidget {
                                                 },
                                               ),
                                               onTap: () =>
-                                                  appState.navigateThreadPage(
+                                                  appState.navigateThreadPage2(
                                                       context,
                                                       re.threadId,
                                                       false,
