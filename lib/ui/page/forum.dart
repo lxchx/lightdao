@@ -244,7 +244,6 @@ class _ForumPageState extends State<ForumPage> {
           contentHeroTag: 'ThreadCard ${_posts[index].id}',
           imageHeroTag: 'Image ${_posts[index].img}${_posts[index].ext}',
         );
-        final navigator = Navigator.of(context);
         onTapThread() =>
             appState.navigateThreadPage2(context, _posts[index].id, false,
                 thread: _posts[index]);

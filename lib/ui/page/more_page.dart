@@ -94,8 +94,6 @@ Widget starPage(BuildContext context) {
               loaderOverlay.show();
 
               // 状态变量
-              var remoteFeedCount = 0;
-              var localFeedCount = 0;
               var remoteOnly = <ReplyJson>[];
               var localOnly = <ReplyJsonWithPage>[];
 
@@ -114,11 +112,9 @@ Widget starPage(BuildContext context) {
                       feedInfos.map((feed) => ReplyJson.fromFeedInfo(feed)));
                   page += 1;
                 }
-                remoteFeedCount = remoteFeeds.length;
 
                 // 比对远程和本地的订阅历史
                 final localFeeds = appState.setting.starHistory;
-                localFeedCount = localFeeds.length;
 
                 remoteOnly = remoteFeeds
                     .where((feed) =>
@@ -732,6 +728,7 @@ class MorePage extends StatelessWidget {
                 title: Text('关于'),
                 onTap: () async {
                   PackageInfo packageInfo = await PackageInfo.fromPlatform();
+                  if (!context.mounted) return;
                   Navigator.push(context, pageRoute(builder: (context) {
                     final appState = Provider.of<MyAppState>(context);
                     return AboutPage(appState: appState, packageInfo: packageInfo);

@@ -1,11 +1,8 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lightdao/data/xdao/ref.dart';
 import 'package:lightdao/data/xdao/reply.dart';
-import 'package:lightdao/data/xdao/thread.dart';
-import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/xdao_api.dart';
 

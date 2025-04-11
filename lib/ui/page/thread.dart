@@ -873,7 +873,6 @@ class _ThreadPageState extends State<ThreadPage> {
   @override
   void initState() {
     super.initState();
-    final appState = Provider.of<MyAppState>(context, listen: false);
     _currentRepliesCount = widget.thread.replyCount;
     var startPage = widget.startPage;
     if (startPage == 0) startPage = 1;
