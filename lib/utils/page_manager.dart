@@ -534,12 +534,10 @@ class ThreadPageManager extends PageManager<ReplyJson> {
     required this.threadId,
     required this.cookie,
     required super.initialPage,
-    int? fid,
     this.refCache,
     this.isPoOnly = false,
   }) : super(pageMaxSize: 19) {
     _threadMaxPage = initialPage;
-    _fid = fid;
   }
 
   ThreadPageManager.withInitialItems({
