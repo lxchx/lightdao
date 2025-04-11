@@ -34,6 +34,7 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
   bool _showBottomBar = true;
   late int _currentIndex;
   late PageController _pageViewController;
+  final ExitSignal _exitSignal = ExitSignal();
 
   @override
   void initState() {
@@ -79,6 +80,7 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                     return DragDismissible(
                       backgroundColor: Theme.of(context).canvasColor,
                       onDismissed: () => Navigator.of(context).pop(),
+                      exitSignal: _exitSignal,
                       enabled:
                           appState.setting.dragToDissmissImage && !_scaleOnly,
                       child: PhotoView(
@@ -107,9 +109,9 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                                 if (imageChunkEvent != null &&
                                     imageChunkEvent.expectedTotalBytes != null)
                                   CircularProgressIndicator(
-                                      value:
-                                          imageChunkEvent.cumulativeBytesLoaded /
-                                              imageChunkEvent.expectedTotalBytes!)
+                                      value: imageChunkEvent
+                                              .cumulativeBytesLoaded /
+                                          imageChunkEvent.expectedTotalBytes!)
                                 else
                                   CircularProgressIndicator(),
                               ],
@@ -186,8 +188,12 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                                         children: [
                                           IconButton(
                                             icon: Icon(Icons.close),
-                                            onPressed: () =>
-                                                Navigator.of(context).pop(),
+                                            onPressed: () {
+                                              setState(() {
+                                                _exitSignal.trigger();
+                                              });
+                                              Navigator.of(context).pop();
+                                            },
                                           ),
                                           IconButton(
                                             icon: Icon(Icons.share),

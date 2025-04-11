@@ -1,5 +1,19 @@
 import 'package:flutter/material.dart';
 
+class ExitSignal {
+  bool _isExiting = false;
+  
+  void trigger() {
+    _isExiting = true;
+  }
+  
+  bool get isTriggered => _isExiting;
+  
+  void reset() {
+    _isExiting = false;
+  }
+}
+
 /// A widget used to dismiss its [child].
 ///
 /// Similar to [Dismissible] with some adjustments.
@@ -10,6 +24,7 @@ class DragDismissible extends StatefulWidget {
     this.dismissThreshold = 0.2,
     this.enabled = true,
     this.backgroundColor,
+    this.exitSignal,
   });
 
   final Widget child;
@@ -17,6 +32,7 @@ class DragDismissible extends StatefulWidget {
   final VoidCallback? onDismissed;
   final bool enabled;
   final Color? backgroundColor;
+  final ExitSignal? exitSignal;
 
   @override
   State<DragDismissible> createState() => _DragDismissibleState();
@@ -46,6 +62,25 @@ class _DragDismissibleState extends State<DragDismissible>
     );
 
     _updateMoveAnimation();
+  }
+
+  @override
+  void didUpdateWidget(DragDismissible oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // 检查信号是否被触发
+    if (widget.exitSignal != null && widget.exitSignal!.isTriggered) {
+      // 触发退出动画
+      setState(() {
+        _isExiting = true;
+        _scaleAnimation = AlwaysStoppedAnimation(1.0);  // 让缩放动画失效
+      });
+      
+      _animateController.forward();
+      
+      // 重置信号，避免重复触发
+      widget.exitSignal!.reset();
+    }
   }
 
   @override
