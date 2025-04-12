@@ -10,6 +10,7 @@ import 'package:lightdao/data/const_data.dart';
 import 'package:lightdao/data/setting.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lightdao/utils/update_checker.dart';
+import 'package:lightdao/ui/widget/fading_scroll_view.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AboutPage extends StatelessWidget {
@@ -108,9 +109,6 @@ class AboutPage extends StatelessWidget {
   }
 
   void _showUpdateDialog(BuildContext context, UpdateInfo updateInfo) {
-    final ScrollController scrollController = ScrollController();
-    bool isScrollable = false;
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -118,69 +116,24 @@ class AboutPage extends StatelessWidget {
         content: SizedBox(
           width: double.maxFinite,
           height: 200,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return StatefulBuilder(
-                builder: (context, setState) {
-                  // 在布局完成后检查是否可滚动
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (scrollController.hasClients) {
-                      final newIsScrollable = scrollController.position.maxScrollExtent > 0;
-                      if (newIsScrollable != isScrollable) {
-                        setState(() {
-                          isScrollable = newIsScrollable;
-                        });
-                      }
+          child: FadingScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                MarkdownBody(
+                  data: updateInfo.updateLog,
+                  styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)),
+                  selectable: true,
+                  onTapLink: (text, href, title) {
+                    if (href != null) {
+                      launchUrl(Uri.parse(href));
                     }
-                  });
-
-                  Widget content = SingleChildScrollView(
-                    controller: scrollController,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        MarkdownBody(
-                          data: updateInfo.updateLog,
-                          styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)),
-                          selectable: true,
-                          onTapLink: (text, href, title) {
-                            if (href != null) {
-                              launchUrl(Uri.parse(href));
-                            }
-                          },
-                        ),
-                        // 底部添加一些空间
-                        SizedBox(height: 20),
-                      ],
-                    ),
-                  );
-
-                  // 只有在内容可滚动时才添加滚动条和遮罩
-                  if (isScrollable) {
-                    content = Scrollbar(
-                      controller: scrollController,
-                      thumbVisibility: true,
-                      thickness: 6,
-                      radius: Radius.circular(3),
-                      child: ShaderMask(
-                        shaderCallback: (Rect rect) {
-                          return LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.white, Colors.white, Colors.white.withOpacity(0.1)],
-                            stops: [0.0, 0.85, 1.0],
-                          ).createShader(rect);
-                        },
-                        blendMode: BlendMode.dstIn,
-                        child: content,
-                      ),
-                    );
-                  }
-
-                  return content;
-                },
-              );
-            },
+                  },
+                ),
+                // 底部添加一些空间
+                SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
         actions: [

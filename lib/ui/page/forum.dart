@@ -139,6 +139,65 @@ class _ForumPageState extends State<ForumPage> {
         }
       });
     });
+    getNotice().then((notice) {
+      if (mounted) {
+        final appState = Provider.of<MyAppState>(context, listen: false);
+        if (appState.setting.seenNoticeDate < notice.date) {
+          bool doNotShowAgain = false;
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('公告'),
+              content: Container(
+                width: double.infinity,
+                constraints: BoxConstraints(maxHeight: 200),
+                child: SingleChildScrollView(
+                  child: HtmlWidget(notice.content),
+                ),
+              ),
+              actions: [
+                StatefulBuilder(builder: (context, setDialogState) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: doNotShowAgain,
+                            onChanged: (value) {
+                              setDialogState(() {
+                                doNotShowAgain = value ?? false;
+                              });
+                            },
+                          ),
+                          Text('不再提示'),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              if (doNotShowAgain) {
+                                appState.setState((state) =>
+                                    state.setting.seenNoticeDate = notice.date);
+                              }
+                              Navigator.pop(context);
+                            },
+                            child: Text('关闭'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          );
+        }
+      }
+    });
   }
 
   void _flushPosts() {
@@ -905,8 +964,11 @@ class _ForumPageState extends State<ForumPage> {
               : SafeArea(
                   top: false,
                   child: LayoutBuilder(builder: (context, constraints) {
-                    final forumRowCount = appState.setting.isMultiColumn ?
-                        (constraints.maxWidth / appState.setting.columnWidth).toInt() + 1 : 1;
+                    final forumRowCount = appState.setting.isMultiColumn
+                        ? (constraints.maxWidth / appState.setting.columnWidth)
+                                .toInt() +
+                            1
+                        : 1;
                     final initSkeletonizerCount = forumRowCount * 7;
                     return RefreshIndicator(
                       onRefresh: () {
@@ -929,7 +991,8 @@ class _ForumPageState extends State<ForumPage> {
                                 : kToolbarHeight,
                             automaticallyImplyLeading:
                                 breakpoint.window < WindowSize.small,
-                            pinned: appState.setting.fixedBottomBar || breakpoint.window >= WindowSize.small,
+                            pinned: appState.setting.fixedBottomBar ||
+                                breakpoint.window >= WindowSize.small,
                             snap: false,
                             floating: breakpoint.window < WindowSize.small,
                             actions: [
@@ -1015,7 +1078,8 @@ class _ForumPageState extends State<ForumPage> {
                             sliver: SliverMasonryGrid.count(
                               crossAxisCount: forumRowCount,
                               itemBuilder: threadsBuilder,
-                              childCount: _posts.length +
+                              childCount: 1 +
+                                  _posts.length +
                                   (_posts.isNotEmpty
                                       ? 1
                                       : initSkeletonizerCount),

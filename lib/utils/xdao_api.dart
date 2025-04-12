@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:lightdao/data/xdao/feed_info.dart';
 import 'package:lightdao/data/xdao/forum.dart';
+import 'package:lightdao/data/xdao/notice_info.dart';
 import 'package:lightdao/data/xdao/post.dart';
 import 'package:lightdao/data/xdao/ref.dart';
 import 'package:lightdao/data/xdao/reply.dart';
@@ -593,4 +595,30 @@ Future<ReplyJson> getLatestTrend(String? cookie) async {
   final ReplyJson latestReply = lastPageThread.replies.last;
 
   return latestReply;
+}
+
+CacheManager noticeCacheManager = CacheManager(
+  Config(
+    'notice',
+    stalePeriod: const Duration(minutes: 30),
+    maxNrOfCacheObjects: 1,
+  ),
+);
+
+Future<NoticeInfo> getNotice() async {
+  try {
+    final file = await noticeCacheManager.getSingleFile(
+      'https://nmb.ovear.info/nmb-notice.json',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    );
+    
+    final jsonStr = await file.readAsString();
+    final data = getOKJsonMap(jsonStr);
+    
+    return NoticeInfo.fromJson(data);
+  } catch (e) {
+    throw Exception('获取公告失败: ${e.toString()}');
+  }
 }
