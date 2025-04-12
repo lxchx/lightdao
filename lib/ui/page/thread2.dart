@@ -123,16 +123,14 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
   String _getForumName() {
     final appState = Provider.of<MyAppState>(context, listen: false);
-    late String forumName;
     if (widget.headerThread.fid >= 0) {
-      forumName = appState.forumMap[widget.headerThread.fid]?.getShowName() ?? '未知';
+      return appState.forumMap[widget.headerThread.fid]?.getShowName() ?? '未知';
     } else {
       // 始终使用_pageManager，避免切换到_poPageManager还要加载
-      forumName = _pageManager.fid != null 
+      return _pageManager.fid != null
           ? appState.forumMap[_pageManager.fid]?.getShowName() ?? '未知'
           : '加载中';
     }
-    return '$forumName・${widget.headerThread.id}';
   }
 
   void _showFontSizeDialog(BuildContext context) {
