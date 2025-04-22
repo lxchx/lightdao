@@ -200,6 +200,44 @@ class _ForumPageState extends State<ForumPage> {
     });
   }
 
+  Future<void> _showSearchDialog() async {
+    final appState = Provider.of<MyAppState>(context, listen: false);
+    final TextEditingController searchThreadIdController =
+        TextEditingController();
+
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('跳转到指定串'),
+          content: TextField(
+            controller: searchThreadIdController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(hintText: "请输入串号 (纯数字)"),
+            autofocus: true,
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('跳转'),
+              onPressed: () {
+                final String inputText = searchThreadIdController.text.trim();
+                final int? threadId = int.tryParse(inputText);
+
+                if (threadId != null) {
+                  appState.navigateThreadPage2(context, threadId, true);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('请输入有效的数字串号')),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _flushPosts() {
     setState(() {
       // 当导航在其他页时，给_scrollController做操作会崩溃，忽略即可
@@ -1004,6 +1042,10 @@ class _ForumPageState extends State<ForumPage> {
                                       _fetchPosts();
                                     },
                                     icon: Icon(Icons.refresh)),
+                              IconButton(
+                                  onPressed: () {
+                                    _showSearchDialog();
+                                  }, icon: Icon(Icons.search)),
                               if (breakpoint.window >= WindowSize.small)
                                 FloatingActionButton.extended(
                                   elevation: 0,
