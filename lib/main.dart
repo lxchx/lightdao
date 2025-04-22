@@ -251,7 +251,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                     child: Text('确认'),
                     onPressed: () async {
                       lastClipBoardData = clipText;
-                      context.loaderOverlay.show();
                       final appState =
                           Provider.of<MyAppState>(context, listen: false);
                       appState.navigateThreadPage2(context, threadId, true);

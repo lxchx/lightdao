@@ -480,6 +480,7 @@ class MyAppState with ChangeNotifier {
       BuildContext context, int threadId, bool popIfFinish,
       {ThreadJson? thread, bool? fullThread}) async {
     final threadHistory = setting.viewHistory.get(threadId);
+    bool isPop = false;
     pageRoute({
       required Widget Function(BuildContext) builder,
     }) {
@@ -503,7 +504,10 @@ class MyAppState with ChangeNotifier {
         ),
       );
     } else if (thread != null) {
-      if (popIfFinish) Navigator.pop(context);
+      if (popIfFinish) {
+        Navigator.pop(context);
+        isPop = true;
+      }
       Navigator.push(
         context,
         pageRoute(
@@ -531,7 +535,7 @@ class MyAppState with ChangeNotifier {
           ),
         );
       }).catchError((error) {
-        if (popIfFinish) Navigator.pop(context);
+        if (popIfFinish && !isPop) Navigator.pop(context);
         context.loaderOverlay.hide();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(error.toString()),
