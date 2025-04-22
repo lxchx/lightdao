@@ -314,6 +314,14 @@ class MyAppState with ChangeNotifier {
     return setting.starHistory.any((rply) => rply.threadId == threadId);
   }
 
+  PageRoute createPageRoute({required Widget Function(BuildContext) builder}) {
+    if (setting.enableSwipeBack) {
+      return SwipeablePageRoute(builder: builder);
+    } else {
+      return MaterialPageRoute(builder: builder);
+    }
+  }
+
   void tryFetchTimelines(
       GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey) {
     if (setting.cacheTimelines.isEmpty &&
@@ -481,21 +489,12 @@ class MyAppState with ChangeNotifier {
       {ThreadJson? thread, bool? fullThread}) async {
     final threadHistory = setting.viewHistory.get(threadId);
     bool isPop = false;
-    pageRoute({
-      required Widget Function(BuildContext) builder,
-    }) {
-      if (setting.enableSwipeBack) {
-        return SwipeablePageRoute(builder: builder);
-      } else {
-        return MaterialPageRoute(builder: builder);
-      }
-    }
 
     if (threadHistory != null) {
       if (popIfFinish) Navigator.pop(context);
       Navigator.push(
         context,
-        pageRoute(
+        createPageRoute(
           builder: (context) => ThreadPage2(
             headerThread: ThreadJson.fromReplyJson(threadHistory.thread, []),
             startPage: threadHistory.page,
@@ -510,7 +509,7 @@ class MyAppState with ChangeNotifier {
       }
       Navigator.push(
         context,
-        pageRoute(
+        createPageRoute(
           builder: (context) => ThreadPage2(
             headerThread: thread,
             startPage: 1,
@@ -526,7 +525,7 @@ class MyAppState with ChangeNotifier {
         context.loaderOverlay.hide();
         Navigator.push(
           context,
-          pageRoute(
+          createPageRoute(
             builder: (context) => ThreadPage2(
               headerThread: thread,
               startPage: 1,

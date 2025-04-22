@@ -11,9 +11,12 @@ import 'package:lightdao/data/xdao/reply.dart';
 import 'package:lightdao/data/xdao/timeline.dart';
 import 'package:lightdao/ui/page/forum.dart';
 import 'package:flutter/material.dart';
+import 'package:lightdao/ui/page/more/about.dart';
 import 'package:lightdao/ui/page/thread.dart';
 import 'package:lightdao/utils/kv_store.dart';
+import 'package:lightdao/utils/update_checker.dart';
 import 'package:loader_overlay/loader_overlay.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:provider/provider.dart';
 import 'package:variable_app_icon/variable_app_icon.dart';
@@ -185,9 +188,38 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _readClipboard();
     final appState = Provider.of<MyAppState>(context, listen: false);
-    Future.delayed(Duration(milliseconds: 100), () {
+    Future.delayed(Duration(milliseconds: 100), () async {
       appState.tryFetchTimelines(scaffoldMessengerKey);
       appState.tryFetchForumLists(scaffoldMessengerKey);
+      try {
+        final updateInfo = await UpdateChecker.checkUpdate();
+        final packageInfo = await PackageInfo.fromPlatform();
+        if (updateInfo != null && updateInfo.hasUpdate) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('发现新版本: ${updateInfo.latestVersion}, 请到关于页面更新'),
+              action: SnackBarAction(
+                  label: '跳转到关于',
+                  onPressed: () => Navigator.push(
+                        context,
+                        appState.createPageRoute(
+                          builder: (context) => AboutPage(
+                              appState: appState, packageInfo: packageInfo),
+                        ),
+                      )),
+            ),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('检查更新失败: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     });
   }
 
