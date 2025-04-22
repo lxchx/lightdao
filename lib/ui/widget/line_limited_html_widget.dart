@@ -66,7 +66,7 @@ class _LineLimitedHtmlWidgetState extends State<LineLimitedHtmlWidget> {
                     final appState =
                         Provider.of<MyAppState>(context, listen: false);
                     if (threadId == null) return false;
-                    appState.navigateThreadPage2(context, threadId, true);
+                    appState.navigateThreadPage2(context, threadId, false);
                     return true;
                   }
                   return false;
