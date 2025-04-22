@@ -2,7 +2,7 @@ name: lightdao
 description: "第三方X岛客户端"
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.2.1+31
+version: 1.2.5+32
 
 environment:
   sdk: ^3.4.3
