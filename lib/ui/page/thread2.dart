@@ -338,9 +338,11 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
   Future<T?> _handlePageManagerError<T>(Future<T> future) {
     return future.then((value) {
+      if (!mounted) return null;
       setState(() {});
       return value;
     }).onError((error, stackTrace) {
+      if (!mounted) return Future.value(null);
       if (error is XDaoApiNotSuccussException || error is XDaoApiMsgException) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
