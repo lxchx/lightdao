@@ -902,7 +902,9 @@ class _ThreadPage2State extends State<ThreadPage2> {
                 else
                   Column(
                     children: [
-                      if (!appState.setting.dividerBetweenReply)
+                      if (!appState.setting.dividerBetweenReply
+                        // 无回复时显示分割线会与串首的尾分割线重复
+                        && replyCount > 0)
                         Padding(
                           padding: EdgeInsets.symmetric(
                               vertical: breakpoint.gutters / 2),
