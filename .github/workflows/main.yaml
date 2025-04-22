@@ -49,7 +49,7 @@ jobs:
           flutter-version: '3.22.2'
   
       - name: Conditional Restore JKS
-        if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/heads/ci-test')
+        if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/heads/ci-test') || github.ref == 'refs/heads/master'
         run: |
           echo "使用GitHub Secrets签名配置"
           echo ${{ secrets.JKS_KEYSTORE_BASE64 }} | base64 -d > android/app/lightdao-app.jks
@@ -59,12 +59,15 @@ jobs:
       - name: Build APK
         run: |
           flutter pub get
-          if [[ "${{ secrets.KEYSTORE_PASSWORD }}" != "" && ("${{ github.ref }}" == refs/tags/v* || "${{ github.ref }}" == refs/heads/ci-test*) ]]; then
-            echo "使用GitHub Secrets签名"
+          if [[ "${{ secrets.KEYSTORE_PASSWORD }}" != "" && ("${{ github.ref }}" == refs/tags/v* || "${{ github.ref }}" == refs/heads/ci-test* || "${{ github.ref }}" == refs/heads/master) ]]; then
+            echo "使用GitHub Secrets签名构建"
             bash ./scripts/first-build.sh --secrets
           elif [ -f "android/app/lightdao-app.jks" ]; then
-            echo "尝试使用本地JKS文件签名"
+            echo "尝试使用本地JKS文件签名构建"
             bash ./scripts/first-build.sh --local
+          else
+            echo "构建debug版本APK"
+            bash ./scripts/first-build.sh --debug
           fi
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
