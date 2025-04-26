@@ -1,0 +1,3 @@
+[submodule "packages/flutter_cached_network_image"]
+	path = packages/flutter_cached_network_image
+	url = https://github.com/lxchx/flutter_cached_network_image
