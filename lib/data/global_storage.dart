@@ -14,7 +14,7 @@ class MyImageCacheManager extends CacheManager with ImageCacheManager {
     return _instance;
   }
 
-  MyImageCacheManager._() : super(Config(key));
+  MyImageCacheManager._() : super(Config(key, stalePeriod: Duration(days: 30)));
 }
 
 class MyThreadCacheManager extends CacheManager with ImageCacheManager {
@@ -26,7 +26,7 @@ class MyThreadCacheManager extends CacheManager with ImageCacheManager {
     return _instance;
   }
 
-  MyThreadCacheManager._() : super(Config(key));
+  MyThreadCacheManager._() : super(Config(key, stalePeriod: Duration(days: 5)));
 }
 
 typedef ImageSize = Size;
