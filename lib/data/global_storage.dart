@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:lightdao/utils/kv_store.dart';
 
-final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 class MyImageCacheManager extends CacheManager with ImageCacheManager {
   static const key = 'MyImagelibCachedImageData';
@@ -27,3 +29,7 @@ class MyThreadCacheManager extends CacheManager with ImageCacheManager {
   MyThreadCacheManager._() : super(Config(key));
 }
 
+typedef ImageSize = Size;
+final memoryImageInfoCache = LRUCache<String, ImageSize>(
+  1000,
+);
