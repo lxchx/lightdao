@@ -18,11 +18,11 @@ class ReplyItem extends StatelessWidget {
   static final RegExp refHtmlPattern = RegExp(
       '(<font color=\\"#789922\\">&gt;&gt;(No.)?(\\d+)<\\/font>)(<br\\s*\\/?>)?(\\\\r|\\\\n)?');
 
-  // 匹配http url，但不能是<a href=“打头的，否则会破坏原有的html跳转标签
+  // 匹配http url，但不能是<a href=“或者>打头的，否则会破坏原有的html跳转标签
   // 可以保证用户输入的'<'会被转义成‘&lt;’，所以没有误解析用户输入的风险
   // '&' 会被转义成 '&amp;'，需要特别处理
   static final RegExp httpUrlPattern = RegExp(
-      r'(?<!<a href=")https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b((?:[-a-zA-Z0-9()@:%_\+.~#?//=]|&amp;)*)');
+      r'(?<!<a href=")(?<!>)https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b((?:[-a-zA-Z0-9()@:%_\+.~#?//=]|&amp;)*)');
 
   final ReplyJson threadJson;
   final Object? contentHeroTag;
