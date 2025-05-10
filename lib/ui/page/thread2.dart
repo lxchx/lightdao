@@ -121,10 +121,12 @@ class _ThreadPage2State extends State<ThreadPage2> {
       ? 1
       : _curPageManager.getItemByIndex(_anchorReplyIndex!)?.$2 ?? 1;
 
+  ThreadJson get _poReply => _curPageManager.header ?? widget.headerThread;
+
   String _getForumName() {
     final appState = Provider.of<MyAppState>(context, listen: false);
-    if (widget.headerThread.fid >= 0) {
-      return appState.forumMap[widget.headerThread.fid]?.getShowName() ?? '未知';
+    if (_poReply.fid >= 0) {
+      return appState.forumMap[_poReply.fid]?.getShowName() ?? '未知';
     } else {
       // 始终使用_pageManager，避免切换到_poPageManager还要加载
       return _pageManager.fid != null
@@ -170,7 +172,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
   void _toggleFavorite(BuildContext context) {
     final appState = Provider.of<MyAppState>(context, listen: false);
-    final threadId = widget.headerThread.id;
+    final threadId = _poReply.id;
 
     if (appState.isStared(threadId)) {
       appState.setState((_) {
@@ -182,8 +184,8 @@ class _ThreadPage2State extends State<ThreadPage2> {
         final history = ReplyJsonWithPage(
           _anchorPage,
           _curPageManager.getItemByIndex(_anchorReplyIndex!)!.$3,
-          widget.headerThread.id,
-          widget.headerThread,
+          _poReply.id,
+          _poReply,
           _curPageManager.getItemByIndex(_anchorReplyIndex!)!.$1,
         );
 
@@ -412,8 +414,8 @@ class _ThreadPage2State extends State<ThreadPage2> {
         ? ReplyJsonWithPage(
             _anchorPage,
             _curPageManager.getItemByIndex(_anchorReplyIndex!)!.$3,
-            widget.headerThread.id,
-            widget.headerThread,
+            _poReply.id,
+            _poReply,
             _curPageManager.getItemByIndex(_anchorReplyIndex!)!.$1,
           )
         : null;
@@ -423,15 +425,15 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
     appState.setState((_) {
       if (_isPoOnlyMode) {
-        appState.setting.viewPoOnlyHistory.put(widget.headerThread.id, history);
+        appState.setting.viewPoOnlyHistory.put(_poReply.id, history);
       } else {
         if (appState.setting.starHistory
-            .any(((rply) => rply.threadId == widget.headerThread.id))) {
+            .any(((rply) => rply.threadId == _poReply.id))) {
           appState.setting.starHistory
-              .removeWhere((rply) => rply.threadId == widget.headerThread.id);
+              .removeWhere((rply) => rply.threadId == _poReply.id);
           appState.setting.starHistory.insert(0, history);
         }
-        appState.setting.viewHistory.put(widget.headerThread.id, history);
+        appState.setting.viewHistory.put(_poReply.id, history);
       }
     });
   }
@@ -455,9 +457,9 @@ class _ThreadPage2State extends State<ThreadPage2> {
               showReplyBottomSheet(
                   context,
                   false,
-                  widget.headerThread.id,
+                  _poReply.id,
                   _curPageManager.maxPage ?? 1,
-                  widget.headerThread,
+                  _poReply,
                   _replyImageFile,
                   (image) => _replyImageFile = image,
                   _replyTitleControler,
@@ -536,7 +538,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                                                 appState.setting.fontSizeFactor,
                                           )),
                                   child: ReplyItem(
-                                    poUserHash: widget.headerThread.userHash,
+                                    poUserHash: _poReply.userHash,
                                     threadJson: reply,
                                     contentNeedCollapsed: false,
                                     noMoreParse: true,
@@ -700,7 +702,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
     final initReplyIndex = !widget.isCompletePage
         ? null
-        : widget.headerThread.replies
+        : _poReply.replies
             .indexWhere((rply) => rply.id == widget.startReplyId);
 
     // 确保索引有效（大于0且小于总项数）
@@ -712,8 +714,8 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
     late List<String> allImageNames;
     allImageNames = [
-      if (widget.headerThread.img != '')
-        '${widget.headerThread.img}${widget.headerThread.ext}',
+      if (_poReply.img != '')
+        '${_poReply.img}${_poReply.ext}',
       ..._curPageManager.allLoadedItems
           .where((rply) => rply.img != '')
           .map((rply) => '${rply.img}${rply.ext}')
@@ -755,7 +757,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 HtmlWidget(
-                  '${_getForumName()}・${widget.headerThread.id}',
+                  '${_getForumName()}・${_poReply.id}',
                 ),
                 Text(
                   'X岛・nmbxd.com',
@@ -771,7 +773,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
             IconButton(
                 tooltip: '分享',
                 onPressed: () async => await Share.share(
-                    'https://www.nmbxd1.com/t/${widget.headerThread.id}'),
+                    'https://www.nmbxd1.com/t/${_poReply.id}'),
                 icon: Icon(Icons.share)),
             PopupMenuButton<String>(
               tooltip: '更多选项',
@@ -785,10 +787,10 @@ class _ThreadPage2State extends State<ThreadPage2> {
                   case 'po_mode':
                     if (_poPageManager == null) {
                       final threadHistory = appState.setting.viewPoOnlyHistory
-                          .get(widget.headerThread.id);
+                          .get(_poReply.id);
 
                       _poPageManager = ThreadPageManager(
-                        threadId: widget.headerThread.id,
+                        threadId: _poReply.id,
                         initialPage: threadHistory?.page ?? 1,
                         cookie: appState.getCurrentCookie(),
                         refCache: _refCache,
@@ -837,14 +839,14 @@ class _ThreadPage2State extends State<ThreadPage2> {
               children: [
                 InkWell(
                   onLongPress: () =>
-                      _showThreadActionMenu(context, widget.headerThread, true),
+                      _showThreadActionMenu(context, _poReply, true),
                   child: Padding(
                     padding: EdgeInsets.only(
                         left: breakpoint.gutters,
                         right: breakpoint.gutters,
                         bottom: breakpoint.gutters / 2),
                     child: FilterableThreadWidget(
-                      reply: widget.headerThread,
+                      reply: _poReply,
                       isTimeLineFilter: false,
                       child: Theme(
                         data: Theme.of(context).copyWith(
@@ -853,17 +855,17 @@ class _ThreadPage2State extends State<ThreadPage2> {
                                       appState.setting.fontSizeFactor,
                                 )),
                         child: ReplyItem(
-                          poUserHash: widget.headerThread.userHash,
+                          poUserHash: _poReply.userHash,
                           isRawPicMode: _isRawPicMode,
                           isThreadFirstOrForumPreview: true,
-                          threadJson: widget.headerThread,
+                          threadJson: _poReply,
                           contentNeedCollapsed: false,
                           contentHeroTag:
-                              'ThreadCard ${widget.headerThread.id}',
+                              'ThreadCard ${_poReply.id}',
                           imageHeroTag:
-                              'Image ${widget.headerThread.img}${widget.headerThread.ext}',
+                              'Image ${_poReply.img}${_poReply.ext}',
                           imageInitIndex:
-                              widget.headerThread.img == '' ? null : 0,
+                              _poReply.img == '' ? null : 0,
                           imageNames: allImageNames,
                         ),
                       ),
@@ -980,7 +982,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                             )),
                     child: ReplyItem(
                       key: ValueKey('threadCard ${reply.id} in Page $page'),
-                      poUserHash: widget.headerThread.userHash,
+                      poUserHash: _poReply.userHash,
                       isRawPicMode: _isRawPicMode,
                       threadJson: reply,
                       contentNeedCollapsed: false,
@@ -1009,7 +1011,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                       IconButton(
                         tooltip: '收藏',
                         onPressed: () => _toggleFavorite(context),
-                        icon: Icon(appState.isStared(widget.headerThread.id)
+                        icon: Icon(appState.isStared(_poReply.id)
                             ? Icons.favorite
                             : Icons.favorite_border),
                       ),
@@ -1040,9 +1042,9 @@ class _ThreadPage2State extends State<ThreadPage2> {
               onPressed: () => showReplyBottomSheet(
                   context,
                   false,
-                  widget.headerThread.id,
+                  _poReply.id,
                   _curPageManager.maxPage ?? 1,
-                  widget.headerThread,
+                  _poReply,
                   _replyImageFile,
                   (image) => _replyImageFile = image,
                   _replyTitleControler,

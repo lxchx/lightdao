@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lightdao/data/xdao/ref.dart';
 import 'package:lightdao/data/xdao/reply.dart';
+import 'package:lightdao/data/xdao/thread.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/xdao_api.dart';
 
@@ -523,9 +524,13 @@ class ThreadPageManager extends PageManager<ReplyJson> {
 
   /// fetchPage 时顺带获取最大页数，逻辑比较特殊，放到子类这里实现
   late int _threadMaxPage;
+  int? get maxPage => _threadMaxPage;
 
   int? _fid;
   int? get fid => _fid;
+
+  ThreadJson? headerReply;
+  ThreadJson? get header => headerReply;
 
   ThreadPageManager({
     required this.threadId,
@@ -550,14 +555,13 @@ class ThreadPageManager extends PageManager<ReplyJson> {
     _threadMaxPage = initialPage;
   }
 
-  int? get maxPage => _threadMaxPage;
-
   @override
   Future<List<ReplyJson>> fetchPage(int page) async {
     final getItems = isPoOnly ? getThreadPoOnly : getThread;
     final pageThread = await getItems(threadId, page, cookie);
     _threadMaxPage = max(_threadMaxPage, pageThread.replyCount ~/ 19 + 1);
     _fid ??= pageThread.fid;
+    headerReply = pageThread;
 
     // 目前XDao的逻辑，可能会用一个单包含tips酱回复的页表示空页
     if (pageThread.replies.length == 1 && pageThread.replies[0].id == 9999999) {
