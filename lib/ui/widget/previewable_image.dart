@@ -225,10 +225,13 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
               SizedBox(
                   width: cacheWidth,
                   height: cacheHeight,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                        value: downloadProgress.progress),
-                  )),
+                  child: cacheWidth == null
+                      ? CircularProgressIndicator(
+                          value: downloadProgress.progress)
+                      : Center(
+                          child: CircularProgressIndicator(
+                              value: downloadProgress.progress),
+                        )),
         ),
       ),
     );
