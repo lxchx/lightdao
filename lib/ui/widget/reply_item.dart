@@ -37,6 +37,7 @@ class ReplyItem extends StatelessWidget {
   final bool isRawPicMode;
   final List<String>? imageNames;
   final int? imageInitIndex;
+  final bool cacheImageSize;
 
   ReplyItem({
     super.key,
@@ -53,6 +54,7 @@ class ReplyItem extends StatelessWidget {
     this.isRawPicMode = false,
     this.imageNames,
     this.imageInitIndex,
+    this.cacheImageSize = false,
   }) {
     assert(
         // 如果imageInitIndex有效（非null且>=0），则imageNames必须有效（非null且非空）
@@ -213,6 +215,7 @@ class ReplyItem extends StatelessWidget {
                   isRawPicMode: isRawPicMode,
                   initIndex: imageInitIndex,
                   imageNames: imageNames,
+                  cacheImageSize: cacheImageSize,
                 )),
         ],
       );

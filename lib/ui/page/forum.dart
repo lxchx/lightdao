@@ -247,6 +247,7 @@ class _ForumPageState extends State<ForumPage> {
         print(e);
       }
 
+      _lastBuildingReplyIndex = -1;
       _threadIds.clear();
       _posts.clear();
       _isLoading = false;
@@ -340,6 +341,7 @@ class _ForumPageState extends State<ForumPage> {
           threadJson: _posts[index],
           contentHeroTag: 'ThreadCard ${_posts[index].id}',
           imageHeroTag: 'Image ${_posts[index].img}${_posts[index].ext}',
+          cacheImageSize: true,
         );
         onTapThread() =>
             appState.navigateThreadPage2(context, _posts[index].id, false,

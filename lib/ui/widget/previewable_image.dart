@@ -15,6 +15,7 @@ class LongPressPreviewImage extends StatefulWidget {
   final bool isRawPicMode;
   final List<String>? imageNames;
   final int? initIndex;
+  final bool cacheImageSize;
 
   LongPressPreviewImage(
       {required this.img,
@@ -22,7 +23,8 @@ class LongPressPreviewImage extends StatefulWidget {
       this.imageHeroTag,
       this.isRawPicMode = false,
       this.imageNames,
-      this.initIndex});
+      this.initIndex,
+      this.cacheImageSize = false});
 
   @override
   State<LongPressPreviewImage> createState() => _LongPressPreviewImageState();
@@ -35,6 +37,8 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
   late AnimationController _animationController;
   late Animation<double> _animation;
   bool _isPreview = false;
+  double? cacheWidth;
+  double? cacheHeight;
 
   @override
   void initState() {
@@ -47,6 +51,9 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
       parent: _animationController,
       curve: Curves.easeInOut,
     );
+    final size = memoryImageInfoCache.get('${widget.img}${widget.ext}');
+    cacheWidth = size?.width;
+    cacheHeight = size?.height;
   }
 
   @override
@@ -172,41 +179,56 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
       onLongPressUp: _hidePreview,
       onTap: () {
         if (widget.imageNames != null && widget.initIndex != null) {
-                  Navigator.push(
-          context,
-          PageRouteBuilder(
-            opaque: false,
-            pageBuilder: (context, animation, secondaryAnimation) => XdaoImageViewer(
-              initIndex: widget.initIndex!,
-              imageNames: widget.imageNames!,
-              heroTag: widget.imageHeroTag,
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              opaque: false,
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  XdaoImageViewer(
+                initIndex: widget.initIndex!,
+                imageNames: widget.imageNames!,
+                heroTag: widget.imageHeroTag,
+              ),
             ),
-          ),
-        );
-        }
-        else {
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            opaque: false,
-            pageBuilder: (context, animation, secondaryAnimation) => XdaoImageViewer(
-              initIndex: 0,
-              imageNames: ['${widget.img}${widget.ext}'],
-              heroTag: widget.imageHeroTag,
+          );
+        } else {
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              opaque: false,
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  XdaoImageViewer(
+                initIndex: 0,
+                imageNames: ['${widget.img}${widget.ext}'],
+                heroTag: widget.imageHeroTag,
+              ),
             ),
-          ),
-        );
+          );
         }
       },
       child: ConditionalHero(
         tag: widget.imageHeroTag,
         child: CachedNetworkImage(
           cacheManager: MyImageCacheManager(),
+          onImageLoaded: widget.cacheImageSize
+              ? (imageInfo, synchronousCall) {
+                  memoryImageInfoCache.put(
+                      '${widget.img}${widget.ext}',
+                      Size(imageInfo.image.width.toDouble(),
+                          imageInfo.image.height.toDouble()));
+                }
+              : null,
           imageUrl: widget.isRawPicMode
               ? 'https://image.nmb.best/image/${widget.img}${widget.ext}'
               : 'https://image.nmb.best/thumb/${widget.img}${widget.ext}',
           progressIndicatorBuilder: (context, url, downloadProgress) =>
-              CircularProgressIndicator(value: downloadProgress.progress),
+              SizedBox(
+                  width: cacheWidth,
+                  height: cacheHeight,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                        value: downloadProgress.progress),
+                  )),
         ),
       ),
     );
