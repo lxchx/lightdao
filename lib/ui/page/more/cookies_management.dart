@@ -44,13 +44,14 @@ class CookieManagementPage extends StatelessWidget {
                                 : Theme.of(context).colorScheme.primary,
                           ),
                         ),
-                        Expanded(child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Text(
-                          c.getShowName(),
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                                                )),
+                        Expanded(
+                            child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Text(
+                            c.getShowName(),
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                        )),
                         IconButton(
                           icon: Icon(Icons.edit),
                           onPressed: () async {
@@ -96,6 +97,9 @@ class CookieManagementPage extends StatelessWidget {
                                 state.setting.currentCookie = 0;
                               }
                               state.setting.cookies.remove(c);
+                              if (state.setting.cookies.isEmpty) {
+                                state.setting.currentCookie = -1;
+                              }
                             });
                           },
                         ),
@@ -117,6 +121,9 @@ class CookieManagementPage extends StatelessWidget {
                 appState.setState((_) {
                   appState.setting.cookies.add(CookieSetting(
                       cookieHash: hash, name: name, displayName: ''));
+                  if (appState.setting.cookies.length == 1) {
+                    appState.setting.currentCookie = 0;
+                  }
                 });
                 scaffoldMessenger.showSnackBar(SnackBar(
                   content: Text("添加成功，编辑添加备注"),
