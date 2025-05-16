@@ -327,6 +327,20 @@ class SettingsPage extends StatelessWidget {
                   });
                 },
               ),
+              SettingsTile.sliderTile(
+                contentPadding: breakpoint.gutters,
+                title: '表情栏列宽度（${appState.setting.phraseWidth}）',
+                subtitle: '值越小表情栏列数越多',
+                min: 75,
+                max: 250,
+                value: appState.setting.phraseWidth.toDouble(),
+                divisions: 35,
+                onChanged: (double value) {
+                  appState.setState((state) {
+                    state.setting.phraseWidth = value.toInt();
+                  });
+                },
+              ),
             ],
           ),
           SettingsSection(
@@ -446,16 +460,15 @@ class SettingsPage extends StatelessWidget {
                 },
               ),
               ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: breakpoint.gutters),
-                title: Text('调试'),
-                onTap: () async {
-                  Navigator.push(
-                    context,
-                    pageRoute(builder: (context) => const TestPage()),
-                  );
-                }
-              )
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+                  title: Text('调试'),
+                  onTap: () async {
+                    Navigator.push(
+                      context,
+                      pageRoute(builder: (context) => const TestPage()),
+                    );
+                  })
             ],
           )
         ],

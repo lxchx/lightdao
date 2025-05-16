@@ -901,7 +901,8 @@ void showReplyBottomSheet(
                           builder: (context, constraints) {
                             double parentWidth =
                                 constraints.maxWidth; // 根据宽度计算crossAxisCount
-                            int crossAxisCount = parentWidth ~/ 175 + 1;
+                            final phraseWidth = appState.setting.phraseWidth;
+                            int crossAxisCount = parentWidth ~/ phraseWidth + 1;
                             return CustomScrollView(
                               slivers: [
                                 if (pharseEditing)

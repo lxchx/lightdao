@@ -171,6 +171,9 @@ class LightDaoSetting extends HiveObject {
   @HiveField(40, defaultValue: 0)
   int seenNoticeDate;
 
+  @HiveField(41, defaultValue: 175)
+  int phraseWidth;
+
   LightDaoSetting({
     required this.cookies,
     required this.currentCookie,
@@ -212,6 +215,7 @@ class LightDaoSetting extends HiveObject {
     required this.columnWidth,
     required this.isMultiColumn,
     required this.seenNoticeDate,
+    required this.phraseWidth,
     LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
   })  : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
         viewPoOnlyHistory =
@@ -475,6 +479,7 @@ class MyAppState with ChangeNotifier {
           isMultiColumn: true,
           viewPoOnlyHistory: LRUCache<int, ReplyJsonWithPage>(5000),
           seenNoticeDate: 0,
+          phraseWidth: 175,
         );
     setting.phrases = mergePhraseLists(setting.phrases, xDaoPhrases);
     notifyListeners();
