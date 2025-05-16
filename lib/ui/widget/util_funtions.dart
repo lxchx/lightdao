@@ -327,64 +327,187 @@ void showReplyBottomSheet(
                             ),
                           ),
                         ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: breakpoint.gutters,
+                              vertical: breakpoint.gutters / 3),
+                          child: Row(
+                            children: [
+                              if (isPostThread)
+                                Flexible(
+                                  flex: 2,
+                                  child: DropdownButton2<Forum>(
+                                    isExpanded: true,
+                                    customButton: Container(
+                                        height: 50,
+                                        decoration: BoxDecoration(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .surfaceContainerHigh,
+                                            borderRadius: BorderRadius.only(
+                                              topLeft: Radius.circular(30),
+                                              bottomLeft: Radius.circular(30),
+                                            )),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 20),
+                                          child: Align(
+                                              alignment: Alignment.center,
+                                              child: SingleChildScrollView(
+                                                scrollDirection:
+                                                    Axis.horizontal,
+                                                child: Text(selectForum
+                                                        ?.getShowName() ??
+                                                    ''),
+                                              )),
+                                        )),
+                                    value: selectForum,
+                                    alignment: AlignmentDirectional.centerEnd,
+                                    iconStyleData: IconStyleData(iconSize: 0),
+                                    underline: SizedBox.shrink(),
+                                    buttonStyleData: ButtonStyleData(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(30)),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    onChanged: (forum) {
+                                      if (forum != null) {
+                                        setState(() {
+                                          selectForum = forum;
+                                        });
+                                      }
+                                    },
+                                    items: appState.forumMap.values
+                                        .map((forum) => DropdownMenuItem<Forum>(
+                                            value: forum,
+                                            child: HtmlWidget(forum.name)))
+                                        .toList(),
+                                  ),
+                                ),
+                              SizedBox(
+                                width: 3,
+                              ),
+                              Flexible(
+                                flex: 3,
+                                child: DropdownButton2<CookieSetting>(
+                                  customButton: Container(
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainerHigh,
+                                        borderRadius: isPostThread
+                                            ? BorderRadius.only(
+                                                topRight: Radius.circular(30),
+                                                bottomRight:
+                                                    Radius.circular(30),
+                                              )
+                                            : BorderRadius.all(
+                                                Radius.circular(30)),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 20),
+                                        child: Align(
+                                            alignment: Alignment.center,
+                                            child: SingleChildScrollView(
+                                              scrollDirection: Axis.horizontal,
+                                              child: Text(
+                                                '${selectCookie?.getShowName() ?? '(无饼干)'}${selectCookie?.name == rememberedCookieName ? '(记忆)' : ''}',
+                                              ),
+                                            )),
+                                      )),
+                                  buttonStyleData: ButtonStyleData(
+                                    decoration: BoxDecoration(
+                                      borderRadius:
+                                          BorderRadius.all(Radius.circular(30)),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  value: selectCookie,
+                                  alignment: AlignmentDirectional.centerEnd,
+                                  iconStyleData: IconStyleData(iconSize: 0),
+                                  underline: SizedBox.shrink(),
+                                  onChanged: (cookie) {
+                                    if (cookie != null) {
+                                      setState(() {
+                                        selectCookie = cookie;
+                                      });
+                                    }
+                                  },
+                                  items: appState.setting.cookies
+                                      .map((cookie) =>
+                                          DropdownMenuItem<CookieSetting>(
+                                              value: cookie,
+                                              child: HtmlWidget(
+                                                '${cookie.getShowName()}${cookie.name == rememberedCookieName ? '(记忆)' : ''}',
+                                              )))
+                                      .toList(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         if (imageFile != null)
                           Padding(
                             padding: EdgeInsets.symmetric(
                                 horizontal: breakpoint.gutters,
                                 vertical: breakpoint.gutters / 3),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  height: 100,
-                                  child: Stack(
-                                    alignment: AlignmentDirectional.topCenter,
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(10.0),
-                                        child:
-                                            Image.file(File(imageFile!.path)),
-                                      ),
-                                      Positioned(
-                                        top: 2,
-                                        right: 2,
-                                        child: InkWell(
-                                          child: Icon(Icons.cancel,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .primary
-                                                  .withOpacity(0.8)),
-                                          onTap: () {
-                                            setState(() {
-                                              imageFile = null;
-                                              onImageChanged(null);
-                                            });
-                                          },
+                            child: SizedBox(
+                              height: 100,
+                              child: Row(
+                                children: [
+                                  Expanded(child: SizedBox()),
+                                  SizedBox(
+                                    height: 100,
+                                    child: Stack(
+                                      alignment: AlignmentDirectional.topCenter,
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(10.0),
+                                          child:
+                                              Image.file(File(imageFile!.path)),
                                         ),
-                                      ),
-                                      Positioned(
-                                        bottom: 2,
-                                        child: InkWell(
-                                          child: Icon(
-                                              water
-                                                  ? Icons.water_drop
-                                                  : Icons.water_drop_outlined,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .primary
-                                                  .withOpacity(0.8)),
-                                          onTap: () {
-                                            setState(() {
-                                              water = !water;
-                                            });
-                                          },
+                                        Positioned(
+                                          top: 2,
+                                          right: 2,
+                                          child: InkWell(
+                                            child: Icon(Icons.cancel,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .primary
+                                                    .withOpacity(0.8)),
+                                            onTap: () {
+                                              setState(() {
+                                                imageFile = null;
+                                                onImageChanged(null);
+                                              });
+                                            },
+                                          ),
                                         ),
-                                      )
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  Expanded(
+                                      child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      CheckboxMenuButton(
+                                        value: water,
+                                        onChanged: (val) {
+                                          setState(() {
+                                            water = val ?? false;
+                                          });
+                                        },
+                                        child: Text('添加水印'),
+                                      ),
+                                    ],
+                                  )),
+                                ],
+                              ),
                             ),
                           ),
                         Padding(
@@ -395,160 +518,203 @@ void showReplyBottomSheet(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: <Widget>[
                               Flexible(
-                                flex: isPostThread ? 9 : 3,
-                                child: Container(
-                                  constraints: BoxConstraints(maxWidth: 300),
-                                  child: Row(
-                                    children: [
-                                      if (isPostThread)
-                                        Flexible(
-                                          flex: 2,
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 10),
-                                            child: DropdownButton2<Forum>(
-                                              isExpanded: true,
-                                              customButton: Container(
-                                                  height: 50,
-                                                  decoration: BoxDecoration(
-                                                      color: Theme.of(context)
-                                                          .colorScheme
-                                                          .surfaceContainerHigh,
-                                                      borderRadius:
-                                                          BorderRadius.only(
-                                                        topLeft:
-                                                            Radius.circular(30),
-                                                        bottomLeft:
-                                                            Radius.circular(30),
-                                                      )),
-                                                  child: Padding(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        horizontal: 20),
-                                                    child: Align(
-                                                        alignment:
-                                                            Alignment.center,
-                                                        child:
-                                                            SingleChildScrollView(
-                                                          scrollDirection:
-                                                              Axis.horizontal,
-                                                          child: Text(selectForum
-                                                                  ?.getShowName() ??
-                                                              ''),
-                                                        )),
-                                                  )),
-                                              value: selectForum,
-                                              alignment: AlignmentDirectional
-                                                  .centerEnd,
-                                              iconStyleData:
-                                                  IconStyleData(iconSize: 0),
-                                              underline: SizedBox.shrink(),
-                                              buttonStyleData: ButtonStyleData(
-                                                decoration: BoxDecoration(
-                                                  borderRadius:
-                                                      BorderRadius.all(
-                                                          Radius.circular(30)),
-                                                ),
-                                                elevation: 0,
-                                              ),
-                                              onChanged: (forum) {
-                                                if (forum != null) {
-                                                  setState(() {
-                                                    selectForum = forum;
-                                                  });
-                                                }
-                                              },
-                                              items: appState.forumMap.values
-                                                  .map((forum) =>
-                                                      DropdownMenuItem<Forum>(
-                                                          value: forum,
-                                                          child: HtmlWidget(
-                                                              forum.name)))
-                                                  .toList(),
-                                            ),
-                                          ),
-                                        ),
-                                      SizedBox(
-                                        width: 3,
-                                      ),
-                                      Flexible(
-                                        flex: 3,
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 10),
-                                          child: DropdownButton2<CookieSetting>(
-                                            customButton: Container(
-                                                height: 50,
-                                                decoration: BoxDecoration(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .surfaceContainerHigh,
-                                                  borderRadius: isPostThread
-                                                      ? BorderRadius.only(
-                                                          topRight:
-                                                              Radius.circular(
-                                                                  30),
-                                                          bottomRight:
-                                                              Radius.circular(
-                                                                  30),
-                                                        )
-                                                      : BorderRadius.all(
-                                                          Radius.circular(30)),
-                                                ),
-                                                child: Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 20),
-                                                  child: Align(
-                                                      alignment:
-                                                          Alignment.center,
-                                                      child:
-                                                          SingleChildScrollView(
-                                                        scrollDirection:
-                                                            Axis.horizontal,
-                                                        child: Text(
-                                                          '${selectCookie?.getShowName() ?? '(无饼干)'}${selectCookie?.name == rememberedCookieName ? '(记忆)' : ''}',
+                                fit: FlexFit.tight,
+                                child: IconButton(
+                                    onPressed: () async {
+                                      int? start;
+                                      int? end;
+                                      final startController =
+                                          TextEditingController(text: '1');
+                                      final endController =
+                                          TextEditingController();
+                                      final result = await showDialog<bool>(
+                                        context: context,
+                                        builder: (context) {
+                                          return StatefulBuilder(
+                                            builder: (context, setState) {
+                                              return AlertDialog(
+                                                title: Text('输入骰子范围'),
+                                                content: Row(
+                                                  children: [
+                                                    Padding(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                              horizontal: 8),
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          for (var v in [
+                                                            -1,
+                                                            -10,
+                                                            -100
+                                                          ])
+                                                            IconButton(
+                                                              icon: Text('$v'),
+                                                              onPressed: () {
+                                                                int current =
+                                                                    int.tryParse(
+                                                                            startController.text) ??
+                                                                        0;
+                                                                current += v;
+                                                                startController
+                                                                        .text =
+                                                                    current
+                                                                        .toString();
+                                                                setState(() {});
+                                                              },
+                                                              visualDensity:
+                                                                  VisualDensity
+                                                                      .compact,
+                                                            ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: TextField(
+                                                        controller:
+                                                            startController,
+                                                        keyboardType:
+                                                            TextInputType
+                                                                .number,
+                                                        decoration:
+                                                            InputDecoration(
+                                                          labelText: '起',
                                                         ),
-                                                      )),
-                                                )),
-                                            buttonStyleData: ButtonStyleData(
-                                              decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.all(
-                                                    Radius.circular(30)),
-                                              ),
-                                              elevation: 0,
-                                            ),
-                                            value: selectCookie,
-                                            alignment:
-                                                AlignmentDirectional.centerEnd,
-                                            iconStyleData:
-                                                IconStyleData(iconSize: 0),
-                                            underline: SizedBox.shrink(),
-                                            onChanged: (cookie) {
-                                              if (cookie != null) {
-                                                setState(() {
-                                                  selectCookie = cookie;
-                                                });
-                                              }
+                                                        onChanged: (_) =>
+                                                            setState(() {}),
+                                                      ),
+                                                    ),
+                                                    Padding(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                              horizontal: 16),
+                                                      child: Text(
+                                                        '~',
+                                                        style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 24,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: TextField(
+                                                        controller:
+                                                            endController,
+                                                        keyboardType:
+                                                            TextInputType
+                                                                .number,
+                                                        decoration:
+                                                            InputDecoration(
+                                                          labelText: '止',
+                                                        ),
+                                                        onChanged: (_) =>
+                                                            setState(() {}),
+                                                      ),
+                                                    ),
+                                                    Padding(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                              horizontal: 8),
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          for (var v in [
+                                                            1,
+                                                            10,
+                                                            100
+                                                          ])
+                                                            IconButton(
+                                                              icon: Text('+$v'),
+                                                              onPressed: () {
+                                                                int start =
+                                                                    int.tryParse(
+                                                                            startController.text) ??
+                                                                        0;
+                                                                int end = int.tryParse(
+                                                                        endController
+                                                                            .text) ??
+                                                                    start;
+                                                                end += v;
+                                                                endController
+                                                                        .text =
+                                                                    end.toString();
+                                                                setState(() {});
+                                                              },
+                                                              visualDensity:
+                                                                  VisualDensity
+                                                                      .compact,
+                                                            ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.of(context)
+                                                            .pop(false),
+                                                    child: Text('取消'),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: (startController
+                                                                .text
+                                                                .trim()
+                                                                .isNotEmpty &&
+                                                            endController.text
+                                                                .trim()
+                                                                .isNotEmpty)
+                                                        ? () {
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop(true);
+                                                          }
+                                                        : null,
+                                                    child: Text('确定'),
+                                                  ),
+                                                ],
+                                              );
                                             },
-                                            items: appState.setting.cookies
-                                                .map((cookie) =>
-                                                    DropdownMenuItem<
-                                                            CookieSetting>(
-                                                        value: cookie,
-                                                        child: HtmlWidget(
-                                                          '${cookie.getShowName()}${cookie.name == rememberedCookieName ? '(记忆)' : ''}',
-                                                        )))
-                                                .toList(),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                                          );
+                                        },
+                                      );
+                                      if (result == true) {
+                                        final startText =
+                                            startController.text.trim();
+                                        final endText =
+                                            endController.text.trim();
+                                        if (startText.isEmpty ||
+                                            endText.isEmpty) return;
+                                        start = int.tryParse(startText);
+                                        end = int.tryParse(endText);
+                                        if (start == null || end == null) {
+                                          return;
+                                        }
+                                        String insertText;
+                                        if ((start == 0 && end != 0) ||
+                                            (end == 0 && start != 0)) {
+                                          insertText =
+                                              '[${start == 0 ? end : start}]';
+                                        } else {
+                                          insertText = '[$start,$end]';
+                                        }
+                                        contentControler.text += insertText;
+                                        setState(() {});
+                                      }
+                                    },
+                                    icon: Icon(Icons.casino)),
                               ),
                               SizedBox(
-                                width: 8,
+                                width: 20,
                               ),
                               Flexible(
                                 fit: FlexFit.tight,

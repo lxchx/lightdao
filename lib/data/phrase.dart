@@ -135,8 +135,6 @@ const List<Phrase> xDaoPhrases = [
  　　　/　　　/ 
 (　ﾟ 3ﾟ) `ー´) `д´) `д´)'''),
   Phrase('防剧透', '[h] [/h]'),
-  Phrase('骰子', '[n]'),
-  Phrase('高级骰子', '[n,m]'),
   Phrase('全角空格', '　'),
   Phrase('･ﾟ( ﾉヮ´ )', '･ﾟ( ﾉヮ´ )'),
   Phrase('( ´_ゝ`)旦', '( ´_ゝ`)旦'),
