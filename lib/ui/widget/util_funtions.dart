@@ -550,7 +550,8 @@ void showReplyBottomSheet(
                                                           for (var v in [
                                                             -1,
                                                             -10,
-                                                            -100
+                                                            -100,
+                                                            -1000
                                                           ])
                                                             IconButton(
                                                               icon: Text('$v'),
@@ -630,19 +631,16 @@ void showReplyBottomSheet(
                                                           for (var v in [
                                                             1,
                                                             10,
-                                                            100
+                                                            100,
+                                                            1000
                                                           ])
                                                             IconButton(
                                                               icon: Text('+$v'),
                                                               onPressed: () {
-                                                                int start =
-                                                                    int.tryParse(
-                                                                            startController.text) ??
-                                                                        0;
                                                                 int end = int.tryParse(
                                                                         endController
                                                                             .text) ??
-                                                                    start;
+                                                                    0;
                                                                 end += v;
                                                                 endController
                                                                         .text =
