@@ -20,7 +20,17 @@ class XDaoApiExeption implements Exception {}
 
 class XDaoApiMsgException implements XDaoApiExeption {
   final String msg;
-  XDaoApiMsgException(this.msg);
+  XDaoApiMsgException(String rawMsg) 
+    : msg = _tryDecodeUnicode(rawMsg);
+  
+  static String _tryDecodeUnicode(String input) {
+    try {
+      // 尝试将字符串作为JSON字符串解析，这会自动处理Unicode转义
+      return json.decode(input);
+    } catch (e) {
+      return input;
+    }
+  }
 
   @override
   String toString() => 'XDaoApiMsgException: $msg';
