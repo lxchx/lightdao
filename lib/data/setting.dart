@@ -497,6 +497,7 @@ class MyAppState with ChangeNotifier {
       int? startPage,
       int? startReplyId}) async {
     final threadHistory = setting.viewHistory.get(threadId);
+    final loaderOverlay = context.loaderOverlay;
     bool isPop = false;
 
     // 如果有startPage，不要用历史
@@ -529,11 +530,11 @@ class MyAppState with ChangeNotifier {
         ),
       );
     } else {
-      context.loaderOverlay.show();
+      loaderOverlay.show();
       final thread = getThread(threadId, startPage ?? 1, getCurrentCookie());
       thread.then((thread) {
         if (popIfFinish) Navigator.pop(context);
-        context.loaderOverlay.hide();
+        loaderOverlay.hide();
         Navigator.push(
           context,
           createPageRoute(
@@ -546,9 +547,15 @@ class MyAppState with ChangeNotifier {
           ),
         );
       }).catchError((error) {
-        if (popIfFinish && !isPop) Navigator.pop(context);
-        context.loaderOverlay.hide();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        try {
+          if (popIfFinish && !isPop) {
+            Navigator.pop(context);
+          }
+        } catch (e) {
+          // 忽略 pop 失败
+        }
+        loaderOverlay.hide();
+        scaffoldMessengerKey.currentState?.showSnackBar(SnackBar(
           content: Text(error.toString()),
         ));
       });
