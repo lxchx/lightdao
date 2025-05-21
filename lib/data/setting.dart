@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/phrase.dart';
 import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/data/trend_data.dart';
@@ -491,11 +492,15 @@ class MyAppState with ChangeNotifier {
 
   Future<void> navigateThreadPage2(
       BuildContext context, int threadId, bool popIfFinish,
-      {ThreadJson? thread, bool? fullThread}) async {
+      {ThreadJson? thread,
+      bool? fullThread,
+      int? startPage,
+      int? startReplyId}) async {
     final threadHistory = setting.viewHistory.get(threadId);
     bool isPop = false;
 
-    if (threadHistory != null) {
+    // 如果有startPage，不要用历史
+    if (threadHistory != null && startPage == null) {
       if (popIfFinish) Navigator.pop(context);
       Navigator.push(
         context,
@@ -517,14 +522,15 @@ class MyAppState with ChangeNotifier {
         createPageRoute(
           builder: (context) => ThreadPage2(
             headerThread: thread,
-            startPage: 1,
+            startPage: startPage ?? 1,
             isCompletePage: fullThread ?? false,
+            startReplyId: startReplyId,
           ),
         ),
       );
     } else {
       context.loaderOverlay.show();
-      final thread = getThread(threadId, 1, getCurrentCookie());
+      final thread = getThread(threadId, startPage ?? 1, getCurrentCookie());
       thread.then((thread) {
         if (popIfFinish) Navigator.pop(context);
         context.loaderOverlay.hide();
@@ -533,7 +539,8 @@ class MyAppState with ChangeNotifier {
           createPageRoute(
             builder: (context) => ThreadPage2(
               headerThread: thread,
-              startPage: 1,
+              startPage: startPage ?? 1,
+              startReplyId: startReplyId,
               isCompletePage: true,
             ),
           ),

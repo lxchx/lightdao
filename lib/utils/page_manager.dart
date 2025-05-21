@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lightdao/data/xdao/ref.dart';
 import 'package:lightdao/data/xdao/reply.dart';
 import 'package:lightdao/data/xdao/thread.dart';
+import 'package:lightdao/utils/google_cse_api.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/xdao_api.dart';
 
@@ -579,5 +580,41 @@ class ThreadPageManager extends PageManager<ReplyJson> {
   @override
   bool isSameItem(ReplyJson item1, ReplyJson item2) {
     return item1.id == item2.id;
+  }
+}
+
+class CSEPageManager extends PageManager<GcseItem> {
+  final String query;
+  final String cx;
+  final String key;
+
+  CSEPageManager({
+    required this.query,
+    this.cx = 'a72793f0a2020430b',
+    this.key = 'AIzaSyD2OeVt3FHS98PqRzynqcKnCRzc47igpbM',
+    super.initialPage = 1,
+    super.pageMaxSize = 10,
+  });
+
+  @override
+  Future<List<GcseItem>> fetchPage(int page) async {
+    // 计算 start 参数
+    int start = 1;
+    if (page == initialPage) {
+      start = 1;
+    } else {
+      start = totalItemsCount + 1;
+    }
+    final result = await googleCseSearch(
+      q: query,
+      cx: cx,
+      key: key,
+      start: start,
+    );
+    // 如果返回数量不足一页，标记没有更多后页
+    if (result.items.length < pageMaxSize) {
+      _hasMoreNextPages = false;
+    }
+    return result.items;
   }
 }

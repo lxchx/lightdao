@@ -8,6 +8,7 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/data/xdao/ref.dart';
+import 'package:lightdao/ui/page/search.dart';
 import 'package:lightdao/ui/page/trend_page.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/status.dart';
@@ -204,35 +205,67 @@ class _ForumPageState extends State<ForumPage> {
     final appState = Provider.of<MyAppState>(context, listen: false);
     final TextEditingController searchThreadIdController =
         TextEditingController();
+    bool isValidThreadId = false;
 
-    return showDialog<void>(
+    await showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: Text('跳转到指定串'),
-          content: TextField(
-            controller: searchThreadIdController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(hintText: "请输入串号 (纯数字)"),
-            autofocus: true,
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('跳转'),
-              onPressed: () {
-                final String inputText = searchThreadIdController.text.trim();
-                final int? threadId = int.tryParse(inputText);
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            void onTextChanged(String value) {
+              final valid = RegExp(r'^[1-9]\d*$').hasMatch(value.trim());
+              if (valid != isValidThreadId) {
+                isValidThreadId = valid;
+              }
+              setDialogState(() {});
+            }
 
-                if (threadId != null) {
-                  appState.navigateThreadPage2(context, threadId, true);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('请输入有效的数字串号')),
-                  );
-                }
-              },
-            ),
-          ],
+            return AlertDialog(
+              title: Text('搜索/跳转'),
+              content: TextField(
+                controller: searchThreadIdController,
+                decoration: InputDecoration(hintText: "串号或搜索词"),
+                autofocus: true,
+                onChanged: onTextChanged,
+              ),
+              actionsAlignment: MainAxisAlignment.spaceBetween,
+              actions: <Widget>[
+                TextButton(
+                  onPressed: isValidThreadId
+                      ? () {
+                          final String inputText =
+                              searchThreadIdController.text.trim();
+                          final int? threadId = int.tryParse(inputText);
+                          if (threadId != null) {
+                            Navigator.of(dialogContext).pop();
+                            appState.navigateThreadPage2(
+                                context, threadId, true);
+                          }
+                        }
+                      : null,
+                  child: Text(isValidThreadId
+                      ? '跳转到No.${searchThreadIdController.text.trim()}'
+                      : '跳转'),
+                ),
+                TextButton(
+                  child: Text('搜索'),
+                  onPressed: () {
+                    final String inputText =
+                        searchThreadIdController.text.trim();
+                    Navigator.of(dialogContext).pop();
+                    Navigator.push(
+                      context,
+                      appState.createPageRoute(
+                        builder: (context) => SearchPage(
+                          query: inputText,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -1047,7 +1080,8 @@ class _ForumPageState extends State<ForumPage> {
                               IconButton(
                                   onPressed: () {
                                     _showSearchDialog();
-                                  }, icon: Icon(Icons.search)),
+                                  },
+                                  icon: Icon(Icons.search)),
                               if (breakpoint.window >= WindowSize.small)
                                 FloatingActionButton.extended(
                                   elevation: 0,
