@@ -10,6 +10,7 @@ import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/data/xdao/ref.dart';
 import 'package:lightdao/ui/page/search.dart';
 import 'package:lightdao/ui/page/trend_page.dart';
+import 'package:lightdao/ui/widget/fading_scroll_view.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/status.dart';
 import 'package:lightdao/ui/page/more_page.dart';
@@ -357,6 +358,9 @@ class _ForumPageState extends State<ForumPage> {
       ),
       MorePage()
     ];
+    final forumInfo = _isTimeline
+        ? appState.setting.cacheTimelines[_currentForumOrTimelineId].notice
+        : appState.forumMap[_currentForumOrTimelineId]?.msg ?? '';
     threadsBuilder(BuildContext context, int index) {
       if (index < _posts.length) {
         var mustCollapsed = false;
@@ -1076,6 +1080,41 @@ class _ForumPageState extends State<ForumPage> {
                                       _fetchPosts();
                                     },
                                     icon: Icon(Icons.refresh)),
+                              if (forumInfo.trim() != '')
+                                IconButton(
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: Text('版规'),
+                                        content: SizedBox(
+                                          width: double.maxFinite,
+                                          height: 150,
+                                          child: FadingScrollView(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                SelectionArea(child: HtmlWidget(forumInfo)),
+                                                // 底部添加一些空间
+                                                SizedBox(height: 20),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            child: Text('了解'),
+                                            onPressed: () =>
+                                                Navigator.of(context).pop(),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  icon: Icon(Icons.info),
+                                ),
                               IconButton(
                                   onPressed: () {
                                     _showSearchDialog();
