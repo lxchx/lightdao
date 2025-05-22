@@ -248,20 +248,22 @@ class _ForumPageState extends State<ForumPage> {
                       : '跳转'),
                 ),
                 TextButton(
-                  child: Text('搜索'),
-                  onPressed: () {
-                    final String inputText =
-                        searchThreadIdController.text.trim();
-                    Navigator.of(dialogContext).pop();
-                    Navigator.push(
-                      context,
-                      appState.createPageRoute(
-                        builder: (context) => SearchPage(
-                          query: inputText,
-                        ),
-                      ),
-                    );
-                  },
+                  onPressed: searchThreadIdController.text.trim().isEmpty
+                      ? null
+                      : () {
+                          final String inputText =
+                              searchThreadIdController.text.trim();
+                          Navigator.of(dialogContext).pop();
+                          Navigator.push(
+                            context,
+                            appState.createPageRoute(
+                              builder: (context) => SearchPage(
+                                query: inputText,
+                              ),
+                            ),
+                          );
+                        },
+                  child: Text('搜索(需科学上网)'),
                 ),
               ],
             );
@@ -1096,7 +1098,9 @@ class _ForumPageState extends State<ForumPage> {
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
                                               children: [
-                                                SelectionArea(child: HtmlWidget(forumInfo)),
+                                                SelectionArea(
+                                                    child:
+                                                        HtmlWidget(forumInfo)),
                                                 // 底部添加一些空间
                                                 SizedBox(height: 20),
                                               ],
