@@ -237,7 +237,6 @@ class _ForumPageState extends State<ForumPage> {
                               searchThreadIdController.text.trim();
                           final int? threadId = int.tryParse(inputText);
                           if (threadId != null) {
-                            Navigator.of(dialogContext).pop();
                             appState.navigateThreadPage2(
                                 context, threadId, true);
                           }

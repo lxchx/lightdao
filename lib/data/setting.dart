@@ -533,7 +533,10 @@ class MyAppState with ChangeNotifier {
       loaderOverlay.show();
       final thread = getThread(threadId, startPage ?? 1, getCurrentCookie());
       thread.then((thread) {
-        if (popIfFinish) Navigator.pop(context);
+        if (popIfFinish) {
+          Navigator.pop(context);
+          isPop = true;
+        }
         loaderOverlay.hide();
         Navigator.push(
           context,
