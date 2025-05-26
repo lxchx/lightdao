@@ -101,31 +101,44 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
     }
   }
 
-  Future<void> _saveDrawing() async {
-    final result = await showDialog<int>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('保存画板'),
-        content: Text(widget.initialImage != null ? '是否要替换已有图片？' : '是否要保存画板内容？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 2),
-            child: Text('放弃画板内容，直接退出'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 1),
-            child: Text(widget.initialImage != null ? '替换原有图片' : '保存'),
-          ),
-        ],
-      ),
-    );
-  
-    // 1: 保存/替换，2: 直接退出
-    if (result == 2 || result == null) {
-      if (mounted) Navigator.pop(context, null);
-      return;
+  Future<void> _saveDrawing(bool onExit) async {
+    // 只有退出而不是点击保存或者点击保存且原来有图片时才弹窗询问
+    if (onExit ||
+        (!onExit &&
+            widget.initialImage != null &&
+            widget.initialImage != null)) {
+      final result = await showDialog<int>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(onExit ? '退出' : '保存画板'),
+          content:
+              Text(widget.initialImage != null ? '替换已有图片？' : '保存画板？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 2),
+              child: Text('放弃画板内容，直接退出'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 1),
+              child: Text(widget.initialImage != null ? '替换原有图片' : '保存'),
+            ),
+          ],
+        ),
+      );
+
+      if (result == null) return; // 用户取消了操作
+
+      // 1: 保存/替换，2: 直接退出
+      if (result == 2) {
+        if (mounted) Navigator.pop(context, null);
+        return;
+      }
     }
-  
+
     // 用户确认后继续保存操作
     final ByteData? imageData = await _drawingController.getImageData();
     if (imageData == null) return;
@@ -138,7 +151,8 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
     final Canvas canvas = Canvas(recorder);
     // 绘制白色背景
     canvas.drawRect(
-      Rect.fromLTWH(0, 0, originalImage.width.toDouble(), originalImage.height.toDouble()),
+      Rect.fromLTWH(0, 0, originalImage.width.toDouble(),
+          originalImage.height.toDouble()),
       Paint()..color = Colors.white,
     );
     // 绘制原图内容
@@ -146,16 +160,19 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
     final ui.Image finalImage = await recorder
         .endRecording()
         .toImage(originalImage.width, originalImage.height);
-    final ByteData? pngBytes = await finalImage.toByteData(format: ui.ImageByteFormat.png);
+    final ByteData? pngBytes =
+        await finalImage.toByteData(format: ui.ImageByteFormat.png);
     if (pngBytes == null) return;
     final Uint8List finalBytes = pngBytes.buffer.asUint8List();
     final tempDir = await getTemporaryDirectory();
-    final String fileName = 'drawing_${DateTime.now().millisecondsSinceEpoch}.png';
+    final String fileName =
+        'drawing_${DateTime.now().millisecondsSinceEpoch}.png';
     final String filePath = '${tempDir.path}/$fileName';
     final File tempFile = File(filePath);
     await tempFile.writeAsBytes(finalBytes);
-    final xFile = image_picker.XFile(filePath, name: fileName, mimeType: 'image/png');
-  
+    final xFile =
+        image_picker.XFile(filePath, name: fileName, mimeType: 'image/png');
+
     if (mounted) {
       Navigator.pop(context, xFile);
     }
@@ -164,7 +181,7 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
   Future<bool> _onWillPop() async {
     if (!_hasDrawn) return true;
 
-    await _saveDrawing();
+    await _saveDrawing(true);
     return false; // 总是返回false，因为_saveDrawing会处理导航
   }
 
@@ -181,7 +198,7 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
           actions: [
             IconButton(
               icon: Icon(Icons.save),
-              onPressed: _hasDrawn ? _saveDrawing : null,
+              onPressed: _hasDrawn ? () => _saveDrawing(false) : null,
             ),
           ],
         ),
