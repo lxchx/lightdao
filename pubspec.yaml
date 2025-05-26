@@ -64,6 +64,7 @@ dependencies:
   install_plugin: ^2.1.0
   flutter_markdown: ^0.6.18
   path: ^1.8.0
+  flutter_drawing_board: 0.9.1
 
 dev_dependencies:
   flutter_test:

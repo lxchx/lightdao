@@ -9,6 +9,7 @@ import 'package:lightdao/data/phrase.dart';
 import 'package:lightdao/data/setting.dart';
 import 'package:lightdao/data/xdao/forum.dart';
 import 'package:lightdao/data/xdao/reply.dart';
+import 'package:lightdao/ui/page/drawing_board_page.dart';
 import 'package:lightdao/ui/page/more/cookies_management.dart';
 import 'package:lightdao/ui/page/thread.dart';
 import 'package:lightdao/utils/xdao_api.dart';
@@ -742,6 +743,30 @@ void showReplyBottomSheet(
                                       });
                                     },
                                     icon: Icon(Icons.photo)),
+                              ),
+                              SizedBox(
+                                width: 20,
+                              ),
+                              Flexible(
+                                fit: FlexFit.tight,
+                                child: IconButton(
+                                    onPressed: () async {
+                                      final result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => DrawingBoardPage(
+                                            initialImage: imageFile,
+                                          ),
+                                        ),
+                                      );
+                                      if (result != null) {
+                                        setState(() {
+                                          imageFile = result;
+                                          onImageChanged(result);
+                                        });
+                                      }
+                                    },
+                                    icon: Icon(Icons.draw)),
                               ),
                               SizedBox(
                                 width: 20,
