@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:flutter_drawing_board/paint_extension.dart';
+import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart' as image_picker;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -94,10 +95,65 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
 
   void _onDrawingChanged() {
     // 检查是否有绘制内容，使用正确的API
-    if (!_hasDrawn && _drawingController.getHistory.isNotEmpty) {
+    if (!_hasDrawn &&
+        _drawingController.getHistory.isNotEmpty) {
       setState(() {
         _hasDrawn = true;
       });
+    }
+  }
+
+  /// 将画板内容保存为图片文件
+  Future<XFile?> _saveImageToFile(Directory directory, String prefix) async {
+    final ByteData? imageData = await _drawingController.getImageData();
+    if (imageData == null) return null;
+
+    final bytes = imageData.buffer.asUint8List();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frameInfo = await codec.getNextFrame();
+    final ui.Image originalImage = frameInfo.image;
+
+    final ui.PictureRecorder recorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(recorder);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, originalImage.width.toDouble(),
+          originalImage.height.toDouble()),
+      Paint()..color = Colors.white,
+    );
+    canvas.drawImage(originalImage, Offset.zero, Paint());
+
+    final ui.Image finalImage = await recorder
+        .endRecording()
+        .toImage(originalImage.width, originalImage.height);
+    final ByteData? pngBytes =
+        await finalImage.toByteData(format: ui.ImageByteFormat.png);
+    if (pngBytes == null) return null;
+
+    final String fileName =
+        '${prefix}_${DateTime.now().millisecondsSinceEpoch}.png';
+    final String filePath = '${directory.path}/$fileName';
+    final File file = File(filePath);
+    await file.writeAsBytes(pngBytes.buffer.asUint8List());
+
+    return XFile(filePath, name: fileName, mimeType: 'image/png');
+  }
+
+  void _saveAsDrawing() async {
+    final directory = await getTemporaryDirectory();
+
+    final xFile = await _saveImageToFile(directory, 'drawing');
+    if (!mounted) return;
+    if (xFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存失败！')),
+      );
+      return;
+    }
+    await Gal.putImage(xFile.path);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已保存到相册')),
+      );
     }
   }
 
@@ -111,8 +167,7 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
         context: context,
         builder: (context) => AlertDialog(
           title: Text(onExit ? '退出' : '保存画板'),
-          content:
-              Text(widget.initialImage != null ? '替换已有图片？' : '保存画板？'),
+          content: Text(widget.initialImage != null ? '替换已有图片？' : '保存画板？'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -140,38 +195,8 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
     }
 
     // 用户确认后继续保存操作
-    final ByteData? imageData = await _drawingController.getImageData();
-    if (imageData == null) return;
-    // 画板的数据没有背景颜色，需要手动添加背景
-    final Uint8List bytes = imageData.buffer.asUint8List();
-    final ui.Codec codec = await ui.instantiateImageCodec(bytes);
-    final ui.FrameInfo frameInfo = await codec.getNextFrame();
-    final ui.Image originalImage = frameInfo.image;
-    final ui.PictureRecorder recorder = ui.PictureRecorder();
-    final Canvas canvas = Canvas(recorder);
-    // 绘制白色背景
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, originalImage.width.toDouble(),
-          originalImage.height.toDouble()),
-      Paint()..color = Colors.white,
-    );
-    // 绘制原图内容
-    canvas.drawImage(originalImage, Offset.zero, Paint());
-    final ui.Image finalImage = await recorder
-        .endRecording()
-        .toImage(originalImage.width, originalImage.height);
-    final ByteData? pngBytes =
-        await finalImage.toByteData(format: ui.ImageByteFormat.png);
-    if (pngBytes == null) return;
-    final Uint8List finalBytes = pngBytes.buffer.asUint8List();
     final tempDir = await getTemporaryDirectory();
-    final String fileName =
-        'drawing_${DateTime.now().millisecondsSinceEpoch}.png';
-    final String filePath = '${tempDir.path}/$fileName';
-    final File tempFile = File(filePath);
-    await tempFile.writeAsBytes(finalBytes);
-    final xFile =
-        image_picker.XFile(filePath, name: fileName, mimeType: 'image/png');
+    final xFile = await _saveImageToFile(tempDir, 'drawing');
 
     if (mounted) {
       Navigator.pop(context, xFile);
@@ -197,7 +222,13 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
           title: Text('画板'),
           actions: [
             IconButton(
-              icon: Icon(Icons.save),
+              icon: Icon(Icons.save_as),
+              tooltip: '保存到相册',
+              onPressed: _hasDrawn ? _saveAsDrawing : null,
+            ),
+            IconButton(
+              icon: Icon(Icons.done),
+              tooltip: '完成并退出',
               onPressed: _hasDrawn ? () => _saveDrawing(false) : null,
             ),
           ],
