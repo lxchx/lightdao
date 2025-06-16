@@ -135,6 +135,7 @@ class _RefViewState extends State<RefView> with SingleTickerProviderStateMixin {
                                             threadJson: snapshot.data!,
                                             contentNeedCollapsed: false,
                                             noMoreParse: true,
+                                            onImageEdit: widget.onImageEdit,
                                           )),
                                     ],
                                   ),

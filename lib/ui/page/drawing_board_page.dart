@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart' as image_picker;
 import 'package:image_picker/image_picker.dart';
@@ -320,6 +321,53 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
             background: boardBackground,
             showDefaultActions: true,
             showDefaultTools: true,
+            defaultToolsBuilder: (Type t, _) =>
+                DrawingBoard.defaultTools(t, _drawingController)
+                  ..insert(
+                    0,
+                    DefToolItem(
+                      icon: Icons.circle_rounded,
+                      activeColor: _drawingController.getColor,
+                      onTap: () async {
+                        Color selectedColor = _drawingController.getColor;
+                        final color = await showDialog<Color>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('选择颜色'),
+                            content: SingleChildScrollView(
+                              child: ColorPicker(
+                                pickerColor: _drawingController.getColor,
+                                onColorChanged: (color) {
+                                  setState(() {
+                                    selectedColor = color;
+                                  });
+                                },
+                                pickerAreaHeightPercent: 0.8,
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text('取消'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context, selectedColor);
+                                },
+                                child: Text('确定'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (color != null) {
+                          setState(() {
+                            _drawingController.setStyle(color: color);
+                          });
+                        }
+                      },
+                      isActive: true,
+                    ),
+                  ),
           ),
         ),
       ),

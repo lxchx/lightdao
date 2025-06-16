@@ -4,8 +4,8 @@ import 'package:breakpoint/breakpoint.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:qr_bar_code_scanner_dialog/qr_bar_code_scanner_dialog.dart';
-import 'package:recognition_qrcode/recognition_qrcode.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter_qr_reader_plus/flutter_qr_reader.dart';
 
 import '../../../data/setting.dart';
 
@@ -152,20 +152,41 @@ Future<(String, String)?> showAddCookieDialog(
       children: [
         SimpleDialogOption(
           child: Text('扫描二维码'),
-          onPressed: () => QrBarCodeScannerDialog().getScannedQrBarCode(
-              context: context,
-              onCode: (code) {
-                final Map<String, dynamic> jsonMap = jsonDecode(code ?? '');
-                if (jsonMap.containsKey('cookie') &&
-                    jsonMap.containsKey('name')) {
-                  Navigator.of(context)
-                      .pop((jsonMap['name'], jsonMap['cookie']));
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text("无效的二维码格式"),
-                  ));
-                }
-              }),
+          onPressed: () {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (context) => Scaffold(
+                appBar: AppBar(title: Text('扫描二维码')),
+                body: MobileScanner(
+                  controller: MobileScannerController(
+                    detectionSpeed: DetectionSpeed.normal,
+                    facing: CameraFacing.back,
+                  ),
+                  onDetect: (capture) {
+                    final List<Barcode> barcodes = capture.barcodes;
+                    if (barcodes.isNotEmpty) {
+                      final String? code = barcodes.first.rawValue;
+                      if (code != null) {
+                        try {
+                          final Map<String, dynamic> jsonMap = jsonDecode(code);
+                          if (jsonMap.containsKey('cookie') && jsonMap.containsKey('name')) {
+                            Navigator.of(context).pop((jsonMap['name'], jsonMap['cookie']));
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text("无效的二维码格式"),
+                            ));
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text("二维码解析错误"),
+                          ));
+                        }
+                      }
+                    }
+                  },
+                ),
+              ),
+            ));
+          },
         ),
         SimpleDialogOption(
           child: Text('选择二维码图片'),
@@ -257,10 +278,9 @@ Future<String?> pickAndDecodeQRCode() async {
   final pickedFile = await picker.pickImage(source: ImageSource.gallery);
   if (pickedFile == null) {
     return null;
-  }
-  try {
-    final result = await RecognitionManager.recognition(pickedFile.path);
-    return result.value;
+  }  try {
+    final result = await FlutterQrReader.imgScan(pickedFile.path);
+    return result;
   } catch (e) {
     return null;
   }

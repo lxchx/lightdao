@@ -1368,6 +1368,10 @@ class _ScrollableSelectionContainerDelegate extends MultiSelectableSelectionCont
       case SelectionEventType.selectWord:
         _selectableEndEdgeUpdateRecords[selectable] = state.position.pixels;
         _selectableStartEdgeUpdateRecords[selectable] = state.position.pixels;
+      case SelectionEventType.selectParagraph:
+        _selectableEndEdgeUpdateRecords[selectable] = state.position.pixels;
+        _selectableStartEdgeUpdateRecords[selectable] = state.position.pixels;
+        ensureChildUpdated(selectable);
     }
     return super.dispatchSelectionEventToChild(selectable, event);
   }
