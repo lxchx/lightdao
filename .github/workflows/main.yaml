@@ -28,7 +28,7 @@ jobs:
           java-version: 17
       - uses: subosito/flutter-action@v1
         with:
-          flutter-version: '3.22.2'
+          flutter-version: '3.32.4'
       - run: flutter pub get
       - run: bash ./scripts/first-build.sh --debug
 
@@ -50,7 +50,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v1
         with:
-          flutter-version: '3.22.2'
+          flutter-version: '3.32.4'
   
       - name: Conditional Restore JKS
         if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/heads/ci-test') || github.ref == 'refs/heads/master'

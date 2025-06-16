@@ -1,11 +1,11 @@
 import 'dart:async';
 
+import 'package:app_installer/app_installer.dart';
 import 'package:breakpoint/breakpoint.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:install_plugin/install_plugin.dart';
 import 'package:lightdao/data/const_data.dart';
 import 'package:lightdao/data/setting.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -213,12 +213,8 @@ class AboutPage extends StatelessWidget {
                   TextButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      InstallPlugin.installApk(savePath!,
-                              appId: 'com.lxchx.lightdao')
-                          .then((result) {
-                        print('安装结果: $result');
-                      }).catchError((error) {
-                        print('安装错误: $error');
+                      AppInstaller.installApk(savePath!).catchError((error) {
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Row(
@@ -228,11 +224,7 @@ class AboutPage extends StatelessWidget {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    // 重新尝试安装
-                                    InstallPlugin.installApk(
-                                      savePath!,
-                                      appId: 'com.lxchx.lightdao',
-                                    );
+                                    AppInstaller.installApk(savePath!);
                                   },
                                   child: Text('重试'),
                                 ),

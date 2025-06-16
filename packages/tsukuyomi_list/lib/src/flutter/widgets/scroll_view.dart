@@ -344,7 +344,6 @@ abstract class ScrollView extends StatelessWidget {
   /// [TextDirection.rtl], then the non-reversed [AxisDirection] is
   /// [AxisDirection.left] and the reversed [AxisDirection] is
   /// [AxisDirection.right].
-  @protected
   AxisDirection getDirection(BuildContext context) {
     return getAxisDirectionFromAxisReverseAndDirectionality(context, scrollDirection, reverse);
   }
@@ -355,7 +354,6 @@ abstract class ScrollView extends StatelessWidget {
   /// of the viewport.
   ///
   /// To learn more about slivers, see [CustomScrollView.slivers].
-  @protected
   List<Widget> buildSlivers(BuildContext context);
 
   /// Build the viewport.
@@ -371,7 +369,6 @@ abstract class ScrollView extends StatelessWidget {
   /// which by default uses [scrollDirection] and [reverse].
   ///
   /// The `slivers` argument is the value obtained from [buildSlivers].
-  @protected
   Widget buildViewport(
     BuildContext context,
     ViewportOffset offset,
