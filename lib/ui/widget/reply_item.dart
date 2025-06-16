@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:breakpoint/breakpoint.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
@@ -38,6 +40,7 @@ class ReplyItem extends StatelessWidget {
   final List<String>? imageNames;
   final int? imageInitIndex;
   final bool cacheImageSize;
+  final Function(File image, Object? heroTag)? onImageEdit;
 
   ReplyItem({
     super.key,
@@ -55,6 +58,7 @@ class ReplyItem extends StatelessWidget {
     this.imageNames,
     this.imageInitIndex,
     this.cacheImageSize = false,
+    this.onImageEdit,
   }) {
     assert(
         // 如果imageInitIndex有效（非null且>=0），则imageNames必须有效（非null且非空）
@@ -190,7 +194,8 @@ class ReplyItem extends StatelessWidget {
                           refCache: refCache,
                           inPopView: false,
                           isThreadFirstOrForumPreview:
-                              isThreadFirstOrForumPreview),
+                              isThreadFirstOrForumPreview,
+                          onImageEdit: onImageEdit),
                     )
                   else
                     HtmlWidget(
@@ -216,6 +221,7 @@ class ReplyItem extends StatelessWidget {
                   initIndex: imageInitIndex,
                   imageNames: imageNames,
                   cacheImageSize: cacheImageSize,
+                  onEdit: onImageEdit,
                 )),
         ],
       );

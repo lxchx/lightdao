@@ -2,74 +2,23 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
-import 'package:flutter_drawing_board/paint_contents.dart';
-import 'package:flutter_drawing_board/paint_extension.dart';
 import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart' as image_picker;
 import 'package:image_picker/image_picker.dart';
+import 'package:lightdao/ui/widget/conditional_hero.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
-class ImageContent extends PaintContent {
-  ImageContent(this.image, {this.imageUrl = ''});
-
-  ImageContent.data({
-    required this.startPoint,
-    required this.size,
-    required this.image,
-    required this.imageUrl,
-    required Paint paint,
-  }) : super.paint(paint);
-
-  factory ImageContent.fromJson(Map<String, dynamic> data) {
-    return ImageContent.data(
-      startPoint: jsonToOffset(data['startPoint'] as Map<String, dynamic>),
-      size: jsonToOffset(data['size'] as Map<String, dynamic>),
-      imageUrl: data['imageUrl'] as String,
-      image: data['image'] as ui.Image,
-      paint: jsonToPaint(data['paint'] as Map<String, dynamic>),
-    );
-  }
-
-  Offset startPoint = Offset.zero;
-  Offset size = Offset.zero;
-  final String imageUrl;
-  final ui.Image image;
-
-  String get contentType => 'ImageContent';
-
-  @override
-  void startDraw(Offset startPoint) => this.startPoint = startPoint;
-
-  @override
-  void drawing(Offset nowPoint) => size = nowPoint - startPoint;
-
-  @override
-  void draw(Canvas canvas, Size size, bool deeper) {
-    final Rect rect = Rect.fromPoints(startPoint, startPoint + this.size);
-    paintImage(canvas: canvas, rect: rect, image: image, fit: BoxFit.fill);
-  }
-
-  @override
-  ImageContent copy() => ImageContent(image);
-
-  @override
-  Map<String, dynamic> toContentJson() {
-    return <String, dynamic>{
-      'startPoint': startPoint.toJson(),
-      'size': size.toJson(),
-      'imageUrl': imageUrl,
-      'paint': paint.toJson(),
-    };
-  }
-}
-
 class DrawingBoardPage extends StatefulWidget {
   final image_picker.XFile? initialImage;
+  final File? backgroundImage;
+  final Object? heroTag;
 
   const DrawingBoardPage({
     super.key,
     this.initialImage,
+    this.backgroundImage,
+    this.heroTag,
   });
 
   @override
@@ -79,24 +28,42 @@ class DrawingBoardPage extends StatefulWidget {
 class _DrawingBoardPageState extends State<DrawingBoardPage> {
   final DrawingController _drawingController = DrawingController();
   bool _hasDrawn = false;
+  ui.Image? _bgImage;
+  Size? _bgImageSize;
+  double _currentBoardWidth = 0;
+  double _currentBoardHeight = 0;
 
   @override
   void initState() {
     super.initState();
     _drawingController.addListener(_onDrawingChanged);
+    _loadBackgroundImage();
+  }
+
+  Future<void> _loadBackgroundImage() async {
+    if (widget.backgroundImage != null) {
+      final data = await widget.backgroundImage!.readAsBytes();
+      final codec = await ui.instantiateImageCodec(data);
+      final frameInfo = await codec.getNextFrame();
+      setState(() {
+        _bgImage = frameInfo.image;
+        _bgImageSize =
+            Size(_bgImage!.width.toDouble(), _bgImage!.height.toDouble());
+      });
+    }
   }
 
   @override
   void dispose() {
     _drawingController.removeListener(_onDrawingChanged);
     _drawingController.dispose();
+    _bgImage?.dispose();
     super.dispose();
   }
 
   void _onDrawingChanged() {
     // 检查是否有绘制内容，使用正确的API
-    if (!_hasDrawn &&
-        _drawingController.getHistory.isNotEmpty) {
+    if (!_hasDrawn && _drawingController.getHistory.isNotEmpty) {
       setState(() {
         _hasDrawn = true;
       });
@@ -105,36 +72,100 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
 
   /// 将画板内容保存为图片文件
   Future<XFile?> _saveImageToFile(Directory directory, String prefix) async {
-    final ByteData? imageData = await _drawingController.getImageData();
-    if (imageData == null) return null;
+    final ByteData? drawingData = await _drawingController.getImageData();
+    if (drawingData == null && _bgImage == null) {
+      return null;
+    }
+    if (_bgImage != null &&
+        drawingData == null &&
+        widget.initialImage == null &&
+        prefix == 'drawing') {
+      return null;
+    }
 
-    final bytes = imageData.buffer.asUint8List();
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frameInfo = await codec.getNextFrame();
-    final ui.Image originalImage = frameInfo.image;
+    ui.Image? drawingImage;
+    if (drawingData != null) {
+      final drawingBytes = drawingData.buffer.asUint8List();
+      final drawingCodec = await ui.instantiateImageCodec(drawingBytes);
+      final drawingFrameInfo = await drawingCodec.getNextFrame();
+      drawingImage = drawingFrameInfo.image;
+    }
+
+    double finalImageWidth, finalImageHeight;
+    if (_bgImage != null) {
+      finalImageWidth = _bgImage!.width.toDouble();
+      finalImageHeight = _bgImage!.height.toDouble();
+    } else if (drawingImage != null) {
+      finalImageWidth = drawingImage.width.toDouble();
+      finalImageHeight = drawingImage.height.toDouble();
+    } else {
+      return null;
+    }
 
     final ui.PictureRecorder recorder = ui.PictureRecorder();
-    final Canvas canvas = Canvas(recorder);
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, originalImage.width.toDouble(),
-          originalImage.height.toDouble()),
-      Paint()..color = Colors.white,
-    );
-    canvas.drawImage(originalImage, Offset.zero, Paint());
+    final Canvas canvas = Canvas(
+        recorder, Rect.fromLTWH(0, 0, finalImageWidth, finalImageHeight));
+
+    if (_bgImage != null) {
+      paintImage(
+        canvas: canvas,
+        rect: Rect.fromLTWH(0, 0, finalImageWidth, finalImageHeight),
+        image: _bgImage!,
+        fit: BoxFit.contain,
+      );
+    } else if (drawingImage != null) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, finalImageWidth, finalImageHeight),
+        Paint()..color = Colors.white,
+      );
+    }
+
+    if (drawingImage != null) {
+      if (_bgImage != null) {
+        // 计算背景图在画板中的实际渲染尺寸和位置
+        final FittedSizes fittedBgInBoard = applyBoxFit(
+            BoxFit.contain,
+            Size(_bgImage!.width.toDouble(),
+                _bgImage!.height.toDouble()), // 原始背景图尺寸
+            Size(_currentBoardWidth, _currentBoardHeight) // 画板组件尺寸
+            );
+
+        // drawingImage（从controller.getImageData()获取）对应整个画板区域（_currentBoardWidth x _currentBoardHeight）
+        // 用户是相对于fittedBgInBoard.destination区域进行绘制的
+        // 我们需要将drawingImage中覆盖fittedBgInBoard.destination的部分
+        // 缩放到覆盖原始_bgImage（finalImageWidth x finalImageHeight）
+
+        // srcRect是drawingImage中对应可见背景图的部分
+        final Rect srcRect = Rect.fromLTWH(0, 0, drawingImage.width.toDouble(),
+            drawingImage.height.toDouble());
+        // dstRect是最终图片的完整尺寸（原始背景图尺寸）
+        final Rect dstRect =
+            Rect.fromLTWH(0, 0, finalImageWidth, finalImageHeight);
+
+        canvas.drawImageRect(drawingImage, srcRect, dstRect, Paint());
+      } else {
+        // 没有背景图，drawingImage是完整内容
+        canvas.drawImage(drawingImage, Offset.zero, Paint());
+      }
+    }
 
     final ui.Image finalImage = await recorder
         .endRecording()
-        .toImage(originalImage.width, originalImage.height);
+        .toImage(finalImageWidth.toInt(), finalImageHeight.toInt());
     final ByteData? pngBytes =
         await finalImage.toByteData(format: ui.ImageByteFormat.png);
-    if (pngBytes == null) return null;
+
+    drawingImage?.dispose();
+
+    if (pngBytes == null) {
+      return null;
+    }
 
     final String fileName =
         '${prefix}_${DateTime.now().millisecondsSinceEpoch}.png';
     final String filePath = '${directory.path}/$fileName';
     final File file = File(filePath);
     await file.writeAsBytes(pngBytes.buffer.asUint8List());
-
     return XFile(filePath, name: fileName, mimeType: 'image/png');
   }
 
@@ -204,6 +235,7 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
   }
 
   Future<bool> _onWillPop() async {
+    // 如果没有绘制内容，并且没有背景图（或者有背景图但不是来自 initialImage 的编辑场景），则直接退出
     if (!_hasDrawn) return true;
 
     await _saveDrawing(true);
@@ -214,6 +246,48 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
   Widget build(BuildContext context) {
     // 获取屏幕尺寸
     final Size screenSize = MediaQuery.of(context).size;
+    final double appBarHeight = AppBar().preferredSize.height;
+    final double topPadding = MediaQuery.of(context).padding.top;
+
+    Widget boardBackground;
+    double boardWidth;
+    double boardHeight;
+    bool allowPanAndScale = false;
+
+    if (_bgImage != null && _bgImageSize != null) {
+      allowPanAndScale = true;
+      final double screenWidth = screenSize.width;
+      final double screenHeightAvailable =
+          screenSize.height - appBarHeight - topPadding;
+
+      final FittedSizes fittedSizes = applyBoxFit(BoxFit.contain, _bgImageSize!,
+          Size(screenWidth, screenHeightAvailable));
+
+      boardWidth = fittedSizes.destination.width;
+      boardHeight = fittedSizes.destination.height;
+      _currentBoardWidth = boardWidth;
+      _currentBoardHeight = boardHeight;
+
+      boardBackground = ConditionalHero(
+        tag: widget.heroTag,
+        child: Image.file(
+          widget.backgroundImage!,
+          fit: BoxFit.contain,
+          width: boardWidth,
+          height: boardHeight,
+        ),
+      );
+    } else {
+      boardWidth = screenSize.width;
+      boardHeight = screenSize.height - appBarHeight - topPadding;
+      _currentBoardWidth = boardWidth;
+      _currentBoardHeight = boardHeight;
+      boardBackground = Container(
+        width: boardWidth,
+        height: boardHeight,
+        color: Colors.white,
+      );
+    }
 
     return WillPopScope(
       onWillPop: _onWillPop,
@@ -224,52 +298,28 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
             IconButton(
               icon: Icon(Icons.save_as),
               tooltip: '保存到相册',
-              onPressed: _hasDrawn ? _saveAsDrawing : null,
+              onPressed: (_hasDrawn || _bgImage != null)
+                  ? _saveAsDrawing
+                  : null, // 如果有背景图也允许保存
             ),
             IconButton(
               icon: Icon(Icons.done),
               tooltip: '完成并退出',
-              onPressed: _hasDrawn ? () => _saveDrawing(false) : null,
+              onPressed: (_hasDrawn || _bgImage != null)
+                  ? () => _saveDrawing(false)
+                  : null, // 如果有背景图也允许完成
             ),
           ],
         ),
         body: SafeArea(
           child: DrawingBoard(
+            alignment: Alignment.center,
             controller: _drawingController,
-            boardPanEnabled: false,
-            boardScaleEnabled: false,
-            background: Container(
-              // 使用屏幕剩余尺寸
-              width: screenSize.width,
-              height: screenSize.height -
-                  kToolbarHeight -
-                  MediaQuery.of(context).padding.top,
-              color: Colors.white,
-            ),
+            boardPanEnabled: allowPanAndScale,
+            boardScaleEnabled: allowPanAndScale,
+            background: boardBackground,
             showDefaultActions: true,
             showDefaultTools: true,
-            defaultToolsBuilder: (Type t, _) {
-              return DrawingBoard.defaultTools(t, _drawingController)
-                ..insert(
-                  2,
-                  DefToolItem(
-                    icon: Icons.image_rounded,
-                    isActive: t == ImageContent,
-                    onTap: () async {
-                      final picker = ImagePicker();
-                      final XFile? pickedFile =
-                          await picker.pickImage(source: ImageSource.gallery);
-                      if (pickedFile != null) {
-                        final bytes = await pickedFile.readAsBytes();
-                        final codec = await ui.instantiateImageCodec(bytes);
-                        final frame = await codec.getNextFrame();
-                        final ui.Image image = frame.image;
-                        _drawingController.setPaintContent(ImageContent(image));
-                      }
-                    },
-                  ),
-                );
-            },
           ),
         ),
       ),

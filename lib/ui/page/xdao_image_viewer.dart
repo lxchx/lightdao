@@ -18,12 +18,14 @@ class XdaoImageViewer extends StatefulWidget {
   final String? heroTag;
   final List<String> imageNames;
   final int initIndex;
+  final Function(File imageFile, Object? heroTag)? onEdit;
 
   XdaoImageViewer(
       {super.key,
       this.heroTag,
       required this.imageNames,
-      required this.initIndex});
+      required this.initIndex,
+      this.onEdit});
 
   @override
   State<XdaoImageViewer> createState() => _XdaoImageViewerState();
@@ -186,6 +188,23 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                                           .withOpacity(0.4),
                                       child: Row(
                                         children: [
+                                          if (widget.onEdit != null)
+                                            IconButton(
+                                              icon: Icon(Icons.draw),
+                                              onPressed: () async {
+                                                final String url =
+                                                    (imageProvider).url;
+                                                final file =
+                                                    await MyImageCacheManager()
+                                                        .getSingleFile(url);
+                                                widget.onEdit!(
+                                                    file,
+                                                    _currentIndex ==
+                                                            widget.initIndex
+                                                        ? widget.heroTag
+                                                        : "Image $imageName");
+                                              },
+                                            ),
                                           IconButton(
                                             icon: Icon(Icons.close),
                                             onPressed: () {

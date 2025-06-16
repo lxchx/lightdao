@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:lightdao/data/xdao/ref.dart';
@@ -54,6 +56,7 @@ class ContentWidgetFactory extends WidgetFactory {
   final bool refMustCollapsed;
   late BuildOp refOp;
   late BuildOp hidableOp;
+  final Function(File image, Object? heroTag)? onImageEdit;
 
   ContentWidgetFactory(
       {required this.inRefView,
@@ -61,7 +64,8 @@ class ContentWidgetFactory extends WidgetFactory {
       required this.refCache,
       required this.inPopView,
       this.refMustCollapsed = false,
-      this.isThreadFirstOrForumPreview = false}) {
+      this.isThreadFirstOrForumPreview = false,
+      this.onImageEdit}) {
     refOp = BuildOp(
       onRenderBlock: (meta, child) {
         return RefView(
@@ -73,6 +77,7 @@ class ContentWidgetFactory extends WidgetFactory {
           refCache: refCache,
           isThreadFirstOrForumPreview: isThreadFirstOrForumPreview,
           mustCollapsed: refMustCollapsed,
+          onImageEdit: onImageEdit,
         );
       },
     );

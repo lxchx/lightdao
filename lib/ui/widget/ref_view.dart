@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:breakpoint/breakpoint.dart';
@@ -27,6 +28,7 @@ class RefView extends StatefulWidget {
   final Future<RefHtml>? replyJson;
   final bool mustCollapsed;
   final bool isThreadFirstOrForumPreview; // 在这两种情况下Content本身在Hero中了，组件就不能有Hero
+  final Function(File image, Object? heroTag)? onImageEdit;
 
   RefView(
       {required this.refId,
@@ -36,7 +38,8 @@ class RefView extends StatefulWidget {
       this.replyJson,
       required this.inPopView,
       this.isThreadFirstOrForumPreview = false,
-      this.mustCollapsed = false});
+      this.mustCollapsed = false,
+      this.onImageEdit});
 
   @override
   State<RefView> createState() => _RefViewState();
@@ -448,6 +451,7 @@ class _RefViewState extends State<RefView> with SingleTickerProviderStateMixin {
                                                       .isThreadFirstOrForumPreview
                                                   ? null
                                                   : 'RefImage in ref ${widget.refId} ${Random().nextInt(1 << 32).toString()}',
+                                              onEdit: widget.onImageEdit,
                                             )),
                                       if (snapshot.data?.threadId != -1)
                                         Row(

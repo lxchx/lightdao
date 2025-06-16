@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -16,6 +17,7 @@ class LongPressPreviewImage extends StatefulWidget {
   final List<String>? imageNames;
   final int? initIndex;
   final bool cacheImageSize;
+  final Function(File imageFile, Object? heroTag)? onEdit;
 
   LongPressPreviewImage(
       {required this.img,
@@ -24,7 +26,8 @@ class LongPressPreviewImage extends StatefulWidget {
       this.isRawPicMode = false,
       this.imageNames,
       this.initIndex,
-      this.cacheImageSize = false});
+      this.cacheImageSize = false,
+      this.onEdit});
 
   @override
   State<LongPressPreviewImage> createState() => _LongPressPreviewImageState();
@@ -188,6 +191,7 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
                 initIndex: widget.initIndex!,
                 imageNames: widget.imageNames!,
                 heroTag: widget.imageHeroTag,
+                onEdit: widget.onEdit,
               ),
             ),
           );
@@ -201,6 +205,7 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
                 initIndex: 0,
                 imageNames: ['${widget.img}${widget.ext}'],
                 heroTag: widget.imageHeroTag,
+                onEdit: widget.onEdit,
               ),
             ),
           );

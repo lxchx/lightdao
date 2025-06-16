@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:breakpoint/breakpoint.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/data/xdao/ref.dart';
 import 'package:lightdao/data/xdao/reply.dart';
 import 'package:lightdao/data/xdao/thread.dart';
+import 'package:lightdao/ui/page/drawing_board_page.dart';
 import 'package:lightdao/ui/page/thread.dart';
 import 'package:lightdao/utils/page_manager.dart';
 import 'package:lightdao/ui/widget/reply_item.dart';
@@ -168,6 +170,65 @@ class _ThreadPage2State extends State<ThreadPage2> {
                     child: Text('确定'))
               ],
             ));
+  }
+
+  void _onImageEdit(File file, Object? heroTag) async {
+    final editedImage = await Navigator.of(context).push<XFile>(
+      MaterialPageRoute(
+        builder: (context) => DrawingBoardPage(
+          initialImage: _replyImageFile,
+          backgroundImage: file,
+          heroTag: heroTag,
+        ),
+      ),
+    );
+
+    if (editedImage == null) return;
+
+    setState(() {
+      _replyImageFile = editedImage;
+    });
+
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    showReplyBottomSheet(
+        context,
+        false,
+        _poReply.id,
+        _curPageManager.maxPage ?? 1,
+        _poReply,
+        _replyImageFile,
+        (image) => _replyImageFile = image,
+        _replyTitleControler,
+        _replyAuthorControler,
+        _replyTextControler, () {
+      // 在回调中首先检查组件是否仍然挂载
+      if (!mounted) return;
+
+      // 如果已经加载到最后一页，重新加载以刷出自己的回复
+      if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
+        _handlePageManagerError(_curPageManager.forceLoadNextPage());
+      }
+
+      // 显示发送成功提示
+      if (mounted) {
+        scaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('发送成功'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: '查看回复',
+              onPressed: () {
+                // 跳转到最后一页前检查组件是否仍然挂载
+                if (!mounted) return;
+                _jumpToPage(_curPageManager.maxPage ?? 1, true);
+              },
+            ),
+          ),
+        );
+      }
+    });
   }
 
   void _toggleFavorite(BuildContext context) {
@@ -702,8 +763,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
     final initReplyIndex = !widget.isCompletePage
         ? null
-        : _poReply.replies
-            .indexWhere((rply) => rply.id == widget.startReplyId);
+        : _poReply.replies.indexWhere((rply) => rply.id == widget.startReplyId);
 
     // 确保索引有效（大于0且小于总项数）
     final validInitReplyIndex = initReplyIndex != null &&
@@ -714,8 +774,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
     late List<String> allImageNames;
     allImageNames = [
-      if (_poReply.img != '')
-        '${_poReply.img}${_poReply.ext}',
+      if (_poReply.img != '') '${_poReply.img}${_poReply.ext}',
       ..._curPageManager.allLoadedItems
           .where((rply) => rply.img != '')
           .map((rply) => '${rply.img}${rply.ext}')
@@ -786,8 +845,8 @@ class _ThreadPage2State extends State<ThreadPage2> {
                     break;
                   case 'po_mode':
                     if (_poPageManager == null) {
-                      final threadHistory = appState.setting.viewPoOnlyHistory
-                          .get(_poReply.id);
+                      final threadHistory =
+                          appState.setting.viewPoOnlyHistory.get(_poReply.id);
 
                       _poPageManager = ThreadPageManager(
                         threadId: _poReply.id,
@@ -860,13 +919,11 @@ class _ThreadPage2State extends State<ThreadPage2> {
                           isThreadFirstOrForumPreview: true,
                           threadJson: _poReply,
                           contentNeedCollapsed: false,
-                          contentHeroTag:
-                              'ThreadCard ${_poReply.id}',
-                          imageHeroTag:
-                              'Image ${_poReply.img}${_poReply.ext}',
-                          imageInitIndex:
-                              _poReply.img == '' ? null : 0,
+                          contentHeroTag: 'ThreadCard ${_poReply.id}',
+                          imageHeroTag: 'Image ${_poReply.img}${_poReply.ext}',
+                          imageInitIndex: _poReply.img == '' ? null : 0,
                           imageNames: allImageNames,
+                          onImageEdit: _onImageEdit,
                         ),
                       ),
                     ),
@@ -907,8 +964,9 @@ class _ThreadPage2State extends State<ThreadPage2> {
                   Column(
                     children: [
                       if (!appState.setting.dividerBetweenReply
-                        // 无回复时显示分割线会与串首的尾分割线重复
-                        && replyCount > 0)
+                          // 无回复时显示分割线会与串首的尾分割线重复
+                          &&
+                          replyCount > 0)
                         Padding(
                           padding: EdgeInsets.symmetric(
                               vertical: breakpoint.gutters / 2),
@@ -990,6 +1048,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                       imageInitIndex: imageIndex,
                       imageNames: allImageNames,
                       refCache: _refCache,
+                      onImageEdit: _onImageEdit,
                     ),
                   ),
                 ),

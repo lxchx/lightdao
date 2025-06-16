@@ -754,7 +754,8 @@ void showReplyBottomSheet(
                                       final result = await Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => DrawingBoardPage(
+                                          builder: (context) =>
+                                              DrawingBoardPage(
                                             initialImage: imageFile,
                                           ),
                                         ),
