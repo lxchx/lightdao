@@ -37,6 +37,7 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
   late int _currentIndex;
   late PageController _pageViewController;
   final ExitSignal _exitSignal = ExitSignal();
+  int _pointerCount = 0;
 
   @override
   void initState() {
@@ -61,95 +62,147 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
           });
           return true;
         },
-        child: GestureDetector(
-          onTap: () => setState(() {
-            _showBottomBar = !_showBottomBar;
-          }),
-          child: Stack(
-            children: [
-              PageView.builder(
-                  physics:
-                      _scaleOnly ? const NeverScrollableScrollPhysics() : null,
-                  onPageChanged: (page) => setState(() {
-                        _currentIndex = page;
-                      }),
-                  itemCount: widget.imageNames.length,
-                  controller: _pageViewController,
-                  itemBuilder: (context, index) {
-                    final imageName = widget.imageNames[index];
-                    final imageProvider = CachedNetworkImageProvider(
-                        'https://image.nmb.best/image/$imageName');
-                    return DragDismissible(
-                      backgroundColor: Theme.of(context).canvasColor,
-                      onDismissed: () => Navigator.of(context).pop(),
-                      exitSignal: _exitSignal,
-                      enabled:
-                          appState.setting.dragToDissmissImage && !_scaleOnly,
-                      child: PhotoView(
-                        imageProvider: imageProvider,
-                        scaleStateChangedCallback: (PhotoViewScaleState state) {
-                          setState(() {
-                            _scaleOnly = state != PhotoViewScaleState.initial;
-                          });
-                        },
-                        loadingBuilder: (context, imageChunkEvent) {
-                          return ConditionalHero(
-                            tag: index == widget.initIndex
-                                ? widget.heroTag
-                                : "Image $imageName",
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                SizedBox.expand(
-                                  child: CachedNetworkImage(
-                                    cacheManager: MyImageCacheManager(),
-                                    imageUrl:
-                                        'https://image.nmb.best/thumb/$imageName',
-                                    fit: BoxFit.contain,
+        child: Listener(
+          onPointerDown: (event) {
+            setState(() {
+              _pointerCount++;
+              if (_pointerCount > 1) {
+                _scaleOnly = true;
+              }
+            });
+          },
+          onPointerUp: (event) {
+            setState(() {
+              _pointerCount = _pointerCount > 0 ? _pointerCount - 1 : 0;
+              if (_pointerCount <= 1 && !_scaleOnly) {
+                _scaleOnly = false;
+              }
+            });
+          },
+          onPointerCancel: (event) {
+            setState(() {
+              _pointerCount = _pointerCount > 0 ? _pointerCount - 1 : 0;
+              if (_pointerCount <= 1 && !_scaleOnly) {
+                _scaleOnly = false;
+              }
+            });
+          },
+          child: GestureDetector(
+            onTap: () => setState(() {
+              _showBottomBar = !_showBottomBar;
+            }),
+            child: Stack(
+              children: [
+                PageView.builder(
+                    physics:
+                        _scaleOnly ? const NeverScrollableScrollPhysics() : null,
+                    onPageChanged: (page) => setState(() {
+                          _currentIndex = page;
+                        }),
+                    itemCount: widget.imageNames.length,
+                    controller: _pageViewController,
+                    itemBuilder: (context, index) {
+                      final imageName = widget.imageNames[index];
+                      final imageProvider = CachedNetworkImageProvider(
+                          'https://image.nmb.best/image/$imageName');
+                      return DragDismissible(
+                        backgroundColor: Theme.of(context).canvasColor,
+                        onDismissed: () => Navigator.of(context).pop(),
+                        exitSignal: _exitSignal,
+                        enabled:
+                            appState.setting.dragToDissmissImage && !_scaleOnly,
+                        child: PhotoView(
+                          imageProvider: imageProvider,
+                          scaleStateChangedCallback: (PhotoViewScaleState state) {
+                            setState(() {
+                              _scaleOnly = state != PhotoViewScaleState.initial;
+                            });
+                          },
+                          loadingBuilder: (context, imageChunkEvent) {
+                            return ConditionalHero(
+                              tag: index == widget.initIndex
+                                  ? widget.heroTag
+                                  : "Image $imageName",
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  SizedBox.expand(
+                                    child: CachedNetworkImage(
+                                      cacheManager: MyImageCacheManager(),
+                                      imageUrl:
+                                          'https://image.nmb.best/thumb/$imageName',
+                                      fit: BoxFit.contain,
+                                    ),
                                   ),
-                                ),
-                                if (imageChunkEvent != null &&
-                                    imageChunkEvent.expectedTotalBytes != null)
-                                  CircularProgressIndicator(
-                                      value: imageChunkEvent
-                                              .cumulativeBytesLoaded /
-                                          imageChunkEvent.expectedTotalBytes!)
-                                else
-                                  CircularProgressIndicator(),
-                              ],
-                            ),
-                          );
-                        },
-                        minScale: PhotoViewComputedScale.contained * 1,
-                        //maxScale: PhotoViewComputedScale.covered * 2,
-                        heroAttributes: widget.heroTag == null
-                            ? null
-                            : PhotoViewHeroAttributes(
-                                tag: index == widget.initIndex
-                                    ? widget.heroTag!
-                                    : "Image $imageName"),
-                        backgroundDecoration: BoxDecoration(
-                          color: Colors.transparent,
+                                  if (imageChunkEvent != null &&
+                                      imageChunkEvent.expectedTotalBytes != null)
+                                    CircularProgressIndicator(
+                                        value: imageChunkEvent
+                                                .cumulativeBytesLoaded /
+                                            imageChunkEvent.expectedTotalBytes!)
+                                  else
+                                    CircularProgressIndicator(),
+                                ],
+                              ),
+                            );
+                          },
+                          minScale: PhotoViewComputedScale.contained * 1,
+                          //maxScale: PhotoViewComputedScale.covered * 2,
+                          heroAttributes: widget.heroTag == null
+                              ? null
+                              : PhotoViewHeroAttributes(
+                                  tag: index == widget.initIndex
+                                      ? widget.heroTag!
+                                      : "Image $imageName"),
+                          backgroundDecoration: BoxDecoration(
+                            color: Colors.transparent,
+                          ),
                         ),
-                      ),
-                    );
-                  }),
-              AnimatedSwitcher(
-                duration: Durations.medium1,
-                switchInCurve: Curves.easeInOut,
-                switchOutCurve: Curves.easeInExpo,
-                child: _showBottomBar
-                    ? SafeArea(
-                        child: Align(
-                          alignment: Alignment.bottomCenter,
-                          child: Padding(
-                            padding: EdgeInsets.all(breakpoint.gutters),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.max,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                if (widget.imageNames.length > 1)
+                      );
+                    }),
+                AnimatedSwitcher(
+                  duration: Durations.medium1,
+                  switchInCurve: Curves.easeInOut,
+                  switchOutCurve: Curves.easeInExpo,
+                  child: _showBottomBar
+                      ? SafeArea(
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: Padding(
+                              padding: EdgeInsets.all(breakpoint.gutters),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.max,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (widget.imageNames.length > 1)
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(50),
+                                      child: BackdropFilter(
+                                        filter: ImageFilter.blur(
+                                            sigmaX: 10.0, sigmaY: 10.0),
+                                        child: Container(
+                                          color: Theme.of(context)
+                                              .canvasColor
+                                              .withOpacity(0.4),
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          child: Text(
+                                            '${_currentIndex + 1} / ${widget.imageNames.length}',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelLarge
+                                                ?.copyWith(
+                                                    fontSize: 24,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    SizedBox(),
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(50),
                                     child: BackdropFilter(
@@ -159,84 +212,58 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                                         color: Theme.of(context)
                                             .canvasColor
                                             .withOpacity(0.4),
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 8),
-                                        child: Text(
-                                          '${_currentIndex + 1} / ${widget.imageNames.length}',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .labelLarge
-                                              ?.copyWith(
-                                                  fontSize: 24,
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant),
+                                        child: Row(
+                                          children: [
+                                            if (widget.onEdit != null)
+                                              IconButton(
+                                                icon: Icon(Icons.draw),
+                                                onPressed: () async {
+                                                  final String url =
+                                                      (imageProvider).url;
+                                                  final file =
+                                                      await MyImageCacheManager()
+                                                          .getSingleFile(url);
+                                                  widget.onEdit!(
+                                                      file,
+                                                      _currentIndex ==
+                                                              widget.initIndex
+                                                          ? widget.heroTag
+                                                          : "Image $imageName");
+                                                },
+                                              ),
+                                            IconButton(
+                                              icon: Icon(Icons.close),
+                                              onPressed: () {
+                                                setState(() {
+                                                  _exitSignal.trigger();
+                                                });
+                                                Navigator.of(context).pop();
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: Icon(Icons.share),
+                                              onPressed: () =>
+                                                  _shareImage(imageProvider),
+                                            ),
+                                            IconButton(
+                                              icon: Icon(Icons.save),
+                                              onPressed: () => _saveImage(
+                                                  context, imageProvider),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
-                                  )
-                                else
-                                  SizedBox(),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(50),
-                                  child: BackdropFilter(
-                                    filter: ImageFilter.blur(
-                                        sigmaX: 10.0, sigmaY: 10.0),
-                                    child: Container(
-                                      color: Theme.of(context)
-                                          .canvasColor
-                                          .withOpacity(0.4),
-                                      child: Row(
-                                        children: [
-                                          if (widget.onEdit != null)
-                                            IconButton(
-                                              icon: Icon(Icons.draw),
-                                              onPressed: () async {
-                                                final String url =
-                                                    (imageProvider).url;
-                                                final file =
-                                                    await MyImageCacheManager()
-                                                        .getSingleFile(url);
-                                                widget.onEdit!(
-                                                    file,
-                                                    _currentIndex ==
-                                                            widget.initIndex
-                                                        ? widget.heroTag
-                                                        : "Image $imageName");
-                                              },
-                                            ),
-                                          IconButton(
-                                            icon: Icon(Icons.close),
-                                            onPressed: () {
-                                              setState(() {
-                                                _exitSignal.trigger();
-                                              });
-                                              Navigator.of(context).pop();
-                                            },
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.share),
-                                            onPressed: () =>
-                                                _shareImage(imageProvider),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.save),
-                                            onPressed: () => _saveImage(
-                                                context, imageProvider),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      )
-                    : null,
-              )
-            ],
+                        )
+                      : null,
+                )
+              ],
+            ),
           ),
         ),
       ),

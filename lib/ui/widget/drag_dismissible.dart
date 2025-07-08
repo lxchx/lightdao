@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 class ExitSignal {
   bool _isExiting = false;
@@ -50,6 +51,8 @@ class _DragDismissibleState extends State<DragDismissible>
 
   bool _isExiting = false;
 
+  int _pointerCount = 0;
+
   bool get _isActive => _dragUnderway || _animateController.isAnimating;
 
   @override
@@ -67,7 +70,7 @@ class _DragDismissibleState extends State<DragDismissible>
   @override
   void didUpdateWidget(DragDismissible oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     // 检查信号是否被触发
     if (widget.exitSignal != null && widget.exitSignal!.isTriggered) {
       // 触发退出动画
@@ -118,6 +121,8 @@ class _DragDismissibleState extends State<DragDismissible>
   }
 
   void _handleDragStart(DragStartDetails details) {
+    if (_pointerCount > 1) return;
+
     _dragUnderway = true;
 
     if (_animateController.isAnimating) {
@@ -132,6 +137,8 @@ class _DragDismissibleState extends State<DragDismissible>
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
+    if (_pointerCount > 1) return;
+
     if (!_isActive || _animateController.isAnimating) {
       return;
     }
@@ -176,6 +183,18 @@ class _DragDismissibleState extends State<DragDismissible>
     }
   }
 
+  void _pointerAdded(PointerEvent event) {
+    setState(() {
+      _pointerCount++;
+    });
+  }
+
+  void _pointerRemoved(PointerEvent event) {
+    setState(() {
+      _pointerCount = _pointerCount > 0 ? _pointerCount - 1 : 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final Widget content = WillPopScope(
@@ -202,12 +221,17 @@ class _DragDismissibleState extends State<DragDismissible>
       ),
     );
 
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onVerticalDragStart: widget.enabled ? _handleDragStart : null,
-      onVerticalDragUpdate: widget.enabled ? _handleDragUpdate : null,
-      onVerticalDragEnd: widget.enabled ? _handleDragEnd : null,
-      child: content,
+    return Listener(
+      onPointerDown: _pointerAdded,
+      onPointerUp: _pointerRemoved,
+      onPointerCancel: _pointerRemoved,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onVerticalDragStart: (widget.enabled && _pointerCount <= 1) ? _handleDragStart : null,
+        onVerticalDragUpdate: (widget.enabled && _pointerCount <= 1) ? _handleDragUpdate : null,
+        onVerticalDragEnd: (widget.enabled && _pointerCount <= 1) ? _handleDragEnd : null,
+        child: content,
+      ),
     );
   }
 }
