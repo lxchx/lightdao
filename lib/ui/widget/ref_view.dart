@@ -135,7 +135,6 @@ class _RefViewState extends State<RefView> with SingleTickerProviderStateMixin {
                                             threadJson: snapshot.data!,
                                             contentNeedCollapsed: false,
                                             noMoreParse: true,
-                                            onImageEdit: widget.onImageEdit,
                                           )),
                                     ],
                                   ),
@@ -438,7 +437,8 @@ class _RefViewState extends State<RefView> with SingleTickerProviderStateMixin {
                                             refCache: widget.refCache,
                                             inPopView: widget.inPopView,
                                             isThreadFirstOrForumPreview: widget
-                                                .isThreadFirstOrForumPreview),
+                                                .isThreadFirstOrForumPreview,
+                                            onImageEdit: widget.onImageEdit),
                                       ),
                                       if (snapshot.data?.img != '')
                                         Padding(
