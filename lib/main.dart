@@ -9,7 +9,7 @@ import 'package:lightdao/data/trend_data.dart';
 import 'package:lightdao/data/xdao/forum.dart';
 import 'package:lightdao/data/xdao/reply.dart';
 import 'package:lightdao/data/xdao/timeline.dart';
-import 'package:lightdao/ui/page/forum.dart';
+import 'package:lightdao/ui/page/app_page.dart';
 import 'package:flutter/material.dart';
 import 'package:lightdao/ui/page/more/about.dart';
 import 'package:lightdao/ui/page/thread.dart';
@@ -231,7 +231,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return ForumPage();
+    return AppPage();
   }
 
   Future<void> _readClipboard() async {
