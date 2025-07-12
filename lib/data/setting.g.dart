@@ -119,6 +119,7 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
       isMultiColumn: fields[38] == null ? true : fields[38] as bool,
       seenNoticeDate: fields[40] == null ? 0 : fields[40] as int,
       phraseWidth: fields[41] == null ? 175 : fields[41] as int,
+      fetchTimeout: fields[42] == null ? 3 : fields[42] as int,
       viewPoOnlyHistory: fields[39] as LRUCache<int, ReplyJsonWithPage>?,
     );
   }
@@ -126,7 +127,7 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
   @override
   void write(BinaryWriter writer, LightDaoSetting obj) {
     writer
-      ..writeByte(42)
+      ..writeByte(43)
       ..writeByte(0)
       ..write(obj.cookies)
       ..writeByte(1)
@@ -210,7 +211,9 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
       ..writeByte(40)
       ..write(obj.seenNoticeDate)
       ..writeByte(41)
-      ..write(obj.phraseWidth);
+      ..write(obj.phraseWidth)
+      ..writeByte(42)
+      ..write(obj.fetchTimeout);
   }
 
   @override

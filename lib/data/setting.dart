@@ -175,6 +175,9 @@ class LightDaoSetting extends HiveObject {
   @HiveField(41, defaultValue: 175)
   int phraseWidth;
 
+  @HiveField(42, defaultValue: 3)
+  int fetchTimeout;
+
   LightDaoSetting({
     required this.cookies,
     required this.currentCookie,
@@ -217,6 +220,7 @@ class LightDaoSetting extends HiveObject {
     required this.isMultiColumn,
     required this.seenNoticeDate,
     required this.phraseWidth,
+    required this.fetchTimeout,
     LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
   })  : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
         viewPoOnlyHistory =
@@ -333,7 +337,7 @@ class MyAppState with ChangeNotifier {
         fetchTimelinesStatus != SimpleStatus.loading) {
       fetchTimelinesStatus = SimpleStatus.loading;
       fetchTimelines()
-          .timeout(Duration(seconds: 5))
+          .timeout(Duration(seconds: setting.fetchTimeout))
           .then((timelines) => setState((_) async {
                 fetchTimelinesStatus = SimpleStatus.completed;
                 setting.cacheTimelines.addAll(timelines);
@@ -361,7 +365,7 @@ class MyAppState with ChangeNotifier {
         fetchForumsStatus != SimpleStatus.loading) {
       fetchForumsStatus = SimpleStatus.loading;
       fetchForumList()
-          .timeout(Duration(seconds: 5))
+          .timeout(Duration(seconds: setting.fetchTimeout))
           .then((forumlists) => setState((_) async {
                 fetchForumsStatus = SimpleStatus.completed;
                 setting.cacheForumLists.addAll(forumlists);
@@ -481,6 +485,7 @@ class MyAppState with ChangeNotifier {
           viewPoOnlyHistory: LRUCache<int, ReplyJsonWithPage>(5000),
           seenNoticeDate: 0,
           phraseWidth: 175,
+          fetchTimeout: 3,
         );
     setting.phrases = mergePhraseLists(setting.phrases, xDaoPhrases);
     notifyListeners();

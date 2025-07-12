@@ -449,15 +449,30 @@ class _ThreadPage2State extends State<ThreadPage2> {
         // TsukuyomiList的索引需要+1（因为第一项是头部）
         _scrollController.jumpToIndex(targetIndex + 1);
         if (jumpToEnd) {
-          _handlePageManagerError(_curPageManager.tryLoadNextPage());
+          _curPageManager.tryLoadNextPage();
         }
       }
     } else {
-      // 页面未加载，使用jumpToPage方法
-      _handlePageManagerError(_curPageManager.jumpToPage(page)).then((_) {
+      // 页面未加载，直接换一个新的PageManager
+      _scrollController.jumpToIndex(0);  // 先跳转到首个回复
+      final appState = Provider.of<MyAppState>(context, listen: false);
+      _pageManager = ThreadPageManager(
+        threadId: widget.headerThread.id,
+        initialPage: page,
+        cookie: appState.getCurrentCookie(),
+        refCache: _refCache,
+      );
+      _pageManager
+          .registerPreviousPageCallback((page, newItemCount, _, doInsert) {
+        _scrollController.onBatchInsertItems(0, newItemCount, () => doInsert());
+      });
+      Future.microtask(() async {
+        await _pageManager.initialize();
+        setState(() {});
         if (jumpToEnd) {
           _scrollController.jumpToIndex(_curPageManager.totalItemsCount - 1);
           _handlePageManagerError(_curPageManager.tryLoadNextPage());
+          setState(() {});
         }
       });
     }
@@ -711,7 +726,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
       final viewportDimension = position.viewportDimension;
 
       if (maxScrollExtent - currentPixels <= viewportDimension) {
-        _handlePageManagerError(_curPageManager.tryLoadNextPage());
+        _curPageManager.tryLoadNextPage();
       }
     });
     _scrollController.addListener(() {
@@ -719,11 +734,10 @@ class _ThreadPage2State extends State<ThreadPage2> {
     });
 
     Future.microtask(() async {
-      await _handlePageManagerError(_pageManager.initialize());
+      await _pageManager.initialize();
       setState(() {});
       // 预加载下一页
-      _handlePageManagerError(
-          _pageManager.tryLoadNextPage().then((_) => setState(() {})));
+      _pageManager.tryLoadNextPage().then((_) => setState(() {}));
       Future.delayed(Duration(milliseconds: 100), () {
         if (!mounted) return;
 
@@ -930,89 +944,138 @@ class _ThreadPage2State extends State<ThreadPage2> {
                   ),
                 ),
                 const Divider(),
-                if (_curPageManager.isLoadingPreviousPage)
-                  myDividerWrapper(child: loadingReply)
-                else if (_curPageManager.hasMorePreviousPages)
-                  myDividerWrapper(
-                      child: InkWell(
-                    onTap: () {
-                      _scrollController.jumpToIndex(1);
-                      _handlePageManagerError(
-                          _curPageManager.tryLoadPreviousPage());
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton(
-                            onPressed: () {
-                              _scrollController.jumpToIndex(1);
-                              _handlePageManagerError(
-                                  _curPageManager.tryLoadPreviousPage());
-                            },
-                            child: Text('加载前页的回复')),
-                      ],
-                    ),
-                  ))
+                if (!_curPageManager.isEmpty)
+                  ValueListenableBuilder<PageState>(
+                  valueListenable: _curPageManager.previousPageStateNotifier,
+                  builder: (context, state, child) {
+                    return switch (state) {
+                      PageHasMore() => myDividerWrapper(
+                          child: InkWell(
+                        onTap: () {
+                          _scrollController.jumpToIndex(1);
+                          _handlePageManagerError(
+                              _curPageManager.tryLoadPreviousPage());
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton(
+                                onPressed: () {
+                                  _scrollController.jumpToIndex(1);
+                                  _handlePageManagerError(
+                                      _curPageManager.tryLoadPreviousPage());
+                                },
+                                child: Text('加载前页的回复')),
+                          ],
+                        ),
+                      )),
+                      PageLoading() => myDividerWrapper(child: loadingReply),
+                      PageError(error: final err, retry: final retry) => ListTile(
+                        textColor: Theme.of(context).colorScheme.error,
+                        title: Text(err is TimeoutException ? '前页加载超时' : '前页加载失败: $err'),
+                        onTap: () => setState(() => retry()),
+                        trailing: TextButton.icon(
+                          onPressed: () => setState(() => retry()),
+                          label: Text('重试'),
+                          icon: Icon(Icons.refresh),
+                        ),
+                      ),
+                      PageFullLoaded() => const SizedBox.shrink(),
+                    };
+                  },
+                )
               ],
             );
           } else if (index == replyCount + 1) {
-            return Column(
-              children: [
-                if (_curPageManager.isLoadingNextPage)
-                  loadingReply
-                else
-                  Column(
-                    children: [
-                      if (!appState.setting.dividerBetweenReply
-                          // 无回复时显示分割线会与串首的尾分割线重复
-                          &&
-                          replyCount > 0)
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                              vertical: breakpoint.gutters / 2),
-                          child: Divider(),
-                        ),
-                      SizedBox(
-                        width: double.infinity,
-                        child: InkWell(
-                          onTap: () {
-                            _handlePageManagerError(
-                                    _curPageManager.forceLoadNextPage())
-                                .then((replyCount) {
-                              if (replyCount == 0) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('没有更多回复了！'),
-                                    duration: Durations.long1,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            });
-                          },
-                          child: Padding(
+            return ValueListenableBuilder<PageState>(
+              valueListenable: _curPageManager.nextPageStateNotifier,
+              builder: (context, state, child) {
+                return switch (state) {
+                  PageLoading() => loadingReply,
+                  PageFullLoaded() => Column(
+                      children: [
+                        if (!appState.setting.dividerBetweenReply &&
+                            replyCount > 0)
+                          Padding(
                             padding: EdgeInsets.symmetric(
                                 vertical: breakpoint.gutters / 2),
-                            child: Text.rich(
-                              textAlign: TextAlign.center,
-                              TextSpan(text: '到底了(　ﾟ 3ﾟ)\n', children: [
-                                TextSpan(
-                                  text: '\n刷新试试？',
-                                  style: TextStyle(
-                                      decoration: TextDecoration.underline,
-                                      fontSize: 12),
-                                )
-                              ]),
-                              style:
-                                  TextStyle(color: Theme.of(context).hintColor),
+                            child: Divider(),
+                          ),
+                        SizedBox(
+                          width: double.infinity,
+                          child: InkWell(
+                            onTap: () {
+                              _handlePageManagerError(
+                                      _curPageManager.forceLoadNextPage())
+                                  .then((replyCount) {
+                                if (replyCount == 0) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('没有更多回复了！'),
+                                      duration: Durations.long1,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              });
+                            },
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                  vertical: breakpoint.gutters / 2),
+                              child: Text.rich(
+                                textAlign: TextAlign.center,
+                                TextSpan(text: '到底了(　ﾟ 3ﾟ)\n', children: [
+                                  TextSpan(
+                                    text: '\n刷新试试？',
+                                    style: TextStyle(
+                                        decoration: TextDecoration.underline,
+                                        fontSize: 12),
+                                  )
+                                ]),
+                                style: TextStyle(
+                                    color: Theme.of(context).hintColor),
+                              ),
                             ),
                           ),
                         ),
+                      ],
+                    ),
+                  PageError(error: final err, retry: final retry) => _curPageManager.isEmpty ? 
+                  SizedBox(
+                    height: 400,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        spacing: breakpoint.gutters,
+                        children: [
+                          Text(style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontSize: Theme.of(context).textTheme.titleLarge!.fontSize! * 3,
+                          ), '( ;´д`)'),
+                          Text(style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.error), '加载回复内容失败'),
+                          Text(err is TimeoutException ? '原因：加载超时' : err.toString()),
+                                  ElevatedButton.icon(
+                                    onPressed: () => setState(() => retry()),
+                                    label: Text('重试'),
+                                    icon: Icon(Icons.restart_alt),
+                                  )
+                        ],
                       ),
-                    ],
+                    ),
+                  )
+                   : ListTile(
+                    textColor: Theme.of(context).colorScheme.error,
+                    title: Text(err is TimeoutException ? '后页加载超时' : '后页加载失败: $err'),
+                    onTap: () => setState(() => retry()),
+                    trailing: TextButton.icon(
+                      onPressed: () => setState(() => retry()),
+                      label: Text('重试'),
+                      icon: Icon(Icons.refresh),
+                    ),
                   ),
-                //const Text('这里是尾部'),
-              ],
+                  PageHasMore() => const SizedBox.shrink(),
+                };
+              },
             );
           }
           final replyIndex = index - 1;

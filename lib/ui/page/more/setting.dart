@@ -343,6 +343,26 @@ class SettingsPage extends StatelessWidget {
               ),
             ],
           ),
+          // 功能
+          SettingsSection(
+            title: Text('功能'),
+            children: [
+              SettingsTile.inputTile(
+                contentPadding: breakpoint.gutters,
+                title: '拉取超时',
+                subtitle: '单位为秒',
+                value: appState.setting.fetchTimeout.toString(),
+                onChanged: (String value) {
+                  final intValue = int.tryParse(value);
+                  if (intValue != null) {
+                    appState.setState((state) {
+                      state.setting.fetchTimeout = intValue;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
           SettingsSection(
             title: Text('高级'),
             children: [
@@ -506,6 +526,54 @@ class SettingsSection extends StatelessWidget {
 }
 
 class SettingsTile {
+  static Widget inputTile({
+    required String title,
+    String? subtitle,
+    required String value,
+    required ValueChanged<String> onChanged,
+    required double contentPadding,
+  }) {
+    return Builder(builder: (context) {
+      return ListTile(
+        contentPadding: EdgeInsets.symmetric(horizontal: contentPadding),
+        title: Text(title),
+        subtitle: subtitle == null ? null : Text(subtitle),
+        leadingAndTrailingTextStyle: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(fontWeight: FontWeight.bold),
+        trailing: Text(value),
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) {
+              final controller = TextEditingController(text: value);
+              return AlertDialog(
+                title: Text(title),
+                content: TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('取消'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      onChanged(controller.text);
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('确定'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    });
+  }
   static Widget switchTile({
     required String title,
     String? subtitle,

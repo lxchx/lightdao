@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lightdao/data/xdao/ref.dart';
 import 'package:lightdao/data/xdao/reply.dart';
@@ -7,6 +8,34 @@ import 'package:lightdao/data/xdao/thread.dart';
 import 'package:lightdao/utils/google_cse_api.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/xdao_api.dart';
+
+@immutable
+sealed class PageState {
+  const PageState();
+}
+
+/// There are more pages to load.
+class PageHasMore extends PageState {
+  const PageHasMore();
+}
+
+/// All pages have been loaded.
+class PageFullLoaded extends PageState {
+  const PageFullLoaded();
+}
+
+/// Currently loading a page.
+class PageLoading extends PageState {
+  const PageLoading();
+}
+
+/// An error occurred while loading.
+class PageError extends PageState {
+  final Object error;
+  final Future<void> Function() retry;
+
+  const PageError(this.error, this.retry);
+}
 
 /// 页面加载状态回调
 typedef PageLoadCallback<T> = void Function(int pageIndex, int itemCount,
@@ -27,17 +56,11 @@ abstract class PageManager<T> {
   /// 当前已加载的最大页码
   int _maxLoadedPage;
 
-  /// 是否正在加载前一页
-  bool _isLoadingPreviousPage = false;
+  /// 前页状态通知
+  final ValueNotifier<PageState> previousPageStateNotifier;
 
-  /// 是否正在加载后一页
-  bool _isLoadingNextPage = false;
-
-  /// 是否还有前页可加载
-  bool _hasMorePreviousPages = true;
-
-  /// 是否还有后页可加载
-  bool _hasMoreNextPages = true;
+  /// 后页状态通知
+  final ValueNotifier<PageState> nextPageStateNotifier;
 
   /// 已知的最大页数，初始为null表示未知
   int? _knownMaxPage;
@@ -59,7 +82,9 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
     required this.initialPage,
     required this.pageMaxSize,
   })  : _minLoadedPage = initialPage,
-        _maxLoadedPage = initialPage;
+        _maxLoadedPage = initialPage,
+        previousPageStateNotifier = ValueNotifier(initialPage > 1 ? PageHasMore() : PageFullLoaded()),
+        nextPageStateNotifier = ValueNotifier(PageHasMore());
 
   /// 带初始数据的构造函数
   ///
@@ -71,12 +96,11 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
     required this.pageMaxSize,
     required List<T> initialItems,
   })  : _minLoadedPage = initialPage,
-        _maxLoadedPage = initialPage{
+        _maxLoadedPage = initialPage,
+        previousPageStateNotifier = ValueNotifier(initialPage > 1 ? PageHasMore() : PageFullLoaded()),
+        nextPageStateNotifier = ValueNotifier(initialItems.length < pageMaxSize ? PageFullLoaded() : PageHasMore()) {
     _pageItems[initialPage] = initialItems;
-
-    // 如果初始数据不足一页，标记没有更多后页
     if (initialItems.length < pageMaxSize) {
-      _hasMoreNextPages = false;
       _knownMaxPage = initialPage;
     }
   }
@@ -84,11 +108,12 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
   /// 初始化加载
   Future<void> initialize() async {
     if (_pageItems.containsKey(initialPage)) return;
-    _isLoadingNextPage = true;
+    nextPageStateNotifier.value = PageLoading();
     try {
-      await _fetchPage(initialPage);
-    } finally {
-      _isLoadingNextPage = false;
+      final items = await _fetchPage(initialPage);
+      nextPageStateNotifier.value = items.length < pageMaxSize ? PageFullLoaded() : PageHasMore();
+    } catch (e) {
+      nextPageStateNotifier.value = PageError(e, initialize);
     }
   }
 
@@ -105,16 +130,18 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
     // 重置页面状态
     _minLoadedPage = page;
     _maxLoadedPage = page;
-    _hasMorePreviousPages = page > 1; // 如果不是第一页，就还有前页可加载
-    _hasMoreNextPages = true; // 重置后页状态
+    previousPageStateNotifier.value = page > 1 ? PageHasMore() : PageFullLoaded();
+    nextPageStateNotifier.value = PageHasMore();
     _knownMaxPage = null; // 重置已知最大页数
 
-    // 重置加载状态
-    _isLoadingPreviousPage = false;
-    _isLoadingNextPage = false;
-
     // 加载新页面的数据
-    await _fetchPage(page);
+    nextPageStateNotifier.value = PageLoading();
+    try {
+      final items = await _fetchPage(page);
+      nextPageStateNotifier.value = items.length < pageMaxSize ? PageFullLoaded() : PageHasMore();
+    } catch (e) {
+      nextPageStateNotifier.value = PageError(e, () => jumpToPage(page));
+    }
   }
 
   /// 子类需要实现的获取页面数据的方法
@@ -125,17 +152,7 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
     return item1 == item2;
   }
 
-  /// 是否还有前页未加载
-  bool get hasMorePreviousPages => _hasMorePreviousPages && _minLoadedPage > 1;
 
-  /// 是否还有后页未加载
-  bool get hasMoreNextPages => _hasMoreNextPages;
-
-  /// 是否正在加载前页
-  bool get isLoadingPreviousPage => _isLoadingPreviousPage;
-
-  /// 是否正在加载后页
-  bool get isLoadingNextPage => _isLoadingNextPage;
 
   /// 当前已加载的页面范围
   RangeValues get loadedPageRange =>
@@ -238,15 +255,15 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
   ///
   /// 如果正在加载前一页或没有更多前页，则不执行任何操作
   Future<void> tryLoadPreviousPage() async {
-    if (_isLoadingPreviousPage || !hasMorePreviousPages) return;
+    if (previousPageStateNotifier.value is PageLoading || previousPageStateNotifier.value is PageFullLoaded || previousPageStateNotifier.value is PageError) return;
 
     final previousPage = _minLoadedPage - 1;
     if (previousPage < 1) {
-      _hasMorePreviousPages = false;
+      previousPageStateNotifier.value = PageFullLoaded();
       return;
     }
 
-    _isLoadingPreviousPage = true;
+    previousPageStateNotifier.value = PageLoading();
 
     try {
       final items = await fetchPage(previousPage);
@@ -262,7 +279,9 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
 
         // 如果是第一页，标记没有更多前页
         if (previousPage == 1) {
-          _hasMorePreviousPages = false;
+          previousPageStateNotifier.value = PageFullLoaded();
+        } else {
+          previousPageStateNotifier.value = PageHasMore();
         }
 
         insertExecuted = true;
@@ -280,8 +299,8 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
         // 没有回调，直接执行插入
         doInsert();
       }
-    } finally {
-      _isLoadingPreviousPage = false;
+    } catch (e) {
+      previousPageStateNotifier.value = PageError(e, tryLoadPreviousPage);
     }
   }
 
@@ -289,17 +308,17 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
   ///
   /// 如果正在加载后一页或没有更多后页，则不执行任何操作
   Future<void> tryLoadNextPage() async {
-    if (_isLoadingNextPage || !hasMoreNextPages) return;
+    if (nextPageStateNotifier.value is PageLoading || nextPageStateNotifier.value is PageFullLoaded || nextPageStateNotifier.value is PageError) return;
 
     final nextPage = _maxLoadedPage + 1;
 
     // 如果已知最大页数，且已经加载到最大页，则不再加载
     if (_knownMaxPage != null && nextPage > _knownMaxPage!) {
-      _hasMoreNextPages = false;
+      nextPageStateNotifier.value = PageFullLoaded();
       return;
     }
 
-    _isLoadingNextPage = true;
+    nextPageStateNotifier.value = PageLoading();
 
     try {
       final items = await fetchPage(nextPage);
@@ -315,8 +334,10 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
 
         // 如果返回的数据为空或不足一页，说明没有更多页面了
         if (items.isEmpty || items.length < pageMaxSize) {
-          _hasMoreNextPages = false;
+          nextPageStateNotifier.value = PageFullLoaded();
           _knownMaxPage = items.isEmpty ? nextPage - 1 : nextPage;
+        } else {
+          nextPageStateNotifier.value = PageHasMore();
         }
 
         insertExecuted = true;
@@ -334,8 +355,8 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
         // 没有回调，直接执行插入
         doInsert();
       }
-    } finally {
-      _isLoadingNextPage = false;
+    } catch (e) {
+      nextPageStateNotifier.value = PageError(e, tryLoadNextPage);
     }
   }
 
@@ -345,9 +366,9 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
   /// 当最后一页满页时，拉取下一页
   /// 返回新增的数据数量
   Future<int> forceLoadNextPage() async {
-    if (_isLoadingNextPage) return 0;
+    if (nextPageStateNotifier.value is PageLoading) return 0;
 
-    _isLoadingNextPage = true;
+    nextPageStateNotifier.value = PageLoading();
     int newItemCount = 0;
 
     try {
@@ -372,8 +393,10 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
 
           // 如果返回的数据为空或不足一页，说明没有更多页面了
           if (items.isEmpty || items.length < pageMaxSize) {
-            _hasMoreNextPages = false;
+            nextPageStateNotifier.value = PageFullLoaded();
             _knownMaxPage = items.isEmpty ? nextPage - 1 : nextPage;
+          } else {
+            nextPageStateNotifier.value = PageHasMore();
           }
 
           insertExecuted = true;
@@ -438,9 +461,11 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
           _pageItems[_maxLoadedPage] = mergedItems;
 
           // 如果返回的数据仍不足一页，说明没有更多页面了
-          if (newItems.length < pageMaxSize) {
-            _hasMoreNextPages = false;
+          if (mergedItems.length < pageMaxSize) {
+            nextPageStateNotifier.value = PageFullLoaded();
             _knownMaxPage = _maxLoadedPage;
+          } else {
+            nextPageStateNotifier.value = PageHasMore();
           }
 
           insertExecuted = true;
@@ -459,8 +484,8 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
           doInsert();
         }
       }
-    } finally {
-      _isLoadingNextPage = false;
+    } catch (e) {
+      nextPageStateNotifier.value = PageError(e, forceLoadNextPage);
     }
 
     return newItemCount;
@@ -522,6 +547,7 @@ class ThreadPageManager extends PageManager<ReplyJson> {
   final String? cookie;
   final LRUCache<int, Future<RefHtml>>? refCache;
   final bool isPoOnly;
+  final Duration timeout;
 
   /// fetchPage 时顺带获取最大页数，逻辑比较特殊，放到子类这里实现
   late int _threadMaxPage;
@@ -539,6 +565,7 @@ class ThreadPageManager extends PageManager<ReplyJson> {
     required super.initialPage,
     this.refCache,
     this.isPoOnly = false,
+    this.timeout = const Duration(seconds: 10),
   }) : super(pageMaxSize: 19) {
     _threadMaxPage = initialPage;
   }
@@ -550,6 +577,7 @@ class ThreadPageManager extends PageManager<ReplyJson> {
     required super.initialItems,
     this.refCache,
     this.isPoOnly = false,
+    this.timeout = const Duration(seconds: 10),
   }) : super.withInitialItems(
           pageMaxSize: 19,
         ) {
@@ -559,7 +587,7 @@ class ThreadPageManager extends PageManager<ReplyJson> {
   @override
   Future<List<ReplyJson>> fetchPage(int page) async {
     final getItems = isPoOnly ? getThreadPoOnly : getThread;
-    final pageThread = await getItems(threadId, page, cookie);
+    final pageThread = await getItems(threadId, page, cookie).timeout(timeout);
     _threadMaxPage = max(_threadMaxPage, pageThread.replyCount ~/ 19 + 1);
     _fid ??= pageThread.fid;
     headerReply = pageThread;
@@ -587,11 +615,13 @@ class CSEPageManager extends PageManager<GcseItem> {
   final String query;
   final String cx;
   final String key;
+  final Duration timeout;
 
   CSEPageManager({
     required this.query,
     this.cx = 'a72793f0a2020430b',
     this.key = 'AIzaSyD2OeVt3FHS98PqRzynqcKnCRzc47igpbM',
+    this.timeout = const Duration(seconds: 10),
     super.initialPage = 1,
     super.pageMaxSize = 10,
   });
@@ -610,10 +640,12 @@ class CSEPageManager extends PageManager<GcseItem> {
       cx: cx,
       key: key,
       start: start,
-    );
+    ).timeout(timeout);
     // 如果返回数量不足一页，标记没有更多后页
     if (result.items.length < pageMaxSize) {
-      _hasMoreNextPages = false;
+      nextPageStateNotifier.value = const PageFullLoaded();
+    } else {
+      nextPageStateNotifier.value = const PageHasMore();
     }
     return result.items;
   }
