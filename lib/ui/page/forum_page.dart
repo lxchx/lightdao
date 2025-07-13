@@ -18,129 +18,31 @@ import 'package:lightdao/utils/status.dart';
 import '../../data/setting.dart';
 import '../../data/xdao/thread.dart';
 import '../widget/reply_item.dart';
-import 'package:lightdao/ui/widget/navigable_page.dart';
+import 'package:lightdao/ui/widget/scaffold_accessory_builder.dart';
 
-class ForumPage extends StatefulWidget implements NavigablePage {
+/// 一个数据类，用于封装AppPage和ForumPage之间传递的板块选择信息。
+class ForumSelection {
+  final int id;
+  final String name;
+  final bool isTimeline;
+
+  const ForumSelection({
+    required this.id,
+    required this.name,
+    required this.isTimeline,
+  });
+}
+
+class ForumPage extends StatefulWidget {
   final ValueNotifier<ForumSelection> forumSelectionNotifier;
-  const ForumPage({super.key, required this.forumSelectionNotifier});
+  
+  ForumPage({super.key, required this.forumSelectionNotifier});
 
   @override
   State<ForumPage> createState() => _ForumPageState();
-
-  @override
-  List<Widget> buildDrawerContent(BuildContext context) {
-    final appState = Provider.of<MyAppState>(context, listen: false);
-
-    void handleSelection(ForumSelection selection) {
-      forumSelectionNotifier.value = selection;
-      if (Breakpoint.fromMediaQuery(context).window < WindowSize.medium) {
-        Navigator.of(context).pop();
-      }
-    }
-
-    return [
-      ValueListenableBuilder<ForumSelection>(
-        valueListenable: forumSelectionNotifier,
-        builder: (context, currentSelection, child) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ExpansionTile(
-                initiallyExpanded: true,
-                title: const Text('常用板块'),
-                subtitle: const Text('长按进行添加或移除'),
-                children: appState.setting.favoredForums
-                    .map(
-                      (forum) => ListTile(
-                        onTap: () => handleSelection(
-                          ForumSelection(
-                            id: forum.id,
-                            name: forum.getShowName(),
-                            isTimeline: false,
-                          ),
-                        ),
-                        onLongPress: () => appState.setState(
-                          (_) => appState.setting.favoredForums.removeWhere(
-                            (f) => f.id == forum.id,
-                          ),
-                        ),
-                        title: HtmlWidget(forum.getShowName()),
-                        selected:
-                            !currentSelection.isTimeline &&
-                            currentSelection.id == forum.id,
-                      ),
-                    )
-                    .toList(),
-              ),
-              if (appState.fetchTimelinesStatus == SimpleStatus.completed)
-                ExpansionTile(
-                  initiallyExpanded: currentSelection.isTimeline,
-                  title: const Text('时间线'),
-                  children: appState.setting.cacheTimelines
-                      .map(
-                        (timeline) => ListTile(
-                          onTap: () => handleSelection(
-                            ForumSelection(
-                              id: timeline.id,
-                              name: timeline.getShowName(),
-                              isTimeline: true,
-                            ),
-                          ),
-                          title: HtmlWidget(timeline.getShowName()),
-                          selected:
-                              currentSelection.isTimeline &&
-                              currentSelection.id == timeline.id,
-                        ),
-                      )
-                      .toList(),
-                ),
-              if (appState.fetchForumsStatus == SimpleStatus.completed)
-                ...appState.setting.cacheForumLists.map(
-                  (forumList) => ExpansionTile(
-                    initiallyExpanded:
-                        !currentSelection.isTimeline &&
-                        forumList.forums.any(
-                          (f) => f.id == currentSelection.id,
-                        ),
-                    title: HtmlWidget(forumList.name),
-                    children: forumList.forums
-                        .map(
-                          (forum) => ListTile(
-                            onTap: () => handleSelection(
-                              ForumSelection(
-                                id: forum.id,
-                                name: forum.getShowName(),
-                                isTimeline: false,
-                              ),
-                            ),
-                            onLongPress: () {
-                              if (!appState.setting.favoredForums.any(
-                                (f) => f.id == forum.id,
-                              )) {
-                                appState.setState(
-                                  (_) =>
-                                      appState.setting.favoredForums.add(forum),
-                                );
-                              }
-                            },
-                            title: HtmlWidget(forum.getShowName()),
-                            selected:
-                                !currentSelection.isTimeline &&
-                                currentSelection.id == forum.id,
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
-    ];
-  }
 }
 
-class _ForumPageState extends State<ForumPage> {
+class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
   late PageManager<ThreadJson> _pageManager;
   final ScrollController _scrollController = ScrollController();
   bool _isInitialized = false;
@@ -1087,13 +989,14 @@ class _ForumPageState extends State<ForumPage> {
                       child: ValueListenableBuilder<PageState>(
                         valueListenable: _pageManager.nextPageStateNotifier,
                         builder: (context, state, child) {
-                          if (_pageManager.isEmpty)
+                          if (_pageManager.isEmpty) {
                             return const SizedBox.shrink();
+                          }
 
                           Widget content;
                           switch (state) {
                             case PageLoading():
-                              content = const SizedBox.shrink();
+                              return const SizedBox.shrink();
                             case PageFullLoaded():
                               content = Center(
                                 child: Text(
@@ -1130,7 +1033,7 @@ class _ForumPageState extends State<ForumPage> {
                               return const SizedBox.shrink();
                           }
                           return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 32.0),
+                            padding: EdgeInsets.symmetric(vertical: breakpoint.gutters),
                             child: content,
                           );
                         },
@@ -1143,6 +1046,154 @@ class _ForumPageState extends State<ForumPage> {
           ),
         );
       },
+    );
+  }
+  
+  @override
+  List<Widget> buildDrawerContent(BuildContext context) {
+    final appState = Provider.of<MyAppState>(context, listen: false);
+
+    void handleSelection(ForumSelection selection) {
+      widget.forumSelectionNotifier.value = selection;
+      if (Breakpoint.fromMediaQuery(context).window < WindowSize.medium) {
+        Navigator.of(context).pop();
+      }
+    }
+
+    return [
+      ValueListenableBuilder<ForumSelection>(
+        valueListenable: widget.forumSelectionNotifier,
+        builder: (context, currentSelection, child) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ExpansionTile(
+                initiallyExpanded: true,
+                title: const Text('常用板块'),
+                subtitle: const Text('长按进行添加或移除'),
+                children: appState.setting.favoredForums
+                    .map(
+                      (forum) => ListTile(
+                        onTap: () => handleSelection(
+                          ForumSelection(
+                            id: forum.id,
+                            name: forum.getShowName(),
+                            isTimeline: false,
+                          ),
+                        ),
+                        onLongPress: () => appState.setState(
+                          (_) => appState.setting.favoredForums.removeWhere(
+                            (f) => f.id == forum.id,
+                          ),
+                        ),
+                        title: HtmlWidget(forum.getShowName()),
+                        selected:
+                            !currentSelection.isTimeline &&
+                            currentSelection.id == forum.id,
+                      ),
+                    )
+                    .toList(),
+              ),
+              if (appState.fetchTimelinesStatus == SimpleStatus.completed)
+                ExpansionTile(
+                  initiallyExpanded: currentSelection.isTimeline,
+                  title: const Text('时间线'),
+                  children: appState.setting.cacheTimelines
+                      .map(
+                        (timeline) => ListTile(
+                          onTap: () => handleSelection(
+                            ForumSelection(
+                              id: timeline.id,
+                              name: timeline.getShowName(),
+                              isTimeline: true,
+                            ),
+                          ),
+                          title: HtmlWidget(timeline.getShowName()),
+                          selected:
+                              currentSelection.isTimeline &&
+                              currentSelection.id == timeline.id,
+                        ),
+                      )
+                      .toList(),
+                ),
+              if (appState.fetchForumsStatus == SimpleStatus.completed)
+                ...appState.setting.cacheForumLists.map(
+                  (forumList) => ExpansionTile(
+                    initiallyExpanded:
+                        !currentSelection.isTimeline &&
+                        forumList.forums.any(
+                          (f) => f.id == currentSelection.id,
+                        ),
+                    title: HtmlWidget(forumList.name),
+                    children: forumList.forums
+                        .map(
+                          (forum) => ListTile(
+                            onTap: () => handleSelection(
+                              ForumSelection(
+                                id: forum.id,
+                                name: forum.getShowName(),
+                                isTimeline: false,
+                              ),
+                            ),
+                            onLongPress: () {
+                              if (!appState.setting.favoredForums.any(
+                                (f) => f.id == forum.id,
+                              )) {
+                                appState.setState(
+                                  (_) =>
+                                      appState.setting.favoredForums.add(forum),
+                                );
+                              }
+                            },
+                            title: HtmlWidget(forum.getShowName()),
+                            selected:
+                                !currentSelection.isTimeline &&
+                                currentSelection.id == forum.id,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    ];
+  }
+  
+  @override
+  Widget? buildFloatingActionButton(BuildContext context) {
+    return ValueListenableBuilder<ForumSelection>(
+      valueListenable: widget.forumSelectionNotifier,
+      builder: (context, currentSelection, child) {
+        final appState = Provider.of<MyAppState>(context, listen: false);
+        return FloatingActionButton.extended(
+                  onPressed: () => showReplyBottomSheet(
+                                  context,
+                                  true,
+                                  currentSelection.isTimeline
+                                      ? appState.forumMap.values
+                                            .firstWhere(
+                                              (forum) => forum.name == "综合版1",
+                                              orElse: () =>
+                                                  appState.forumMap.values.first,
+                                            )
+                                            .id
+                                      : currentSelection.id,
+                                  -1,
+                                  fakeThread,
+                                  _postImageFile,
+                                  (image) => _postImageFile = image,
+                                  _postTitleControler,
+                                  _postAuthorControler,
+                                  _postTextControler,
+                                  () => _initializePageManager(),
+                                ),
+                  tooltip: '发串',
+                  label: const Text('发串'),
+                  icon: const Icon(Icons.edit),
+                );
+      }
     );
   }
 }

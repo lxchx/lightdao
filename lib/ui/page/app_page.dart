@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:lightdao/data/setting.dart';
 import 'package:lightdao/data/xdao/ref.dart';
-import 'package:lightdao/ui/widget/navigable_page.dart';
+import 'package:lightdao/ui/widget/scaffold_accessory_builder.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:provider/provider.dart';
 import 'package:breakpoint/breakpoint.dart';
@@ -20,6 +20,9 @@ class AppPage extends StatefulWidget {
 
 class _AppPageState extends State<AppPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey<ScaffoldAccessoryBuilder<ForumPage>> _forumPageKey =
+      GlobalKey<ScaffoldAccessoryBuilder<ForumPage>>();
+
   int _selectedPageIndex = 0;
   bool _isBottomBarVisible = true;
   bool _isOutSideDrawerExpanded = true;
@@ -61,7 +64,10 @@ class _AppPageState extends State<AppPage> {
 
     // 现在在这里初始化页面列表是安全的，因为 context 可用。
     _pages = [
-      ForumPage(forumSelectionNotifier: _forumSelectionNotifier),
+      ForumPage(
+        key: _forumPageKey,
+        forumSelectionNotifier: _forumSelectionNotifier,
+      ),
       starPage(context),
       TrendPage(refCache: trendRefCache),
       MorePage(),
@@ -92,39 +98,39 @@ class _AppPageState extends State<AppPage> {
 
   /// 为小屏幕构建一个完整的抽屉Widget。
   Widget? _buildSmallScreenDrawer() {
-    if (!_isInitialized) return null;
+    if (!_isInitialized || _selectedPageIndex != 0) return null;
 
-    final currentPage = _pages[_selectedPageIndex];
-    if (currentPage is NavigablePage) {
-      // 从页面获取内容列表
-      final content = (currentPage as NavigablePage).buildDrawerContent(
-        context,
-      );
+    final content = _forumPageKey.currentState?.buildDrawerContent(context);
+    if (content == null || content.isEmpty) return null;
 
-      // 由AppPage负责将内容包装在标准的Drawer容器中
-      return Theme(
+    return Drawer(
+      child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: Drawer(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.secondaryContainer,
-                ),
-                child: Text(
-                  '氢岛',
-                  style: Theme.of(context).textTheme.headlineLarge,
-                ),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondaryContainer,
               ),
-              // 使用扩展操作符将页面提供的内容注入到ListView中
-              ...content,
-            ],
-          ),
+              child: Text(
+                '氢岛',
+                style: Theme.of(context).textTheme.headlineLarge,
+              ),
+            ),
+            ...content,
+          ],
         ),
-      );
-    }
-    return null;
+      ),
+    );
+  }
+
+  Widget? _buildCurrentPageFab() {
+    if (!_isInitialized || _selectedPageIndex != 0) return null;
+    final breakpoint = Breakpoint.fromMediaQuery(context);
+    if (breakpoint.window >= WindowSize.small || !_isBottomBarVisible)
+      return null;
+    return _forumPageKey.currentState?.buildFloatingActionButton(context);
   }
 
   @override
@@ -167,6 +173,7 @@ class _AppPageState extends State<AppPage> {
           ? _buildSmallScreenDrawer()
           : null,
       drawerEdgeDragWidth: MediaQuery.of(context).size.width / 3,
+      floatingActionButton: _buildCurrentPageFab(),
       body: Row(
         children: [
           // 大屏幕的 NavigationDrawer
@@ -206,20 +213,27 @@ class _AppPageState extends State<AppPage> {
                       ),
                     ),
                     if (_isOutSideDrawerExpanded &&
-                        _selectedPageIndex == 0 &&
-                        _pages[_selectedPageIndex] is NavigablePage) ...[
+                        _selectedPageIndex == 0) ...[
                       const Padding(
                         padding: EdgeInsets.fromLTRB(28, 16, 28, 10),
                         child: Divider(), // 视觉分割线
                       ),
                       // 获取页面内容并使用扩展操作符注入
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters / 2),
-                        child: Column(
-                          children: [
-                            ...(_pages[_selectedPageIndex] as NavigablePage)
-                                .buildDrawerContent(context),
-                          ],
+                      Theme(
+                        data: Theme.of(
+                          context,
+                        ).copyWith(dividerColor: Colors.transparent),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: breakpoint.gutters / 2,
+                          ),
+                          child: Column(
+                            children:
+                                _forumPageKey.currentState?.buildDrawerContent(
+                                  context,
+                                ) ??
+                                [],
+                          ),
                         ),
                       ),
                     ],
