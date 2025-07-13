@@ -254,8 +254,10 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
   /// 尝试加载前一页
   ///
   /// 如果正在加载前一页或没有更多前页，则不执行任何操作
-  Future<void> tryLoadPreviousPage() async {
-    if (previousPageStateNotifier.value is PageLoading || previousPageStateNotifier.value is PageFullLoaded || previousPageStateNotifier.value is PageError) return;
+  Future<void> tryLoadPreviousPage({bool ignoreError = false}) async {
+
+    if (previousPageStateNotifier.value is PageLoading || previousPageStateNotifier.value is PageFullLoaded) return;
+    if (!ignoreError && previousPageStateNotifier.value is PageError) return;
 
     final previousPage = _minLoadedPage - 1;
     if (previousPage < 1) {
@@ -300,15 +302,19 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
         doInsert();
       }
     } catch (e) {
-      previousPageStateNotifier.value = PageError(e, tryLoadPreviousPage);
+      previousPageStateNotifier.value = PageError(
+        e,
+        () => tryLoadPreviousPage(ignoreError: true),
+      );
     }
   }
 
   /// 尝试加载后一页
   ///
   /// 如果正在加载后一页或没有更多后页，则不执行任何操作
-  Future<void> tryLoadNextPage() async {
-    if (nextPageStateNotifier.value is PageLoading || nextPageStateNotifier.value is PageFullLoaded || nextPageStateNotifier.value is PageError) return;
+  Future<void> tryLoadNextPage({bool ignoreError = false}) async {
+    if (nextPageStateNotifier.value is PageLoading || nextPageStateNotifier.value is PageFullLoaded) return;
+    if (!ignoreError && nextPageStateNotifier.value is PageError) return;
 
     final nextPage = _maxLoadedPage + 1;
 
@@ -356,7 +362,7 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
         doInsert();
       }
     } catch (e) {
-      nextPageStateNotifier.value = PageError(e, tryLoadNextPage);
+      nextPageStateNotifier.value = PageError(e, () => tryLoadNextPage(ignoreError: true));
     }
   }
 
