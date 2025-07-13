@@ -357,7 +357,7 @@ void showReplyBottomSheet(
                                               child: SingleChildScrollView(
                                                 scrollDirection:
                                                     Axis.horizontal,
-                                                child: Text(selectForum
+                                                child: HtmlWidget(selectForum
                                                         ?.getShowName() ??
                                                     ''),
                                               )),
