@@ -205,7 +205,6 @@ class _AppPageState extends State<AppPage> {
                         label: Text(e.label),
                       ),
                     ),
-                    // 关键改动：如果侧边栏展开且当前在论坛页，就注入当前页面的抽屉内容
                     if (_isOutSideDrawerExpanded &&
                         _selectedPageIndex == 0 &&
                         _pages[_selectedPageIndex] is NavigablePage) ...[
@@ -214,8 +213,15 @@ class _AppPageState extends State<AppPage> {
                         child: Divider(), // 视觉分割线
                       ),
                       // 获取页面内容并使用扩展操作符注入
-                      ...(_pages[_selectedPageIndex] as NavigablePage)
-                          .buildDrawerContent(context),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters / 2),
+                        child: Column(
+                          children: [
+                            ...(_pages[_selectedPageIndex] as NavigablePage)
+                                .buildDrawerContent(context),
+                          ],
+                        ),
+                      ),
                     ],
                   ],
                 ),
