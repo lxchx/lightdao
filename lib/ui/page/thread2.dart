@@ -55,10 +55,7 @@ class DividerWrapper extends StatelessWidget {
         child,
         if (showDivider)
           dividerPadding != null
-              ? Padding(
-                  padding: dividerPadding!,
-                  child: divider,
-                )
+              ? Padding(padding: dividerPadding!, child: divider)
               : divider,
       ],
     );
@@ -141,35 +138,38 @@ class _ThreadPage2State extends State<ThreadPage2> {
     final appState = Provider.of<MyAppState>(context, listen: false);
 
     showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-              title: Text(
-                  '字体大小缩放(${appState.setting.fontSizeFactor.toStringAsFixed(1)})'),
-              content: SizedBox(
-                width: 250,
-                height: 48,
-                child: Column(
-                  children: [
-                    Slider(
-                      min: 0.7,
-                      max: 1.3,
-                      value: appState.setting.fontSizeFactor,
-                      divisions: 6,
-                      onChanged: (double value) {
-                        appState.setState((state) {
-                          state.setting.fontSizeFactor = value;
-                        });
-                      },
-                    ),
-                  ],
-                ),
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          '字体大小缩放(${appState.setting.fontSizeFactor.toStringAsFixed(1)})',
+        ),
+        content: SizedBox(
+          width: 250,
+          height: 48,
+          child: Column(
+            children: [
+              Slider(
+                min: 0.7,
+                max: 1.3,
+                value: appState.setting.fontSizeFactor,
+                divisions: 6,
+                onChanged: (double value) {
+                  appState.setState((state) {
+                    state.setting.fontSizeFactor = value;
+                  });
+                },
               ),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text('确定'))
-              ],
-            ));
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('确定'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onImageEdit(File file, Object? heroTag) async {
@@ -192,43 +192,45 @@ class _ThreadPage2State extends State<ThreadPage2> {
     if (!mounted) return;
     Navigator.of(context).pop();
     showReplyBottomSheet(
-        context,
-        false,
-        _poReply.id,
-        _curPageManager.maxPage ?? 1,
-        _poReply,
-        _replyImageFile,
-        (image) => _replyImageFile = image,
-        _replyTitleControler,
-        _replyAuthorControler,
-        _replyTextControler, () {
-      // 在回调中首先检查组件是否仍然挂载
-      if (!mounted) return;
+      context,
+      false,
+      _poReply.id,
+      _curPageManager.maxPage ?? 1,
+      _poReply,
+      _replyImageFile,
+      (image) => _replyImageFile = image,
+      _replyTitleControler,
+      _replyAuthorControler,
+      _replyTextControler,
+      () {
+        // 在回调中首先检查组件是否仍然挂载
+        if (!mounted) return;
 
-      // 如果已经加载到最后一页，重新加载以刷出自己的回复
-      if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
-        _handlePageManagerError(_curPageManager.forceLoadNextPage());
-      }
+        // 如果已经加载到最后一页，重新加载以刷出自己的回复
+        if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
+          _handlePageManagerError(_curPageManager.forceLoadNextPage());
+        }
 
-      // 显示发送成功提示
-      if (mounted) {
-        scaffoldMessengerKey.currentState?.showSnackBar(
-          SnackBar(
-            content: Text('发送成功'),
-            duration: Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: '查看回复',
-              onPressed: () {
-                // 跳转到最后一页前检查组件是否仍然挂载
-                if (!mounted) return;
-                _jumpToPage(_curPageManager.maxPage ?? 1, true);
-              },
+        // 显示发送成功提示
+        if (mounted) {
+          scaffoldMessengerKey.currentState?.showSnackBar(
+            SnackBar(
+              content: Text('发送成功'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: '查看回复',
+                onPressed: () {
+                  // 跳转到最后一页前检查组件是否仍然挂载
+                  if (!mounted) return;
+                  _jumpToPage(_curPageManager.maxPage ?? 1, true);
+                },
+              ),
             ),
-          ),
-        );
-      }
-    });
+          );
+        }
+      },
+    );
   }
 
   void _toggleFavorite(BuildContext context) {
@@ -237,8 +239,9 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
     if (appState.isStared(threadId)) {
       appState.setState((_) {
-        appState.setting.starHistory
-            .removeWhere((reply) => reply.thread.id == threadId);
+        appState.setting.starHistory.removeWhere(
+          (reply) => reply.thread.id == threadId,
+        );
       });
     } else {
       appState.setState((_) {
@@ -309,7 +312,8 @@ class _ThreadPage2State extends State<ThreadPage2> {
                           width: 70,
                           child: TextField(
                             controller: TextEditingController(
-                                text: selectedPage.toString()),
+                              text: selectedPage.toString(),
+                            ),
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
                               labelText: '页数',
@@ -329,9 +333,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                             },
                           ),
                         ),
-                        SizedBox(
-                          width: 5,
-                        ),
+                        SizedBox(width: 5),
                         Text('/ $maxPage'),
                         IconButton(
                           icon: Icon(Icons.navigate_next),
@@ -400,34 +402,37 @@ class _ThreadPage2State extends State<ThreadPage2> {
   }
 
   Future<T?> _handlePageManagerError<T>(Future<T> future) {
-    return future.then((value) {
-      if (!mounted) return null;
-      setState(() {});
-      return value;
-    }).onError((error, stackTrace) {
-      if (!mounted) return Future.value(null);
-      if (error is XDaoApiNotSuccussException || error is XDaoApiMsgException) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString()),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return Future.value(null);
-      }
+    return future
+        .then((value) {
+          if (!mounted) return null;
+          setState(() {});
+          return value;
+        })
+        .onError((error, stackTrace) {
+          if (!mounted) return Future.value(null);
+          if (error is XDaoApiNotSuccussException ||
+              error is XDaoApiMsgException) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(error.toString()),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            return Future.value(null);
+          }
 
-      // 对于其他类型的错误，显示吐司但仍然抛出
-      if (error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('发生错误: ${error.toString()}'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        throw error; // 重新抛出错误
-      }
-      return Future.value(null);
-    });
+          // 对于其他类型的错误，显示吐司但仍然抛出
+          if (error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('发生错误: ${error.toString()}'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            throw error; // 重新抛出错误
+          }
+          return Future.value(null);
+        });
   }
 
   void _jumpToPage(int page, bool jumpToEnd) {
@@ -454,7 +459,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
       }
     } else {
       // 页面未加载，直接换一个新的PageManager
-      _scrollController.jumpToIndex(0);  // 先跳转到首个回复
+      _scrollController.jumpToIndex(0); // 先跳转到首个回复
       final appState = Provider.of<MyAppState>(context, listen: false);
       _pageManager = ThreadPageManager(
         threadId: widget.headerThread.id,
@@ -462,8 +467,12 @@ class _ThreadPage2State extends State<ThreadPage2> {
         cookie: appState.getCurrentCookie(),
         refCache: _refCache,
       );
-      _pageManager
-          .registerPreviousPageCallback((page, newItemCount, _, doInsert) {
+      _pageManager.registerPreviousPageCallback((
+        page,
+        newItemCount,
+        _,
+        doInsert,
+      ) {
         _scrollController.onBatchInsertItems(0, newItemCount, () => doInsert());
       });
       Future.microtask(() async {
@@ -503,10 +512,12 @@ class _ThreadPage2State extends State<ThreadPage2> {
       if (_isPoOnlyMode) {
         appState.setting.viewPoOnlyHistory.put(_poReply.id, history);
       } else {
-        if (appState.setting.starHistory
-            .any(((rply) => rply.threadId == _poReply.id))) {
-          appState.setting.starHistory
-              .removeWhere((rply) => rply.threadId == _poReply.id);
+        if (appState.setting.starHistory.any(
+          ((rply) => rply.threadId == _poReply.id),
+        )) {
+          appState.setting.starHistory.removeWhere(
+            (rply) => rply.threadId == _poReply.id,
+          );
           appState.setting.starHistory.insert(0, history);
         }
         appState.setting.viewHistory.put(_poReply.id, history);
@@ -515,7 +526,10 @@ class _ThreadPage2State extends State<ThreadPage2> {
   }
 
   Future<dynamic> _showThreadActionMenu(
-      BuildContext context, ReplyJson reply, bool isThread) {
+    BuildContext context,
+    ReplyJson reply,
+    bool isThread,
+  ) {
     return showDialog(
       context: context,
       builder: (context) {
@@ -531,43 +545,47 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
               // 显示回复底部表单
               showReplyBottomSheet(
-                  context,
-                  false,
-                  _poReply.id,
-                  _curPageManager.maxPage ?? 1,
-                  _poReply,
-                  _replyImageFile,
-                  (image) => _replyImageFile = image,
-                  _replyTitleControler,
-                  _replyAuthorControler,
-                  _replyTextControler, () {
-                // 在回调中首先检查组件是否仍然挂载
-                if (!mounted) return;
+                context,
+                false,
+                _poReply.id,
+                _curPageManager.maxPage ?? 1,
+                _poReply,
+                _replyImageFile,
+                (image) => _replyImageFile = image,
+                _replyTitleControler,
+                _replyAuthorControler,
+                _replyTextControler,
+                () {
+                  // 在回调中首先检查组件是否仍然挂载
+                  if (!mounted) return;
 
-                // 如果已经加载到最后一页，重新加载以刷出自己的回复
-                if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
-                  _handlePageManagerError(_curPageManager.forceLoadNextPage());
-                }
+                  // 如果已经加载到最后一页，重新加载以刷出自己的回复
+                  if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
+                    _handlePageManagerError(
+                      _curPageManager.forceLoadNextPage(),
+                    );
+                  }
 
-                // 显示发送成功提示
-                if (mounted) {
-                  scaffoldMessengerKey.currentState?.showSnackBar(
-                    SnackBar(
-                      content: Text('发送成功'),
-                      duration: Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                      action: SnackBarAction(
-                        label: '查看回复',
-                        onPressed: () {
-                          // 跳转到最后一页前检查组件是否仍然挂载
-                          if (!mounted) return;
-                          _jumpToPage(_curPageManager.maxPage ?? 1, true);
-                        },
+                  // 显示发送成功提示
+                  if (mounted) {
+                    scaffoldMessengerKey.currentState?.showSnackBar(
+                      SnackBar(
+                        content: Text('发送成功'),
+                        duration: Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                        action: SnackBarAction(
+                          label: '查看回复',
+                          onPressed: () {
+                            // 跳转到最后一页前检查组件是否仍然挂载
+                            if (!mounted) return;
+                            _jumpToPage(_curPageManager.maxPage ?? 1, true);
+                          },
+                        ),
                       ),
-                    ),
-                  );
-                }
-              });
+                    );
+                  }
+                },
+              );
             },
           );
         }
@@ -578,10 +596,13 @@ class _ThreadPage2State extends State<ThreadPage2> {
             child: Text('复制内容'),
             onPressed: () {
               // 获取页面路由
-              PageRoute pageRoute(
-                  {required Widget Function(BuildContext) builder}) {
-                final setting =
-                    Provider.of<MyAppState>(context, listen: false).setting;
+              PageRoute pageRoute({
+                required Widget Function(BuildContext) builder,
+              }) {
+                final setting = Provider.of<MyAppState>(
+                  context,
+                  listen: false,
+                ).setting;
                 return setting.enableSwipeBack
                     ? SwipeablePageRoute(builder: builder)
                     : MaterialPageRoute(builder: builder);
@@ -591,36 +612,36 @@ class _ThreadPage2State extends State<ThreadPage2> {
               Navigator.of(context).push(
                 pageRoute(
                   builder: (BuildContext context) => Scaffold(
-                    appBar: AppBar(
-                      title: Text('自由复制'),
-                    ),
+                    appBar: AppBar(title: Text('自由复制')),
                     body: Theme(
                       data: Theme.of(context).copyWith(
-                          textTheme: Theme.of(context).textTheme.apply(
-                                fontSizeFactor: appState.setting.fontSizeFactor,
-                              )),
+                        textTheme: Theme.of(context).textTheme.apply(
+                          fontSizeFactor: appState.setting.fontSizeFactor,
+                        ),
+                      ),
                       child: SelectionArea(
                         child: ListView(
                           children: [
                             Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                child: Theme(
-                                  data: Theme.of(context).copyWith(
-                                      textTheme: Theme.of(context)
-                                          .textTheme
-                                          .apply(
-                                            fontSizeFactor:
-                                                appState.setting.fontSizeFactor,
-                                          )),
-                                  child: ReplyItem(
-                                    poUserHash: _poReply.userHash,
-                                    threadJson: reply,
-                                    contentNeedCollapsed: false,
-                                    noMoreParse: true,
-                                    contentHeroTag: "reply${reply.id}",
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Theme(
+                                data: Theme.of(context).copyWith(
+                                  textTheme: Theme.of(context).textTheme.apply(
+                                    fontSizeFactor:
+                                        appState.setting.fontSizeFactor,
                                   ),
-                                )),
+                                ),
+                                child: ReplyItem(
+                                  poUserHash: _poReply.userHash,
+                                  threadJson: reply,
+                                  contentNeedCollapsed: false,
+                                  noMoreParse: true,
+                                  contentHeroTag: "reply${reply.id}",
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -638,13 +659,15 @@ class _ThreadPage2State extends State<ThreadPage2> {
             child: Text('屏蔽No.${reply.id}'),
             onPressed: () {
               // 检查并添加ID过滤器
-              bool isIdFiltered = appState.setting.threadFilters.any((filter) =>
-                  filter is IdThreadFilter && filter.id == reply.id);
+              bool isIdFiltered = appState.setting.threadFilters.any(
+                (filter) => filter is IdThreadFilter && filter.id == reply.id,
+              );
 
               if (!isIdFiltered) {
                 appState.setState((_) {
-                  appState.setting.threadFilters
-                      .add(IdThreadFilter(id: reply.id));
+                  appState.setting.threadFilters.add(
+                    IdThreadFilter(id: reply.id),
+                  );
                 });
               }
               Navigator.of(context).pop();
@@ -659,14 +682,16 @@ class _ThreadPage2State extends State<ThreadPage2> {
             onPressed: () {
               // 检查并添加饼干过滤器
               bool isUserHashFiltered = appState.setting.threadFilters.any(
-                  (filter) =>
-                      filter is UserHashFilter &&
-                      filter.userHash == reply.userHash);
+                (filter) =>
+                    filter is UserHashFilter &&
+                    filter.userHash == reply.userHash,
+              );
 
               if (!isUserHashFiltered) {
                 appState.setState((_) {
-                  appState.setting.threadFilters
-                      .add(UserHashFilter(userHash: reply.userHash));
+                  appState.setting.threadFilters.add(
+                    UserHashFilter(userHash: reply.userHash),
+                  );
                 });
               }
               Navigator.of(context).pop();
@@ -707,12 +732,17 @@ class _ThreadPage2State extends State<ThreadPage2> {
         refCache: _refCache,
       );
     }
-    _pageManager
-        .registerPreviousPageCallback((page, newItemCount, _, doInsert) {
+    _pageManager.registerPreviousPageCallback((
+      page,
+      newItemCount,
+      _,
+      doInsert,
+    ) {
       _scrollController.onBatchInsertItems(0, newItemCount, () => doInsert());
     });
     _scrollController.addListener(() {
-      final shouldShowBar = _scrollController.position.userScrollDirection !=
+      final shouldShowBar =
+          _scrollController.position.userScrollDirection !=
           ScrollDirection.reverse;
       if (_showBar != shouldShowBar) {
         setState(() => _showBar = shouldShowBar);
@@ -745,8 +775,9 @@ class _ThreadPage2State extends State<ThreadPage2> {
         if (widget.startReplyId == null) {
           return;
         }
-        final replyIndex = _pageManager.allLoadedItems
-            .indexWhere((rply) => rply.id == widget.startReplyId);
+        final replyIndex = _pageManager.allLoadedItems.indexWhere(
+          (rply) => rply.id == widget.startReplyId,
+        );
         if (replyIndex <= 1) {
           // 前两个reply就不跳转了，免得总跳转体感不流畅
           return;
@@ -780,7 +811,8 @@ class _ThreadPage2State extends State<ThreadPage2> {
         : _poReply.replies.indexWhere((rply) => rply.id == widget.startReplyId);
 
     // 确保索引有效（大于0且小于总项数）
-    final validInitReplyIndex = initReplyIndex != null &&
+    final validInitReplyIndex =
+        initReplyIndex != null &&
             initReplyIndex > 0 &&
             initReplyIndex < replyCount + 2
         ? initReplyIndex
@@ -791,7 +823,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
       if (_poReply.img != '') '${_poReply.img}${_poReply.ext}',
       ..._curPageManager.allLoadedItems
           .where((rply) => rply.img != '')
-          .map((rply) => '${rply.img}${rply.ext}')
+          .map((rply) => '${rply.img}${rply.ext}'),
     ];
 
     Widget myDividerWrapper({required Widget child, double padding = 0}) {
@@ -806,16 +838,15 @@ class _ThreadPage2State extends State<ThreadPage2> {
       padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
       child: Skeletonizer(
         effect: ShimmerEffect(
-          baseColor:
-              Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(70),
-          highlightColor:
-              Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(50),
+          baseColor: Theme.of(
+            context,
+          ).colorScheme.onPrimaryContainer.withAlpha(70),
+          highlightColor: Theme.of(
+            context,
+          ).colorScheme.onPrimaryContainer.withAlpha(50),
         ),
         enabled: true,
-        child: ReplyItem(
-          contentNeedCollapsed: false,
-          threadJson: fakeThread,
-        ),
+        child: ReplyItem(contentNeedCollapsed: false, threadJson: fakeThread),
       ),
     );
 
@@ -829,25 +860,23 @@ class _ThreadPage2State extends State<ThreadPage2> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                HtmlWidget(
-                  '${_getForumName()}・${_poReply.id}',
-                ),
+                HtmlWidget('${_getForumName()}・${_poReply.id}'),
                 Text(
                   'X岛・nmbxd.com',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: Theme.of(context).hintColor),
-                )
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).hintColor,
+                  ),
+                ),
               ],
             ),
           ),
           actions: [
             IconButton(
-                tooltip: '分享',
-                onPressed: () async => await Share.share(
-                    'https://www.nmbxd1.com/t/${_poReply.id}'),
-                icon: Icon(Icons.share)),
+              tooltip: '分享',
+              onPressed: () async =>
+                  await Share.share('https://www.nmbxd1.com/t/${_poReply.id}'),
+              icon: Icon(Icons.share),
+            ),
             PopupMenuButton<String>(
               tooltip: '更多选项',
               onSelected: (value) async {
@@ -859,8 +888,8 @@ class _ThreadPage2State extends State<ThreadPage2> {
                     break;
                   case 'po_mode':
                     if (_poPageManager == null) {
-                      final threadHistory =
-                          appState.setting.viewPoOnlyHistory.get(_poReply.id);
+                      final threadHistory = appState.setting.viewPoOnlyHistory
+                          .get(_poReply.id);
 
                       _poPageManager = ThreadPageManager(
                         threadId: _poReply.id,
@@ -872,14 +901,24 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
                       _handlePageManagerError(_poPageManager!.initialize());
 
-                      _poPageManager!.registerPreviousPageCallback(
-                          (page, newItemCount, _, doInsert) {
+                      _poPageManager!.registerPreviousPageCallback((
+                        page,
+                        newItemCount,
+                        _,
+                        doInsert,
+                      ) {
                         _scrollController.onBatchInsertItems(
-                            0, newItemCount, () => doInsert());
+                          0,
+                          newItemCount,
+                          () => doInsert(),
+                        );
                       });
                     }
-                    await _scrollController.animateTo(0,
-                        duration: Durations.long1, curve: Curves.easeOut);
+                    await _scrollController.animateTo(
+                      0,
+                      duration: Durations.long1,
+                      curve: Curves.easeOut,
+                    );
                     setState(() => _isPoOnlyMode = !_isPoOnlyMode);
                     //setState(() {});
                     break;
@@ -915,18 +954,19 @@ class _ThreadPage2State extends State<ThreadPage2> {
                       _showThreadActionMenu(context, _poReply, true),
                   child: Padding(
                     padding: EdgeInsets.only(
-                        left: breakpoint.gutters,
-                        right: breakpoint.gutters,
-                        bottom: breakpoint.gutters / 2),
+                      left: breakpoint.gutters,
+                      right: breakpoint.gutters,
+                      bottom: breakpoint.gutters / 2,
+                    ),
                     child: FilterableThreadWidget(
                       reply: _poReply,
                       isTimeLineFilter: false,
                       child: Theme(
                         data: Theme.of(context).copyWith(
-                            textTheme: Theme.of(context).textTheme.apply(
-                                  fontSizeFactor:
-                                      appState.setting.fontSizeFactor,
-                                )),
+                          textTheme: Theme.of(context).textTheme.apply(
+                            fontSizeFactor: appState.setting.fontSizeFactor,
+                          ),
+                        ),
                         child: ReplyItem(
                           poUserHash: _poReply.userHash,
                           isRawPicMode: _isRawPicMode,
@@ -946,44 +986,53 @@ class _ThreadPage2State extends State<ThreadPage2> {
                 const Divider(),
                 if (!_curPageManager.isEmpty)
                   ValueListenableBuilder<PageState>(
-                  valueListenable: _curPageManager.previousPageStateNotifier,
-                  builder: (context, state, child) {
-                    return switch (state) {
-                      PageHasMore() => myDividerWrapper(
+                    valueListenable: _curPageManager.previousPageStateNotifier,
+                    builder: (context, state, child) {
+                      return switch (state) {
+                        PageHasMore() => myDividerWrapper(
                           child: InkWell(
-                        onTap: () {
-                          _scrollController.jumpToIndex(1);
-                          _handlePageManagerError(
-                              _curPageManager.tryLoadPreviousPage());
-                        },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ElevatedButton(
-                                onPressed: () {
-                                  _scrollController.jumpToIndex(1);
-                                  _handlePageManagerError(
-                                      _curPageManager.tryLoadPreviousPage());
-                                },
-                                child: Text('加载前页的回复')),
-                          ],
+                            onTap: () {
+                              _scrollController.jumpToIndex(1);
+                              _handlePageManagerError(
+                                _curPageManager.tryLoadPreviousPage(),
+                              );
+                            },
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: () {
+                                    _scrollController.jumpToIndex(1);
+                                    _handlePageManagerError(
+                                      _curPageManager.tryLoadPreviousPage(),
+                                    );
+                                  },
+                                  child: Text('加载前页的回复'),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      )),
-                      PageLoading() => myDividerWrapper(child: loadingReply),
-                      PageError(error: final err, retry: final retry) => ListTile(
-                        textColor: Theme.of(context).colorScheme.error,
-                        title: Text(err is TimeoutException ? '前页加载超时' : '前页加载失败: $err'),
-                        onTap: () => setState(() => retry()),
-                        trailing: TextButton.icon(
-                          onPressed: () => setState(() => retry()),
-                          label: Text('重试'),
-                          icon: Icon(Icons.refresh),
-                        ),
-                      ),
-                      PageFullLoaded() => const SizedBox.shrink(),
-                    };
-                  },
-                )
+                        PageLoading() => myDividerWrapper(child: loadingReply),
+                        PageError(error: final err, retry: final retry) =>
+                          ListTile(
+                            textColor: Theme.of(context).colorScheme.error,
+                            title: Text(
+                              err is TimeoutException
+                                  ? '前页加载超时'
+                                  : '前页加载失败: $err',
+                            ),
+                            onTap: () => setState(() => retry()),
+                            trailing: TextButton.icon(
+                              onPressed: () => setState(() => retry()),
+                              label: Text('重试'),
+                              icon: Icon(Icons.refresh),
+                            ),
+                          ),
+                        PageFullLoaded() => const SizedBox.shrink(),
+                      };
+                    },
+                  ),
               ],
             );
           } else if (index == replyCount + 1) {
@@ -993,86 +1042,175 @@ class _ThreadPage2State extends State<ThreadPage2> {
                 return switch (state) {
                   PageLoading() => loadingReply,
                   PageFullLoaded() => Column(
-                      children: [
-                        if (!appState.setting.dividerBetweenReply &&
-                            replyCount > 0)
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                                vertical: breakpoint.gutters / 2),
-                            child: Divider(),
+                    children: [
+                      if (!appState.setting.dividerBetweenReply &&
+                          replyCount > 0)
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: breakpoint.gutters / 2,
                           ),
-                        SizedBox(
-                          width: double.infinity,
-                          child: InkWell(
-                            onTap: () {
-                              _handlePageManagerError(
-                                      _curPageManager.forceLoadNextPage())
-                                  .then((replyCount) {
-                                if (replyCount == 0) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('没有更多回复了！'),
-                                      duration: Durations.long1,
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                }
-                              });
-                            },
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                  vertical: breakpoint.gutters / 2),
-                              child: Text.rich(
-                                textAlign: TextAlign.center,
-                                TextSpan(text: '到底了(　ﾟ 3ﾟ)\n', children: [
-                                  TextSpan(
-                                    text: '\n刷新试试？',
-                                    style: TextStyle(
-                                        decoration: TextDecoration.underline,
-                                        fontSize: 12),
-                                  )
-                                ]),
-                                style: TextStyle(
-                                    color: Theme.of(context).hintColor),
-                              ),
+                          child: Divider(),
+                        ),
+                      SizedBox(
+                        width: double.infinity,
+                        height: _curPageManager.isEmpty ? 300 : null,
+                        child: InkWell(
+                          onTap: _curPageManager.isEmpty
+                              ? null
+                              : () {
+                                  _handlePageManagerError(
+                                    _curPageManager.forceLoadNextPage(),
+                                  ).then((replyCount) {
+                                    if (replyCount == 0) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text('没有更多回复了！'),
+                                          duration: Durations.long1,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  });
+                                },
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: breakpoint.gutters / 2,
                             ),
+                            child: !_curPageManager.isEmpty
+                                ? Text.rich(
+                                    textAlign: TextAlign.center,
+                                    TextSpan(
+                                      text: '到底了(　ﾟ 3ﾟ)\n',
+                                      children: [
+                                        TextSpan(
+                                          text: '\n刷新试试？',
+                                          style: TextStyle(
+                                            decoration:
+                                                TextDecoration.underline,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    style: TextStyle(
+                                      color: Theme.of(context).hintColor,
+                                    ),
+                                  )
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    spacing: breakpoint.gutters,
+                                    children: [
+                                      Text(
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge
+                                            ?.copyWith(
+                                              fontSize:
+                                                  Theme.of(context)
+                                                      .textTheme
+                                                      .titleLarge!
+                                                      .fontSize! *
+                                                  3,
+                                            ),
+                                        '(｀･ω･)',
+                                      ),
+                                      Text(style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge, '暂时没有回复噢'),
+                                      ElevatedButton.icon(
+                                        onPressed: () {
+                                          _handlePageManagerError(
+                                            _curPageManager.forceLoadNextPage(),
+                                          ).then((replyCount) {
+                                            if (replyCount == 0) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text('还是没有回复(｀･ω･)'),
+                                                  duration: Durations.long1,
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
+                                                ),
+                                              );
+                                            }
+                                          });
+                                        },
+                                        label: Text('刷新'),
+                                        icon: Icon(Icons.restart_alt),
+                                      ),
+                                    ],
+                                  ),
                           ),
                         ),
-                      ],
-                    ),
-                  PageError(error: final err, retry: final retry) => _curPageManager.isEmpty ? 
-                  SizedBox(
-                    height: 400,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        spacing: breakpoint.gutters,
-                        children: [
-                          Text(style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: Theme.of(context).textTheme.titleLarge!.fontSize! * 3,
-                          ), '( ;´д`)'),
-                          Text(style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.error), '加载回复内容失败'),
-                          Text(err is TimeoutException ? '原因：加载超时' : err.toString()),
+                      ),
+                    ],
+                  ),
+                  PageError(error: final err, retry: final retry) =>
+                    _curPageManager.isEmpty
+                        ? SizedBox(
+                            height: 300,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: breakpoint.gutters,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                spacing: breakpoint.gutters,
+                                children: [
+                                  Text(
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(
+                                          fontSize:
+                                              Theme.of(context)
+                                                  .textTheme
+                                                  .titleLarge!
+                                                  .fontSize! *
+                                              3,
+                                        ),
+                                    '( ;´д`)',
+                                  ),
+                                  Text(
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                    ),
+                                    '加载回复内容失败',
+                                  ),
+                                  Text(
+                                    err is TimeoutException
+                                        ? '原因：加载超时'
+                                        : err.toString(),
+                                  ),
                                   ElevatedButton.icon(
                                     onPressed: () => setState(() => retry()),
                                     label: Text('重试'),
                                     icon: Icon(Icons.restart_alt),
-                                  )
-                        ],
-                      ),
-                    ),
-                  )
-                   : ListTile(
-                    textColor: Theme.of(context).colorScheme.error,
-                    title: Text(err is TimeoutException ? '后页加载超时' : '后页加载失败: $err'),
-                    onTap: () => setState(() => retry()),
-                    trailing: TextButton.icon(
-                      onPressed: () => setState(() => retry()),
-                      label: Text('重试'),
-                      icon: Icon(Icons.refresh),
-                    ),
-                  ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : ListTile(
+                            textColor: Theme.of(context).colorScheme.error,
+                            title: Text(
+                              err is TimeoutException
+                                  ? '后页加载超时'
+                                  : '后页加载失败: $err',
+                            ),
+                            onTap: () => setState(() => retry()),
+                            trailing: TextButton.icon(
+                              onPressed: () => setState(() => retry()),
+                              label: Text('重试'),
+                              icon: Icon(Icons.refresh),
+                            ),
+                          ),
                   PageHasMore() => const SizedBox.shrink(),
                 };
               },
@@ -1091,16 +1229,18 @@ class _ThreadPage2State extends State<ThreadPage2> {
               onLongPress: () => _showThreadActionMenu(context, reply, false),
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                    horizontal: breakpoint.gutters,
-                    vertical: breakpoint.gutters / 2),
+                  horizontal: breakpoint.gutters,
+                  vertical: breakpoint.gutters / 2,
+                ),
                 child: FilterableThreadWidget(
                   reply: reply,
                   isTimeLineFilter: false,
                   child: Theme(
                     data: Theme.of(context).copyWith(
-                        textTheme: Theme.of(context).textTheme.apply(
-                              fontSizeFactor: appState.setting.fontSizeFactor,
-                            )),
+                      textTheme: Theme.of(context).textTheme.apply(
+                        fontSizeFactor: appState.setting.fontSizeFactor,
+                      ),
+                    ),
                     child: ReplyItem(
                       key: ValueKey('threadCard ${reply.id} in Page $page'),
                       poUserHash: _poReply.userHash,
@@ -1133,16 +1273,19 @@ class _ThreadPage2State extends State<ThreadPage2> {
                       IconButton(
                         tooltip: '收藏',
                         onPressed: () => _toggleFavorite(context),
-                        icon: Icon(appState.isStared(_poReply.id)
-                            ? Icons.favorite
-                            : Icons.favorite_border),
+                        icon: Icon(
+                          appState.isStared(_poReply.id)
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                        ),
                       ),
                       IconButton(
-                          tooltip: '页跳转',
-                          onPressed: () {
-                            _showPageJumpDialog(context);
-                          },
-                          icon: Icon(Icons.move_down)),
+                        tooltip: '页跳转',
+                        onPressed: () {
+                          _showPageJumpDialog(context);
+                        },
+                        icon: Icon(Icons.move_down),
+                      ),
                       IconButton(
                         tooltip: '字体大小调整',
                         onPressed: () => _showFontSizeDialog(context),
@@ -1162,43 +1305,47 @@ class _ThreadPage2State extends State<ThreadPage2> {
               tooltip: '回复',
               child: Icon(Icons.create),
               onPressed: () => showReplyBottomSheet(
-                  context,
-                  false,
-                  _poReply.id,
-                  _curPageManager.maxPage ?? 1,
-                  _poReply,
-                  _replyImageFile,
-                  (image) => _replyImageFile = image,
-                  _replyTitleControler,
-                  _replyAuthorControler,
-                  _replyTextControler, () {
-                // 在回调中首先检查组件是否仍然挂载
-                if (!mounted) return;
+                context,
+                false,
+                _poReply.id,
+                _curPageManager.maxPage ?? 1,
+                _poReply,
+                _replyImageFile,
+                (image) => _replyImageFile = image,
+                _replyTitleControler,
+                _replyAuthorControler,
+                _replyTextControler,
+                () {
+                  // 在回调中首先检查组件是否仍然挂载
+                  if (!mounted) return;
 
-                // 如果已经加载到最后一页，重新加载以刷出自己的回复
-                if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
-                  _handlePageManagerError(_curPageManager.forceLoadNextPage());
-                }
+                  // 如果已经加载到最后一页，重新加载以刷出自己的回复
+                  if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
+                    _handlePageManagerError(
+                      _curPageManager.forceLoadNextPage(),
+                    );
+                  }
 
-                // 显示发送成功提示
-                if (mounted) {
-                  scaffoldMessengerKey.currentState?.showSnackBar(
-                    SnackBar(
-                      content: Text('发送成功'),
-                      duration: Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                      action: SnackBarAction(
-                        label: '查看回复',
-                        onPressed: () {
-                          // 跳转到最后一页前检查组件是否仍然挂载
-                          if (!mounted) return;
-                          _jumpToPage(_curPageManager.maxPage ?? 1, true);
-                        },
+                  // 显示发送成功提示
+                  if (mounted) {
+                    scaffoldMessengerKey.currentState?.showSnackBar(
+                      SnackBar(
+                        content: Text('发送成功'),
+                        duration: Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                        action: SnackBarAction(
+                          label: '查看回复',
+                          onPressed: () {
+                            // 跳转到最后一页前检查组件是否仍然挂载
+                            if (!mounted) return;
+                            _jumpToPage(_curPageManager.maxPage ?? 1, true);
+                          },
+                        ),
                       ),
-                    ),
-                  );
-                }
-              }),
+                    );
+                  }
+                },
+              ),
             ),
     );
   }

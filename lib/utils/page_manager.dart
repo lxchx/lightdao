@@ -44,11 +44,10 @@ typedef PageLoadCallback<T> = void Function(int pageIndex, int itemCount,
 /// 页面管理器抽象类
 /// 负责管理多页数据的加载、缓存和状态跟踪
 abstract class PageManager<T> {
-  /// 初始页码
   final int initialPage;
 
-  /// 每页最大数据条数
-  final int pageMaxSize;
+  /// 每页最大数据条数，可选
+  final int? pageMaxSize;
 
   /// 当前已加载的最小页码
   int _minLoadedPage;
@@ -56,188 +55,124 @@ abstract class PageManager<T> {
   /// 当前已加载的最大页码
   int _maxLoadedPage;
 
-  /// 前页状态通知
   final ValueNotifier<PageState> previousPageStateNotifier;
-
-  /// 后页状态通知
   final ValueNotifier<PageState> nextPageStateNotifier;
 
-  /// 已知的最大页数，初始为null表示未知
+  // 已知最大页数
   int? _knownMaxPage;
 
-  /// 存储每页的数据
+  @protected
   final Map<int, List<T>> _pageItems = {};
 
-  /// 前页加载回调
   PageLoadCallback<T>? _previousPageCallback;
-
-  /// 后页加载回调
   PageLoadCallback<T>? _nextPageCallback;
 
-  /// 检查是否为空
-bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
+  bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
 
-  /// 构造函数
   PageManager({
     required this.initialPage,
-    required this.pageMaxSize,
+    this.pageMaxSize,
   })  : _minLoadedPage = initialPage,
         _maxLoadedPage = initialPage,
-        previousPageStateNotifier = ValueNotifier(initialPage > 1 ? PageHasMore() : PageFullLoaded()),
-        nextPageStateNotifier = ValueNotifier(PageHasMore());
+        previousPageStateNotifier = ValueNotifier(initialPage > 1 ? const PageHasMore() : const PageFullLoaded()),
+        nextPageStateNotifier = ValueNotifier(const PageHasMore());
 
-  /// 带初始数据的构造函数
-  ///
-  /// [initialPage] 初始页码
-  /// [pageMaxSize] 每页最大数据条数
-  /// [initialItems] 初始页的数据列表
   PageManager.withInitialItems({
     required this.initialPage,
     required this.pageMaxSize,
     required List<T> initialItems,
   })  : _minLoadedPage = initialPage,
         _maxLoadedPage = initialPage,
-        previousPageStateNotifier = ValueNotifier(initialPage > 1 ? PageHasMore() : PageFullLoaded()),
-        nextPageStateNotifier = ValueNotifier(initialItems.length < pageMaxSize ? PageFullLoaded() : PageHasMore()) {
-    _pageItems[initialPage] = initialItems;
-    if (initialItems.length < pageMaxSize) {
+        previousPageStateNotifier = ValueNotifier(initialPage > 1 ? const PageHasMore() : const PageFullLoaded()),
+        nextPageStateNotifier = ValueNotifier(pageMaxSize != null && initialItems.length < pageMaxSize ? const PageFullLoaded() : const PageHasMore()) {
+    
+    final items = _processNewItems(initialItems);
+    _pageItems[initialPage] = items;
+    _onAfterPageLoad(initialPage, items);
+
+    if (pageMaxSize != null && initialItems.length < pageMaxSize!) {
       _knownMaxPage = initialPage;
     }
   }
 
-  /// 初始化加载
   Future<void> initialize() async {
     if (_pageItems.containsKey(initialPage)) return;
-    nextPageStateNotifier.value = PageLoading();
+    nextPageStateNotifier.value = const PageLoading();
     try {
-      final items = await _fetchPage(initialPage);
-      nextPageStateNotifier.value = items.length < pageMaxSize ? PageFullLoaded() : PageHasMore();
+      final rawItems = await fetchPage(initialPage);
+      final items = _processNewItems(rawItems);
+      _pageItems[initialPage] = items;
+      _onAfterPageLoad(initialPage, items);
+      nextPageStateNotifier.value = _isLastPage(rawItems) ? const PageFullLoaded() : const PageHasMore();
     } catch (e) {
       nextPageStateNotifier.value = PageError(e, initialize);
     }
   }
 
-  /// 跳转到指定页面
-  ///
-  /// [page] 目标页码
-  /// 会清除所有已加载的页面数据，并将指定页面设为初始页
-  Future<void> jumpToPage(int page) async {
-    assert(page > 0, 'Page number must be greater than 0');
-
-    // 清除所有已加载的页面数据
-    _pageItems.clear();
-
-    // 重置页面状态
-    _minLoadedPage = page;
-    _maxLoadedPage = page;
-    previousPageStateNotifier.value = page > 1 ? PageHasMore() : PageFullLoaded();
-    nextPageStateNotifier.value = PageHasMore();
-    _knownMaxPage = null; // 重置已知最大页数
-
-    // 加载新页面的数据
-    nextPageStateNotifier.value = PageLoading();
-    try {
-      final items = await _fetchPage(page);
-      nextPageStateNotifier.value = items.length < pageMaxSize ? PageFullLoaded() : PageHasMore();
-    } catch (e) {
-      nextPageStateNotifier.value = PageError(e, () => jumpToPage(page));
-    }
-  }
-
   /// 子类需要实现的获取页面数据的方法
   Future<List<T>> fetchPage(int page);
-
-  /// 子类可以重写此方法以提供自定义的比较逻辑
-  bool isSameItem(T item1, T item2) {
-    return item1 == item2;
+  bool isSameItem(T item1, T item2) => item1 == item2;
+  
+  @protected
+  List<T> _processNewItems(List<T> rawItems) => rawItems;
+  @protected
+  void _onAfterPageLoad(int page, List<T> processedItems) {}
+  
+  bool _isLastPage(List<T> fetchedItems) {
+    if (pageMaxSize != null) {
+      return fetchedItems.length < pageMaxSize!;
+    }
+    return fetchedItems.isEmpty;
   }
 
+  RangeValues get loadedPageRange => RangeValues(_minLoadedPage.toDouble(), _maxLoadedPage.toDouble());
+  int get totalItemsCount => _pageItems.values.fold(0, (sum, items) => sum + items.length);
 
-
-  /// 当前已加载的页面范围
-  RangeValues get loadedPageRange =>
-      RangeValues(_minLoadedPage.toDouble(), _maxLoadedPage.toDouble());
-
-  /// 当前总数据条数
-  int get totalItemsCount {
-    return _pageItems.values.fold(0, (sum, items) => sum + items.length);
-  }
-
-  /// 获取所有已加载的数据，按顺序排列
   List<T> get allLoadedItems {
     final List<T> allItems = [];
-
-    // 按页码顺序添加数据
     for (int page = _minLoadedPage; page <= _maxLoadedPage; page++) {
       if (_pageItems.containsKey(page)) {
         allItems.addAll(_pageItems[page]!);
       }
     }
-
     return allItems;
   }
 
-  /// 根据索引获取数据及其页码
-  ///
-  /// [index] 数据在所有已加载数据中的索引
-  /// 返回 (数据, 页码, 页内索引) 元组，如果索引无效则返回null
   (T, int, int)? getItemByIndex(int index) {
-    if (index < 0 || index >= totalItemsCount) {
-      return null;
-    }
-
+    if (index < 0 || index >= totalItemsCount) return null;
     int currentIndex = 0;
     for (int page = _minLoadedPage; page <= _maxLoadedPage; page++) {
       if (!_pageItems.containsKey(page)) continue;
-
       final pageItems = _pageItems[page]!;
       if (currentIndex + pageItems.length > index) {
         final pageIndex = index - currentIndex;
         return (pageItems[pageIndex], page, pageIndex);
       }
-
       currentIndex += pageItems.length;
     }
-
     return null;
   }
 
-  /// 根据页码获取该页第一个数据的索引
-  ///
-  /// [page] 页码
-  /// 返回该页第一个数据的索引，如果页码无效则返回-1
   int getFirstItemIndexByPage(int page) {
     if (page < _minLoadedPage || page > _maxLoadedPage) return -1;
-
     int index = 0;
     for (int p = _minLoadedPage; p < page; p++) {
       if (_pageItems.containsKey(p)) {
         index += _pageItems[p]!.length;
       }
     }
-
     return index;
   }
 
-  /// 根据页码获取该页最后一个数据的索引
-  ///
-  /// [page] 页码
-  /// 返回该页最后一个数据的索引，如果页码无效则返回-1
   int getLastItemIndexByPage(int page) {
     if (page < _minLoadedPage || page > _maxLoadedPage) return -1;
-
     final firstIndex = getFirstItemIndexByPage(page);
     if (firstIndex == -1 || !_pageItems.containsKey(page)) return -1;
-
     return firstIndex + _pageItems[page]!.length - 1;
   }
 
-  /// 获取页面范围信息
-  ///
-  /// 返回一个Map，键为页码，值为(首数据索引, 尾数据索引)元组
   Map<int, (int, int)> get pageRangeInfo {
     final Map<int, (int, int)> result = {};
-
     for (int page = _minLoadedPage; page <= _maxLoadedPage; page++) {
       if (_pageItems.containsKey(page)) {
         final firstIndex = getFirstItemIndexByPage(page);
@@ -247,118 +182,79 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
         }
       }
     }
-
     return result;
   }
 
-  /// 尝试加载前一页
-  ///
-  /// 如果正在加载前一页或没有更多前页，则不执行任何操作
   Future<void> tryLoadPreviousPage({bool ignoreError = false}) async {
-
     if (previousPageStateNotifier.value is PageLoading || previousPageStateNotifier.value is PageFullLoaded) return;
     if (!ignoreError && previousPageStateNotifier.value is PageError) return;
 
     final previousPage = _minLoadedPage - 1;
     if (previousPage < 1) {
-      previousPageStateNotifier.value = PageFullLoaded();
+      previousPageStateNotifier.value = const PageFullLoaded();
       return;
     }
-
-    previousPageStateNotifier.value = PageLoading();
+    previousPageStateNotifier.value = const PageLoading();
 
     try {
-      final items = await fetchPage(previousPage);
-
+      final rawItems = await fetchPage(previousPage);
+      final items = _processNewItems(rawItems);
       bool insertExecuted = false;
-
-      // 创建插入数据的回调函数
-      doInsert() {
+      
+      void doInsert() {
         if (items.isNotEmpty) {
           _pageItems[previousPage] = items;
+          _onAfterPageLoad(previousPage, items);
           _minLoadedPage = previousPage;
         }
-
-        // 如果是第一页，标记没有更多前页
-        if (previousPage == 1) {
-          previousPageStateNotifier.value = PageFullLoaded();
-        } else {
-          previousPageStateNotifier.value = PageHasMore();
-        }
-
+        previousPageStateNotifier.value = (previousPage == 1) ? const PageFullLoaded() : const PageHasMore();
         insertExecuted = true;
       }
 
-      // 如果有回调，则调用回调并让回调决定何时执行doInsert
       if (_previousPageCallback != null) {
         _previousPageCallback!(previousPage, items.length, false, doInsert);
-
-        // 检查回调是否执行了doInsert
-        if (!insertExecuted) {
-          doInsert();
-        }
       } else {
-        // 没有回调，直接执行插入
         doInsert();
       }
     } catch (e) {
-      previousPageStateNotifier.value = PageError(
-        e,
-        () => tryLoadPreviousPage(ignoreError: true),
-      );
+      previousPageStateNotifier.value = PageError(e, () => tryLoadPreviousPage(ignoreError: true));
     }
   }
 
-  /// 尝试加载后一页
-  ///
-  /// 如果正在加载后一页或没有更多后页，则不执行任何操作
   Future<void> tryLoadNextPage({bool ignoreError = false}) async {
     if (nextPageStateNotifier.value is PageLoading || nextPageStateNotifier.value is PageFullLoaded) return;
     if (!ignoreError && nextPageStateNotifier.value is PageError) return;
 
     final nextPage = _maxLoadedPage + 1;
-
-    // 如果已知最大页数，且已经加载到最大页，则不再加载
     if (_knownMaxPage != null && nextPage > _knownMaxPage!) {
-      nextPageStateNotifier.value = PageFullLoaded();
+      nextPageStateNotifier.value = const PageFullLoaded();
       return;
     }
-
-    nextPageStateNotifier.value = PageLoading();
+    nextPageStateNotifier.value = const PageLoading();
 
     try {
-      final items = await fetchPage(nextPage);
-
+      final rawItems = await fetchPage(nextPage);
+      final items = _processNewItems(rawItems);
       bool insertExecuted = false;
 
-      // 创建插入数据的回调函数
-      doInsert() {
+      void doInsert() {
         if (items.isNotEmpty) {
           _pageItems[nextPage] = items;
+          _onAfterPageLoad(nextPage, items);
           _maxLoadedPage = nextPage;
         }
-
-        // 如果返回的数据为空或不足一页，说明没有更多页面了
-        if (items.isEmpty || items.length < pageMaxSize) {
-          nextPageStateNotifier.value = PageFullLoaded();
+        if (_isLastPage(rawItems)) {
+          nextPageStateNotifier.value = const PageFullLoaded();
           _knownMaxPage = items.isEmpty ? nextPage - 1 : nextPage;
         } else {
-          nextPageStateNotifier.value = PageHasMore();
+          nextPageStateNotifier.value = const PageHasMore();
         }
-
         insertExecuted = true;
       }
 
-      // 如果有回调，则调用回调并让回调决定何时执行doInsert
       if (_nextPageCallback != null) {
         _nextPageCallback!(nextPage, items.length, false, doInsert);
-
-        // 检查回调是否执行了doInsert
-        if (!insertExecuted) {
-          doInsert();
-        }
       } else {
-        // 没有回调，直接执行插入
         doInsert();
       }
     } catch (e) {
@@ -366,185 +262,146 @@ bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
     }
   }
 
-  /// 强制拉取新的后页
-  ///
-  /// 当最后一页未满页时，重新拉取最后一页
-  /// 当最后一页满页时，拉取下一页
-  /// 返回新增的数据数量
   Future<int> forceLoadNextPage() async {
     if (nextPageStateNotifier.value is PageLoading) return 0;
+    
+    // 该功能仅适用于有固定页面大小的场景。
+    if (pageMaxSize == null) {
+      await tryLoadNextPage();
+      return 0; // 无法计算新增数量，返回0。
+    }
 
-    nextPageStateNotifier.value = PageLoading();
+    nextPageStateNotifier.value = const PageLoading();
     int newItemCount = 0;
 
     try {
       final lastPageItems = _pageItems[_maxLoadedPage];
-      final isLastPageFull =
-          lastPageItems != null && lastPageItems.length >= pageMaxSize;
+      final isLastPageFull = (lastPageItems?.length ?? 0) >= pageMaxSize!;
 
       if (isLastPageFull) {
-        // 最后一页已满，拉取下一页
         final nextPage = _maxLoadedPage + 1;
-        final items = await fetchPage(nextPage);
+        final rawItems = await fetchPage(nextPage);
+        final items = _processNewItems(rawItems);
         newItemCount = items.length;
 
-        bool insertExecuted = false;
-
-        // 创建插入数据的回调函数
         doInsert() {
           if (items.isNotEmpty) {
             _pageItems[nextPage] = items;
+            _onAfterPageLoad(nextPage, items);
             _maxLoadedPage = nextPage;
           }
-
-          // 如果返回的数据为空或不足一页，说明没有更多页面了
-          if (items.isEmpty || items.length < pageMaxSize) {
-            nextPageStateNotifier.value = PageFullLoaded();
+          if (_isLastPage(rawItems)) {
+            nextPageStateNotifier.value = const PageFullLoaded();
             _knownMaxPage = items.isEmpty ? nextPage - 1 : nextPage;
           } else {
-            nextPageStateNotifier.value = PageHasMore();
+            nextPageStateNotifier.value = const PageHasMore();
           }
-
-          insertExecuted = true;
         }
-
-        // 如果有回调，则调用回调并让回调决定何时执行doInsert
         if (_nextPageCallback != null) {
           _nextPageCallback!(nextPage, items.length, false, doInsert);
-
-          // 检查回调是否执行了doInsert
-          if (!insertExecuted) {
-            doInsert();
-          }
         } else {
-          // 没有回调，直接执行插入
           doInsert();
         }
+
       } else {
-        // 最后一页未满，重新拉取最后一页
         final oldItems = lastPageItems ?? [];
         final oldItemsCount = oldItems.length;
-        final newItems = await fetchPage(_maxLoadedPage);
+        final rawNewItems = await fetchPage(_maxLoadedPage);
 
-        // 智能合并新旧数据
+        // 注意：此处不应再次调用 _processNewItems，因为我们需要原始列表进行比较
+        // 去重逻辑会在合并后，通过覆盖旧页的方式隐式完成。
+        
         List<T> mergedItems;
-        int actualNewItemCount;
-
         if (oldItemsCount > 0) {
-          // 尝试找到旧数据中最后一项在新数据中的位置
           final lastOldItem = oldItems.last;
           int lastOldItemIndex = -1;
-
-          for (int i = 0; i < newItems.length; i++) {
-            if (isSameItem(newItems[i], lastOldItem)) {
+          for (int i = 0; i < rawNewItems.length; i++) {
+            if (isSameItem(rawNewItems[i], lastOldItem)) {
               lastOldItemIndex = i;
               break;
             }
           }
-
-          if (lastOldItemIndex != -1 &&
-              lastOldItemIndex < newItems.length - 1) {
-            // 找到了匹配项，只添加新数据中匹配项之后的数据
-            mergedItems = List<T>.from(oldItems);
-            mergedItems.addAll(newItems.sublist(lastOldItemIndex + 1));
-            actualNewItemCount = newItems.length - (lastOldItemIndex + 1);
+          if (lastOldItemIndex != -1 && lastOldItemIndex < rawNewItems.length - 1) {
+            mergedItems = List<T>.from(oldItems)..addAll(rawNewItems.sublist(lastOldItemIndex + 1));
           } else {
-            // 没找到匹配项或匹配项是新数据的最后一项，直接使用新数据
-            mergedItems = newItems;
-            actualNewItemCount = max(0, newItems.length - oldItemsCount);
+            mergedItems = rawNewItems;
           }
         } else {
-          // 旧数据为空，直接使用新数据
-          mergedItems = newItems;
-          actualNewItemCount = newItems.length;
+          mergedItems = rawNewItems;
         }
-        newItemCount = actualNewItemCount;
-
-        bool insertExecuted = false;
-
-        // 创建插入数据的回调函数
+        newItemCount = mergedItems.length - oldItemsCount;
+        
         doInsert() {
           _pageItems[_maxLoadedPage] = mergedItems;
-
-          // 如果返回的数据仍不足一页，说明没有更多页面了
-          if (mergedItems.length < pageMaxSize) {
-            nextPageStateNotifier.value = PageFullLoaded();
+          _onAfterPageLoad(_maxLoadedPage, mergedItems);
+          if (_isLastPage(rawNewItems)) {
+            nextPageStateNotifier.value = const PageFullLoaded();
             _knownMaxPage = _maxLoadedPage;
           } else {
-            nextPageStateNotifier.value = PageHasMore();
+            nextPageStateNotifier.value = const PageHasMore();
           }
-
-          insertExecuted = true;
         }
 
-        // 如果有回调，则调用回调并让回调决定何时执行doInsert
         if (_nextPageCallback != null && newItemCount > 0) {
           _nextPageCallback!(_maxLoadedPage, newItemCount, true, doInsert);
-
-          // 检查回调是否执行了doInsert
-          if (!insertExecuted) {
-            doInsert();
-          }
         } else {
-          // 没有回调或数据没有增加，直接执行插入
           doInsert();
         }
       }
     } catch (e) {
       nextPageStateNotifier.value = PageError(e, forceLoadNextPage);
     }
-
     return newItemCount;
   }
+  
+  void registerPreviousPageCallback(PageLoadCallback<T> callback) { _previousPageCallback = callback; }
+  void registerNextPageCallback(PageLoadCallback<T> callback) { _nextPageCallback = callback; }
+  void unregisterPreviousPageCallback() { _previousPageCallback = null; }
+  void unregisterNextPageCallback() { _nextPageCallback = null; }
+}
 
-  /// 注册前页加载回调
-  ///
-  /// [callback] 回调函数，参数为:
-  /// - pageIndex: 页码
-  /// - itemCount: 新增数据数量
-  /// - isExistingPageUpdate: 是否是更新已有页面的数据(目前永为false)
-  /// - doInsert: 执行数据插入的回调函数
-  void registerPreviousPageCallback(PageLoadCallback<T> callback) {
-    _previousPageCallback = callback;
-  }
+mixin DeduplicatingPageManagerMixin<T, Id> on PageManager<T> {
+  final Set<Id> _loadedItemIds = {};
+  final Map<Id, (int, int)> _itemLocationCache = {};
 
-  /// 注册后页加载回调
-  ///
-  /// [callback] 回调函数，参数为:
-  /// - pageIndex: 页码
-  /// - itemCount: 新增数据数量
-  /// - isExistingPageUpdate: 是否是更新已有页面的数据
-  /// - doInsert: 执行数据插入的回调函数
-  void registerNextPageCallback(PageLoadCallback<T> callback) {
-    _nextPageCallback = callback;
-  }
+  /// 子类必须实现此方法，以提供每个数据项的唯一ID。
+  Id getItemId(T item);
 
-  /// 取消注册前页加载回调
-  void unregisterPreviousPageCallback() {
-    _previousPageCallback = null;
-  }
-
-  /// 取消注册后页加载回调
-  void unregisterNextPageCallback() {
-    _nextPageCallback = null;
-  }
-
-  /// 获取指定页的数据
-  ///
-  /// [page] 页码
-  /// [forceRefresh] 是否强制刷新，即使已经加载过该页
-  /// 返回该页的数据列表
-  Future<List<T>> _fetchPage(int page, {bool forceRefresh = false}) async {
-    if (!forceRefresh && _pageItems.containsKey(page)) {
-      return _pageItems[page]!;
+  /// 重写基类的处理方法，注入去重和更新逻辑。
+  @override
+  List<T> _processNewItems(List<T> rawItems) {
+    final uniqueNewItems = <T>[];
+    for (final newItem in rawItems) {
+      final id = getItemId(newItem);
+      if (_loadedItemIds.contains(id)) {
+        // ID已存在（数据漂移），执行更新。
+        if (_itemLocationCache.containsKey(id)) {
+          final (oldPage, oldIndexInPage) = _itemLocationCache[id]!;
+          if (_pageItems.containsKey(oldPage) && _pageItems[oldPage]!.length > oldIndexInPage) {
+            _pageItems[oldPage]![oldIndexInPage] = newItem;
+          }
+        }
+      } else {
+        // 全新的数据项。
+        _loadedItemIds.add(id);
+        uniqueNewItems.add(newItem);
+      }
     }
-
-    // 调用子类实现的方法获取页面数据
-    final items = await fetchPage(page);
-
-    _pageItems[page] = items;
-    return items;
+    return uniqueNewItems;
   }
+
+  /// 在数据插入后，更新新项目的位置缓存。
+  @override
+  void _onAfterPageLoad(int page, List<T> processedItems) {
+    if (_pageItems.containsKey(page)) {
+      final items = processedItems;
+      for (int i = 0; i < items.length; i++) {
+        final id = getItemId(items[i]);
+        _itemLocationCache[id] = (page, i);
+      }
+    }
+  }
+
 }
 
 /// 串页面管理器
@@ -648,11 +505,64 @@ class CSEPageManager extends PageManager<GcseItem> {
       start: start,
     ).timeout(timeout);
     // 如果返回数量不足一页，标记没有更多后页
-    if (result.items.length < pageMaxSize) {
+    if (result.items.length < pageMaxSize!) {
       nextPageStateNotifier.value = const PageFullLoaded();
     } else {
       nextPageStateNotifier.value = const PageHasMore();
     }
     return result.items;
+  }
+}
+
+/// 版块页面管理器
+/// 用于处理没有固定最大页数的普通板块。
+class ForumPageManager extends PageManager<ThreadJson> with DeduplicatingPageManagerMixin<ThreadJson, int> {
+  final int forumId;
+  final String? cookie;
+  final Duration timeout;
+
+  ForumPageManager({
+    required this.forumId,
+    this.cookie,
+    this.timeout = const Duration(seconds: 10),
+    super.initialPage = 1,
+  }) : super(pageMaxSize: null);
+
+  @override
+  int getItemId(ThreadJson item) => item.id;
+
+  @override
+  Future<List<ThreadJson>> fetchPage(int page) async {
+    final items = await fetchForumThreads(forumId, page, cookie).timeout(timeout);
+    return items;
+  }
+}
+
+/// 时间线页面管理器
+/// 它会处理时间线的 maxPage 限制。
+class TimelinePageManager extends PageManager<ThreadJson> with DeduplicatingPageManagerMixin<ThreadJson, int> {
+  final int timelineId;
+  final String? cookie;
+  final int maxPage;
+  final Duration timeout;
+
+  TimelinePageManager({
+    required this.timelineId,
+    required this.maxPage,
+    this.cookie,
+    this.timeout = const Duration(seconds: 10),
+    super.initialPage = 1,
+  }) : super(pageMaxSize: null) {
+    _knownMaxPage = maxPage;
+  }
+
+  @override
+  int getItemId(ThreadJson item) => item.id;
+
+  @override
+  Future<List<ThreadJson>> fetchPage(int page) async {
+    if (page > maxPage) return [];
+    final items = await fetchTimelineThreads(timelineId, page, cookie).timeout(timeout);
+    return items;
   }
 }
