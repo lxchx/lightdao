@@ -253,6 +253,8 @@ class _ForumPageState extends State<ForumPage> {
               final valid = RegExp(r'^[1-9]\d*$').hasMatch(value.trim());
               if (valid != isValidThreadId) {
                 setDialogState(() => isValidThreadId = valid);
+              } else {
+                setDialogState(() {});
               }
             }
 
