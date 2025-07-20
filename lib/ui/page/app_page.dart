@@ -86,7 +86,9 @@ class _AppPageState extends State<AppPage> {
 
   void _onDestinationSelected(int index) {
     if (_selectedPageIndex == 0 && _selectedPageIndex == index) {
-      _scaffoldKey.currentState?.openDrawer();
+      if (! _forumPageKey.currentState!.onReLocated(context)) {
+        _scaffoldKey.currentState?.openDrawer();
+      }
       return;
     }
     setState(() {

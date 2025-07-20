@@ -17,4 +17,8 @@ abstract class ScaffoldAccessoryBuilder<T extends StatefulWidget> extends State<
   /// 如果页面不需要FAB，则返回null。子类必须重写此方法。
   /// [anchorContext] 是来自父级Scaffold的context，如果需要，可用于例如显示SnackBar。
   Widget? buildFloatingActionButton(BuildContext anchorContext);
+
+  // 当处于这个导航页又一次单击选择导航项时调用
+  // true说明有动作，false说明没动作，Scaffold页可以做动作
+  bool onReLocated(BuildContext anchorContext);
 }

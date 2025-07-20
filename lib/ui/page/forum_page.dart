@@ -36,8 +36,12 @@ class ForumSelection {
 class ForumPage extends StatefulWidget {
   final ValueNotifier<ForumSelection> forumSelectionNotifier;
   final VoidCallback? scaffoldSetState;
-  
-  const ForumPage({super.key, required this.forumSelectionNotifier, this.scaffoldSetState});
+
+  const ForumPage({
+    super.key,
+    required this.forumSelectionNotifier,
+    this.scaffoldSetState,
+  });
 
   @override
   State<ForumPage> createState() => _ForumPageState();
@@ -47,7 +51,7 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
   late PageManager<ThreadJson> _pageManager;
   final ScrollController _scrollController = ScrollController();
   bool _isInitialized = false;
-  int _lastBuildingReplyIndex = -1; 
+  int _lastBuildingReplyIndex = -1;
 
   XFile? _postImageFile;
   final _postTextControler = TextEditingController();
@@ -259,597 +263,571 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                   _initializePageManager();
                 },
                 edgeOffset: 100,
-                child: CustomScrollView(
-                  key: PageStorageKey(
-                    'CustomScrollViewInForumPage_${currentSelection.id}',
-                  ),
-                  controller: _scrollController,
-                  slivers: [
-                    SliverAppBar(
-                      surfaceTintColor: Colors.transparent,
-                      toolbarHeight: breakpoint.window >= WindowSize.small
-                          ? kToolbarHeight + 20
-                          : kToolbarHeight,
-                      leading: breakpoint.window < WindowSize.small
-                          ? IconButton(
-                              icon: const Icon(Icons.menu),
-                              onPressed: () =>
-                                  Scaffold.of(context).openDrawer(),
-                            )
+                child: ValueListenableBuilder(
+                  valueListenable: _pageManager.nextPageStateNotifier,
+                  builder: (context, value, child) {
+                    return CustomScrollView(
+                      physics: value is PageLoading && _pageManager.isEmpty
+                          ? const NeverScrollableScrollPhysics()
                           : null,
-                      automaticallyImplyLeading: false,
-                      pinned:
-                          appState.setting.fixedBottomBar ||
-                          breakpoint.window >= WindowSize.small,
-                      snap: false,
-                      floating: breakpoint.window < WindowSize.small,
-                      actions: [
-                        if (forumInfo.trim() != '')
-                          IconButton(
-                            onPressed: () => showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('版规'),
-                                content: SizedBox(
-                                  width: double.maxFinite,
-                                  height: 150,
-                                  child: FadingScrollView(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        SelectionArea(
-                                          child: HtmlWidget(forumInfo),
+                      key: PageStorageKey(
+                        'CustomScrollViewInForumPage_${currentSelection.id}',
+                      ),
+                      controller: _scrollController,
+                      slivers: [
+                        SliverAppBar(
+                          surfaceTintColor: Colors.transparent,
+                          toolbarHeight: breakpoint.window >= WindowSize.small
+                              ? kToolbarHeight + 20
+                              : kToolbarHeight,
+                          leading: breakpoint.window < WindowSize.small
+                              ? IconButton(
+                                  icon: const Icon(Icons.menu),
+                                  onPressed: () =>
+                                      Scaffold.of(context).openDrawer(),
+                                )
+                              : null,
+                          automaticallyImplyLeading: false,
+                          pinned:
+                              appState.setting.fixedBottomBar ||
+                              breakpoint.window >= WindowSize.small,
+                          snap: false,
+                          floating: breakpoint.window < WindowSize.small,
+                          actions: [
+                            if (forumInfo.trim() != '')
+                              IconButton(
+                                onPressed: () => showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('版规'),
+                                    content: SizedBox(
+                                      width: double.maxFinite,
+                                      height: 150,
+                                      child: FadingScrollView(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            SelectionArea(
+                                              child: HtmlWidget(forumInfo),
+                                            ),
+                                            const SizedBox(height: 20),
+                                          ],
                                         ),
-                                        const SizedBox(height: 20),
-                                      ],
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        child: const Text('了解'),
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                icon: const Icon(Icons.info),
+                              ),
+                            IconButton(
+                              onPressed: _showSearchDialog,
+                              icon: const Icon(Icons.search),
+                            ),
+                            if (breakpoint.window >= WindowSize.small)
+                              FloatingActionButton.extended(
+                                elevation: 0,
+                                onPressed: () => showReplyBottomSheet(
+                                  context,
+                                  true,
+                                  currentSelection.isTimeline
+                                      ? appState.forumMap.values
+                                            .firstWhere(
+                                              (forum) => forum.name == "综合版1",
+                                              orElse: () => appState
+                                                  .forumMap
+                                                  .values
+                                                  .first,
+                                            )
+                                            .id
+                                      : currentSelection.id,
+                                  -1,
+                                  fakeThread,
+                                  _postImageFile,
+                                  (image) => _postImageFile = image,
+                                  _postTitleControler,
+                                  _postAuthorControler,
+                                  _postTextControler,
+                                  () => _initializePageManager(),
+                                ),
+                                tooltip: '发串',
+                                label: const Text('发串'),
+                                icon: const Icon(Icons.edit),
+                              ),
+                            SizedBox(width: breakpoint.gutters),
+                          ],
+                          title: GestureDetector(
+                            onTap: () async {
+                              if (_scrollController.hasClients) {
+                                await _scrollController.animateTo(
+                                  0,
+                                  duration: Durations.medium1,
+                                  curve: Curves.linearToEaseOut,
+                                );
+                              }
+                            },
+                            child: Row(
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    HtmlWidget(currentSelection.name),
+                                    Text(
+                                      'X岛・nmbxd.com',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: Theme.of(context).hintColor,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                                Expanded(child: Container()),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Builder(
+                          builder: (context) {
+                            if (_pageManager.isEmpty && value is PageError) {
+                              return SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text('加载失败: ${value.error}'),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton(
+                                        onPressed: value.retry,
+                                        child: const Text('重试'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            if (_pageManager.isEmpty &&
+                                value is PageFullLoaded) {
+                              return const SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(48.0),
+                                    child: Text(
+                                      "这里什么都没有... ( ´_ゝ`)",
+                                      style: TextStyle(fontSize: 16),
                                     ),
                                   ),
                                 ),
-                                actions: [
-                                  TextButton(
-                                    child: const Text('了解'),
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            icon: const Icon(Icons.info),
-                          ),
-                        IconButton(
-                          onPressed: _showSearchDialog,
-                          icon: const Icon(Icons.search),
-                        ),
-                        if (breakpoint.window >= WindowSize.small)
-                          FloatingActionButton.extended(
-                            elevation: 0,
-                            onPressed: () => showReplyBottomSheet(
-                              context,
-                              true,
-                              currentSelection.isTimeline
-                                  ? appState.forumMap.values
-                                        .firstWhere(
-                                          (forum) => forum.name == "综合版1",
-                                          orElse: () =>
-                                              appState.forumMap.values.first,
-                                        )
-                                        .id
-                                  : currentSelection.id,
-                              -1,
-                              fakeThread,
-                              _postImageFile,
-                              (image) => _postImageFile = image,
-                              _postTitleControler,
-                              _postAuthorControler,
-                              _postTextControler,
-                              () => _initializePageManager(),
-                            ),
-                            tooltip: '发串',
-                            label: const Text('发串'),
-                            icon: const Icon(Icons.edit),
-                          ),
-                        SizedBox(width: breakpoint.gutters),
-                      ],
-                      title: GestureDetector(
-                        onTap: () async {
-                          if (_scrollController.hasClients) {
-                            await _scrollController.animateTo(
-                              0,
-                              duration: Durations.medium1,
-                              curve: Curves.linearToEaseOut,
-                            );
-                          }
-                        },
-                        child: Row(
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                HtmlWidget(currentSelection.name),
-                                Text(
-                                  'X岛・nmbxd.com',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: Theme.of(context).hintColor,
-                                      ),
-                                ),
-                              ],
-                            ),
-                            Expanded(child: Container()),
-                          ],
-                        ),
-                      ),
-                    ),
-                    ValueListenableBuilder<PageState>(
-                      valueListenable: _pageManager.nextPageStateNotifier,
-                      builder: (context, state, _) {
-                        if (_pageManager.isEmpty && state is PageError) {
-                          return SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text('加载失败: ${state.error}'),
-                                  const SizedBox(height: 16),
-                                  ElevatedButton(
-                                    onPressed: state.retry,
-                                    child: const Text('重试'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-                        if (_pageManager.isEmpty && state is PageFullLoaded) {
-                          return const SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(48.0),
-                                child: Text(
-                                  "这里什么都没有... ( ´_ゝ`)",
-                                  style: TextStyle(fontSize: 16),
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-                        return SliverPadding(
-                          padding: EdgeInsets.all(breakpoint.gutters),
-                          sliver: SliverMasonryGrid.count(
-                            crossAxisCount: forumRowCount,
-                            mainAxisSpacing: breakpoint.gutters,
-                            crossAxisSpacing: breakpoint.gutters,
-                            childCount:
-                                _pageManager.totalItemsCount +
-                                (_pageManager.nextPageStateNotifier.value is! PageLoading ? 0 : _pageManager.isEmpty
-                                    ? 7 * forumRowCount
-                                    : 1), // 追加表示Loadding的骨架reply
-                            itemBuilder: (context, index) {
-                              if (index < _pageManager.totalItemsCount) {
-                                var mustCollapsed = false;
-                                if (_lastBuildingReplyIndex > 0 &&
-                                    _lastBuildingReplyIndex > index) {
-                                  mustCollapsed = true;
-                                }
-                                _lastBuildingReplyIndex = index;
+                              );
+                            }
+                            return SliverPadding(
+                              padding: EdgeInsets.all(breakpoint.gutters),
+                              sliver: SliverMasonryGrid.count(
+                                crossAxisCount: forumRowCount,
+                                mainAxisSpacing: breakpoint.gutters,
+                                crossAxisSpacing: breakpoint.gutters,
+                                childCount:
+                                    _pageManager.totalItemsCount +
+                                    (_pageManager.nextPageStateNotifier.value
+                                            is! PageLoading
+                                        ? 0
+                                        : _pageManager.isEmpty
+                                        ? 7 * forumRowCount
+                                        : 1), // 追加表示Loadding的骨架reply
+                                itemBuilder: (context, index) {
+                                  if (index < _pageManager.totalItemsCount) {
+                                    var mustCollapsed = false;
+                                    if (_lastBuildingReplyIndex > 0 &&
+                                        _lastBuildingReplyIndex > index) {
+                                      mustCollapsed = true;
+                                    }
+                                    _lastBuildingReplyIndex = index;
 
-                                final item = _pageManager.getItemByIndex(index);
-                                if (item == null) return const SizedBox();
-                                final post = item.$1;
-                                final replyItem = ReplyItem(
-                                  inCardView: appState.setting.isCardView,
-                                  collapsedRef: mustCollapsed,
-                                  isThreadFirstOrForumPreview: true,
-                                  contentNeedCollapsed: true,
-                                  threadJson: post,
-                                  contentHeroTag: 'ThreadCard ${post.id}',
-                                  imageHeroTag: 'Image ${post.img}${post.ext}',
-                                  cacheImageSize: true,
-                                );
-                                onTapThread() => appState.navigateThreadPage2(
-                                  context,
-                                  post.id,
-                                  false,
-                                  thread: post,
-                                );
+                                    final item = _pageManager.getItemByIndex(
+                                      index,
+                                    );
+                                    if (item == null) return const SizedBox();
+                                    final post = item.$1;
+                                    final replyItem = ReplyItem(
+                                      inCardView: appState.setting.isCardView,
+                                      collapsedRef: mustCollapsed,
+                                      isThreadFirstOrForumPreview: true,
+                                      contentNeedCollapsed: true,
+                                      threadJson: post,
+                                      contentHeroTag: 'ThreadCard ${post.id}',
+                                      imageHeroTag:
+                                          'Image ${post.img}${post.ext}',
+                                      cacheImageSize: true,
+                                    );
+                                    onTapThread() =>
+                                        appState.navigateThreadPage2(
+                                          context,
+                                          post.id,
+                                          false,
+                                          thread: post,
+                                        );
 
-                                onLongPressThread() => showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) => SimpleDialog(
-                                    title: const Text('屏蔽操作'),
-                                    children: [
-                                      SimpleDialogOption(
-                                        child: Text('屏蔽串No.${post.id}'),
-                                        onPressed: () {
-                                          if (!appState.setting.threadFilters
-                                              .any(
-                                                (f) =>
-                                                    f is IdThreadFilter &&
-                                                    f.id == post.id,
-                                              )) {
-                                            appState.setState(
-                                              (_) => appState
+                                    onLongPressThread() => showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) => SimpleDialog(
+                                        title: const Text('屏蔽操作'),
+                                        children: [
+                                          SimpleDialogOption(
+                                            child: Text('屏蔽串No.${post.id}'),
+                                            onPressed: () {
+                                              if (!appState
                                                   .setting
                                                   .threadFilters
-                                                  .add(
-                                                    IdThreadFilter(id: post.id),
-                                                  ),
-                                            );
-                                          }
-                                          Navigator.of(context).pop();
-                                        },
-                                      ),
-                                      SimpleDialogOption(
-                                        child: Text('屏蔽饼干${post.userHash}'),
-                                        onPressed: () {
-                                          if (!appState.setting.threadFilters
-                                              .any(
-                                                (f) =>
-                                                    f is UserHashFilter &&
-                                                    f.userHash == post.userHash,
-                                              )) {
-                                            appState.setState(
-                                              (_) => appState
-                                                  .setting
-                                                  .threadFilters
-                                                  .add(
-                                                    UserHashFilter(
-                                                      userHash: post.userHash,
-                                                    ),
-                                                  ),
-                                            );
-                                          }
-                                          Navigator.of(context).pop();
-                                        },
-                                      ),
-                                      if (currentSelection.isTimeline)
-                                        SimpleDialogOption(
-                                          child: Text(
-                                            '在时间线屏蔽${appState.forumMap[post.fid]?.getShowName() ?? '(版面id: ${post.fid})'}',
+                                                  .any(
+                                                    (f) =>
+                                                        f is IdThreadFilter &&
+                                                        f.id == post.id,
+                                                  )) {
+                                                appState.setState(
+                                                  (_) => appState
+                                                      .setting
+                                                      .threadFilters
+                                                      .add(
+                                                        IdThreadFilter(
+                                                          id: post.id,
+                                                        ),
+                                                      ),
+                                                );
+                                              }
+                                              Navigator.of(context).pop();
+                                            },
                                           ),
-                                          onPressed: () {
-                                            if (!appState.setting.threadFilters
-                                                .any(
-                                                  (f) =>
-                                                      f is ForumThreadFilter &&
-                                                      f.fid == post.fid,
-                                                )) {
-                                              appState.setState(
-                                                (_) => appState
+                                          SimpleDialogOption(
+                                            child: Text('屏蔽饼干${post.userHash}'),
+                                            onPressed: () {
+                                              if (!appState
+                                                  .setting
+                                                  .threadFilters
+                                                  .any(
+                                                    (f) =>
+                                                        f is UserHashFilter &&
+                                                        f.userHash ==
+                                                            post.userHash,
+                                                  )) {
+                                                appState.setState(
+                                                  (_) => appState
+                                                      .setting
+                                                      .threadFilters
+                                                      .add(
+                                                        UserHashFilter(
+                                                          userHash:
+                                                              post.userHash,
+                                                        ),
+                                                      ),
+                                                );
+                                              }
+                                              Navigator.of(context).pop();
+                                            },
+                                          ),
+                                          if (currentSelection.isTimeline)
+                                            SimpleDialogOption(
+                                              child: Text(
+                                                '在时间线屏蔽${appState.forumMap[post.fid]?.getShowName() ?? '(版面id: ${post.fid})'}',
+                                              ),
+                                              onPressed: () {
+                                                if (!appState
                                                     .setting
                                                     .threadFilters
-                                                    .add(
-                                                      ForumThreadFilter(
-                                                        fid: post.fid,
+                                                    .any(
+                                                      (f) =>
+                                                          f is ForumThreadFilter &&
+                                                          f.fid == post.fid,
+                                                    )) {
+                                                  appState.setState(
+                                                    (_) => appState
+                                                        .setting
+                                                        .threadFilters
+                                                        .add(
+                                                          ForumThreadFilter(
+                                                            fid: post.fid,
+                                                          ),
+                                                        ),
+                                                  );
+                                                }
+                                                Navigator.of(context).pop();
+                                              },
+                                            ),
+                                        ],
+                                      ),
+                                    );
+
+                                    final replyActionBar =
+                                        appState.setting.isCardView
+                                        ? Row(
+                                            children: [
+                                              Expanded(
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.start,
+                                                  children: [
+                                                    IconButton.filledTonal(
+                                                      onPressed:
+                                                          onLongPressThread,
+                                                      icon: Icon(
+                                                        Icons.more_vert,
                                                       ),
                                                     ),
-                                              );
-                                            }
-                                            Navigator.of(context).pop();
-                                          },
-                                        ),
-                                    ],
-                                  ),
-                                );
-
-                                final replyActionBar =
-                                    appState.setting.isCardView
-                                    ? Row(
-                                        children: [
-                                          Expanded(
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.start,
-                                              children: [
-                                                IconButton.filledTonal(
-                                                  onPressed: onLongPressThread,
-                                                  icon: Icon(Icons.more_vert),
+                                                    IconButton.filledTonal(
+                                                      onPressed: () async =>
+                                                          await Share.share(
+                                                            'https://www.nmbxd1.com/t/${post.id}',
+                                                          ),
+                                                      icon: Icon(Icons.share),
+                                                    ),
+                                                  ],
                                                 ),
-                                                IconButton.filledTonal(
-                                                  onPressed: () async =>
+                                              ),
+                                              IconButton.filledTonal(
+                                                onPressed: () {
+                                                  if (appState.isStared(
+                                                    post.id,
+                                                  )) {
+                                                    appState.setState((_) {
+                                                      appState
+                                                          .setting
+                                                          .starHistory
+                                                          .removeWhere(
+                                                            (rply) =>
+                                                                rply
+                                                                    .thread
+                                                                    .id ==
+                                                                post.id,
+                                                          );
+                                                    });
+                                                  } else {
+                                                    appState.setState((_) {
+                                                      final history = appState
+                                                          .setting
+                                                          .viewHistory
+                                                          .get(post.id);
+                                                      if (history != null) {
+                                                        appState
+                                                            .setting
+                                                            .starHistory
+                                                            .add(history);
+                                                      } else {
+                                                        appState
+                                                            .setting
+                                                            .starHistory
+                                                            .add(
+                                                              ReplyJsonWithPage(
+                                                                1,
+                                                                0,
+                                                                post.id,
+                                                                post,
+                                                                post,
+                                                              ),
+                                                            );
+                                                      }
+                                                    });
+                                                  }
+                                                },
+                                                icon: Icon(
+                                                  appState.isStared(post.id)
+                                                      ? Icons.favorite
+                                                      : Icons.favorite_border,
+                                                ),
+                                              ),
+                                              IconButton.filledTonal(
+                                                onPressed: () => appState
+                                                    .navigateThreadPage2(
+                                                      context,
+                                                      post.id,
+                                                      false,
+                                                      thread: post,
+                                                    ),
+                                                icon: post.replyCount == 0
+                                                    ? Icon(Icons.message)
+                                                    : Badge(
+                                                        backgroundColor:
+                                                            Theme.of(context)
+                                                                .colorScheme
+                                                                .surfaceContainer,
+                                                        textColor: Theme.of(context)
+                                                            .colorScheme
+                                                            .onPrimaryContainer,
+                                                        label: Text(
+                                                          post.replyCount
+                                                              .toString(),
+                                                        ),
+                                                        child: Icon(
+                                                          Icons.message,
+                                                        ),
+                                                      ),
+                                              ),
+                                            ],
+                                          )
+                                        : Row(
+                                            children: [
+                                              Expanded(
+                                                child: InkWell(
+                                                  onTap: () async =>
                                                       await Share.share(
                                                         'https://www.nmbxd1.com/t/${post.id}',
                                                       ),
-                                                  icon: Icon(Icons.share),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          IconButton.filledTonal(
-                                            onPressed: () {
-                                              if (appState.isStared(
-                                                post.id,
-                                              )) {
-                                                appState.setState((_) {
-                                                  appState.setting.starHistory
-                                                      .removeWhere(
-                                                        (rply) =>
-                                                            rply.thread.id ==
-                                                            post.id,
-                                                      );
-                                                });
-                                              } else {
-                                                appState.setState((_) {
-                                                  final history = appState
-                                                      .setting
-                                                      .viewHistory
-                                                      .get(post.id);
-                                                  if (history != null) {
-                                                    appState.setting.starHistory
-                                                        .add(history);
-                                                  } else {
-                                                    appState.setting.starHistory
-                                                        .add(
-                                                          ReplyJsonWithPage(
-                                                            1,
-                                                            0,
-                                                            post.id,
-                                                            post,
-                                                            post,
-                                                          ),
-                                                        );
-                                                  }
-                                                });
-                                              }
-                                            },
-                                            icon: Icon(
-                                              appState.isStared(
-                                                    post.id,
-                                                  )
-                                                  ? Icons.favorite
-                                                  : Icons.favorite_border,
-                                            ),
-                                          ),
-                                          IconButton.filledTonal(
-                                            onPressed: () =>
-                                                appState.navigateThreadPage2(
-                                                  context,
-                                                  post.id,
-                                                  false,
-                                                  thread: post,
-                                                ),
-                                            icon: post.replyCount == 0
-                                                ? Icon(Icons.message)
-                                                : Badge(
-                                                    backgroundColor:
-                                                        Theme.of(context)
-                                                            .colorScheme
-                                                            .surfaceContainer,
-                                                    textColor: Theme.of(context)
-                                                        .colorScheme
-                                                        .onPrimaryContainer,
-                                                    label: Text(
-                                                      post.replyCount
-                                                          .toString(),
-                                                    ),
-                                                    child: Icon(Icons.message),
-                                                  ),
-                                          ),
-                                        ],
-                                      )
-                                    : Row(
-                                        children: [
-                                          Expanded(
-                                            child: InkWell(
-                                              onTap: () async => await Share.share(
-                                                'https://www.nmbxd1.com/t/${post.id}',
-                                              ),
-                                              child: SizedBox(
-                                                height: 35,
-                                                child: Row(
-                                                  children: [
-                                                    Spacer(),
-                                                    Icon(
-                                                      Icons.share,
-                                                      size: Theme.of(context)
-                                                          .textTheme
-                                                          .bodyMedium
-                                                          ?.fontSize,
-                                                    ),
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 2,
-                                                          ),
-                                                    ),
-                                                    Text('分享'),
-                                                    Spacer(),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            child: InkWell(
-                                              onTap: () {
-                                                if (appState.isStared(
-                                                  post.id,
-                                                )) {
-                                                  appState.setState((_) {
-                                                    appState.setting.starHistory
-                                                        .removeWhere(
-                                                          (rply) =>
-                                                              rply.thread.id ==
-                                                              post.id,
-                                                        );
-                                                  });
-                                                } else {
-                                                  appState.setState((_) {
-                                                    final history = appState
-                                                        .setting
-                                                        .viewHistory
-                                                        .get(post.id);
-                                                    if (history != null) {
-                                                      appState
-                                                          .setting
-                                                          .starHistory
-                                                          .add(history);
-                                                    } else {
-                                                      appState
-                                                          .setting
-                                                          .starHistory
-                                                          .add(
-                                                            ReplyJsonWithPage(
-                                                              1,
-                                                              0,
-                                                              post.id,
-                                                              post,
-                                                              post,
-                                                            ),
-                                                          );
-                                                    }
-                                                  });
-                                                }
-                                              },
-                                              child: SizedBox(
-                                                height: 35,
-                                                child: Row(
-                                                  children: [
-                                                    Spacer(),
-                                                    Icon(
-                                                      appState.isStared(
-                                                            post.id,
-                                                          )
-                                                          ? Icons.favorite
-                                                          : Icons
-                                                                .favorite_border,
-                                                      size: Theme.of(context)
-                                                          .textTheme
-                                                          .bodyMedium
-                                                          ?.fontSize,
-                                                    ),
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 2,
-                                                          ),
-                                                    ),
-                                                    Text('收藏'),
-                                                    Spacer(),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            child: SizedBox(
-                                              height: 35,
-                                              child: Row(
-                                                children: [
-                                                  Spacer(),
-                                                  Icon(
-                                                    Icons.message,
-                                                    size: Theme.of(context)
-                                                        .textTheme
-                                                        .bodyMedium
-                                                        ?.fontSize,
-                                                  ),
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 2,
+                                                  child: SizedBox(
+                                                    height: 35,
+                                                    child: Row(
+                                                      children: [
+                                                        Spacer(),
+                                                        Icon(
+                                                          Icons.share,
+                                                          size:
+                                                              Theme.of(context)
+                                                                  .textTheme
+                                                                  .bodyMedium
+                                                                  ?.fontSize,
                                                         ),
-                                                  ),
-                                                  Text(
-                                                    post.replyCount ==
-                                                            0
-                                                        ? '评论'
-                                                        : post
-                                                              .replyCount
-                                                              .toString(),
-                                                  ),
-                                                  Spacer(),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-
-                                return Column(
-                                  children: [
-                                    if (!appState.setting.isCardView)
-                                      InkWell(
-                                        onTap: onTapThread,
-                                        onLongPress: onLongPressThread,
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 10,
-                                            left: 10,
-                                            right: 10,
-                                          ),
-                                          child: Material(
-                                            type: MaterialType.transparency,
-                                            child: FilterableThreadWidget(
-                                              reply: post,
-                                              isTimeLineFilter:
-                                                  currentSelection.isTimeline,
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  replyItem,
-                                                  if (currentSelection
-                                                      .isTimeline)
-                                                    ActionChip(
-                                                      onPressed: () {
-                                                        final targetForum =
-                                                            appState
-                                                                .forumMap[post
-                                                                .fid];
-                                                        if (targetForum !=
-                                                            null) {
-                                                          widget
-                                                              .forumSelectionNotifier
-                                                              .value = ForumSelection(
-                                                            id: targetForum.id,
-                                                            name: targetForum
-                                                                .getShowName(),
-                                                            isTimeline: false,
-                                                          );
-                                                        }
-                                                      },
-                                                      backgroundColor:
-                                                          Theme.of(context)
-                                                              .colorScheme
-                                                              .surfaceContainer,
-                                                      padding: EdgeInsets.zero,
-                                                      labelStyle: Theme.of(
-                                                        context,
-                                                      ).textTheme.labelSmall,
-                                                      label: HtmlWidget(
-                                                        appState
-                                                                .forumMap[post
-                                                                    .fid]
-                                                                ?.getShowName() ??
-                                                            '',
-                                                      ),
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 2,
+                                                              ),
+                                                        ),
+                                                        Text('分享'),
+                                                        Spacer(),
+                                                      ],
                                                     ),
-                                                  replyActionBar,
-                                                ],
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                    else
-                                      Material(
-                                        type: MaterialType.transparency,
-                                        child: Card(
-                                          shadowColor: Colors.transparent,
-                                          child: InkWell(
-                                            borderRadius: BorderRadius.circular(
-                                              12.0,
-                                            ),
+                                              Expanded(
+                                                child: InkWell(
+                                                  onTap: () {
+                                                    if (appState.isStared(
+                                                      post.id,
+                                                    )) {
+                                                      appState.setState((_) {
+                                                        appState
+                                                            .setting
+                                                            .starHistory
+                                                            .removeWhere(
+                                                              (rply) =>
+                                                                  rply
+                                                                      .thread
+                                                                      .id ==
+                                                                  post.id,
+                                                            );
+                                                      });
+                                                    } else {
+                                                      appState.setState((_) {
+                                                        final history = appState
+                                                            .setting
+                                                            .viewHistory
+                                                            .get(post.id);
+                                                        if (history != null) {
+                                                          appState
+                                                              .setting
+                                                              .starHistory
+                                                              .add(history);
+                                                        } else {
+                                                          appState
+                                                              .setting
+                                                              .starHistory
+                                                              .add(
+                                                                ReplyJsonWithPage(
+                                                                  1,
+                                                                  0,
+                                                                  post.id,
+                                                                  post,
+                                                                  post,
+                                                                ),
+                                                              );
+                                                        }
+                                                      });
+                                                    }
+                                                  },
+                                                  child: SizedBox(
+                                                    height: 35,
+                                                    child: Row(
+                                                      children: [
+                                                        Spacer(),
+                                                        Icon(
+                                                          appState.isStared(
+                                                                post.id,
+                                                              )
+                                                              ? Icons.favorite
+                                                              : Icons
+                                                                    .favorite_border,
+                                                          size:
+                                                              Theme.of(context)
+                                                                  .textTheme
+                                                                  .bodyMedium
+                                                                  ?.fontSize,
+                                                        ),
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 2,
+                                                              ),
+                                                        ),
+                                                        Text('收藏'),
+                                                        Spacer(),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: SizedBox(
+                                                  height: 35,
+                                                  child: Row(
+                                                    children: [
+                                                      Spacer(),
+                                                      Icon(
+                                                        Icons.message,
+                                                        size: Theme.of(context)
+                                                            .textTheme
+                                                            .bodyMedium
+                                                            ?.fontSize,
+                                                      ),
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 2,
+                                                            ),
+                                                      ),
+                                                      Text(
+                                                        post.replyCount == 0
+                                                            ? '评论'
+                                                            : post.replyCount
+                                                                  .toString(),
+                                                      ),
+                                                      Spacer(),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+
+                                    return Column(
+                                      children: [
+                                        if (!appState.setting.isCardView)
+                                          InkWell(
                                             onTap: onTapThread,
                                             onLongPress: onLongPressThread,
                                             child: Padding(
-                                              padding: EdgeInsets.all(
-                                                breakpoint.gutters,
+                                              padding: const EdgeInsets.only(
+                                                top: 10,
+                                                left: 10,
+                                                right: 10,
                                               ),
                                               child: Material(
                                                 type: MaterialType.transparency,
@@ -864,13 +842,6 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                                                             .start,
                                                     children: [
                                                       replyItem,
-                                                      SizedBox(
-                                                        height:
-                                                            currentSelection
-                                                                .isTimeline
-                                                            ? 5
-                                                            : 10,
-                                                      ),
                                                       if (currentSelection
                                                           .isTimeline)
                                                         ActionChip(
@@ -917,133 +888,225 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                                                 ),
                                               ),
                                             ),
-                                          ),
-                                        ),
-                                      ),
-                                    if (index !=
-                                            _pageManager.totalItemsCount - 1 &&
-                                        !appState.setting.isCardView)
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                        ),
-                                        child: const Divider(height: 2),
-                                      ),
-                                  ],
-                                );
-                              } else {
-                                return Skeletonizer(
-                                  effect: ShimmerEffect(
-                                    baseColor: Theme.of(context)
-                                        .colorScheme
-                                        .onPrimaryContainer
-                                        .withAlpha(70),
-                                    highlightColor: Theme.of(context)
-                                        .colorScheme
-                                        .onPrimaryContainer
-                                        .withAlpha(50),
-                                  ),
-                                  enabled: true,
-                                  child: Column(
-                                    children: [
-                                      if (!appState.setting.isCardView)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 10,
-                                            bottom: 15,
-                                            left: 10,
-                                            right: 10,
-                                          ),
-                                          child: ReplyItem(
-                                            contentNeedCollapsed: false,
-                                            threadJson: fakeThread,
-                                          ),
-                                        )
-                                      else
-                                        Card(
-                                          shadowColor: Colors.transparent,
-                                          child: Padding(
-                                            padding: EdgeInsets.all(
-                                              breakpoint.gutters,
+                                          )
+                                        else
+                                          Material(
+                                            type: MaterialType.transparency,
+                                            child: Card(
+                                              shadowColor: Colors.transparent,
+                                              child: InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(12.0),
+                                                onTap: onTapThread,
+                                                onLongPress: onLongPressThread,
+                                                child: Padding(
+                                                  padding: EdgeInsets.all(
+                                                    breakpoint.gutters,
+                                                  ),
+                                                  child: Material(
+                                                    type: MaterialType
+                                                        .transparency,
+                                                    child: FilterableThreadWidget(
+                                                      reply: post,
+                                                      isTimeLineFilter:
+                                                          currentSelection
+                                                              .isTimeline,
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          replyItem,
+                                                          SizedBox(
+                                                            height:
+                                                                currentSelection
+                                                                    .isTimeline
+                                                                ? 5
+                                                                : 10,
+                                                          ),
+                                                          if (currentSelection
+                                                              .isTimeline)
+                                                            ActionChip(
+                                                              onPressed: () {
+                                                                final targetForum =
+                                                                    appState
+                                                                        .forumMap[post
+                                                                        .fid];
+                                                                if (targetForum !=
+                                                                    null) {
+                                                                  widget
+                                                                      .forumSelectionNotifier
+                                                                      .value = ForumSelection(
+                                                                    id: targetForum
+                                                                        .id,
+                                                                    name: targetForum
+                                                                        .getShowName(),
+                                                                    isTimeline:
+                                                                        false,
+                                                                  );
+                                                                }
+                                                              },
+                                                              backgroundColor:
+                                                                  Theme.of(
+                                                                        context,
+                                                                      )
+                                                                      .colorScheme
+                                                                      .surfaceContainer,
+                                                              padding:
+                                                                  EdgeInsets
+                                                                      .zero,
+                                                              labelStyle:
+                                                                  Theme.of(
+                                                                        context,
+                                                                      )
+                                                                      .textTheme
+                                                                      .labelSmall,
+                                                              label: HtmlWidget(
+                                                                appState
+                                                                        .forumMap[post
+                                                                            .fid]
+                                                                        ?.getShowName() ??
+                                                                    '',
+                                                              ),
+                                                            ),
+                                                          replyActionBar,
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
                                             ),
-                                            child: ReplyItem(
-                                              inCardView: true,
-                                              contentNeedCollapsed: false,
-                                              threadJson: fakeThread,
+                                          ),
+                                        if (index !=
+                                                _pageManager.totalItemsCount -
+                                                    1 &&
+                                            !appState.setting.isCardView)
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
                                             ),
+                                            child: const Divider(height: 2),
                                           ),
-                                        ),
-                                      if (!appState.setting.isCardView)
-                                        const Padding(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                          ),
-                                          child: Divider(height: 2),
-                                        ),
-                                    ],
-                                  ),
-                                );
+                                      ],
+                                    );
+                                  } else {
+                                    return Skeletonizer(
+                                      effect: ShimmerEffect(
+                                        baseColor: Theme.of(context)
+                                            .colorScheme
+                                            .onPrimaryContainer
+                                            .withAlpha(70),
+                                        highlightColor: Theme.of(context)
+                                            .colorScheme
+                                            .onPrimaryContainer
+                                            .withAlpha(50),
+                                      ),
+                                      enabled: true,
+                                      child: Column(
+                                        children: [
+                                          if (!appState.setting.isCardView)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 10,
+                                                bottom: 15,
+                                                left: 10,
+                                                right: 10,
+                                              ),
+                                              child: ReplyItem(
+                                                contentNeedCollapsed: false,
+                                                threadJson: fakeThread,
+                                              ),
+                                            )
+                                          else
+                                            Card(
+                                              shadowColor: Colors.transparent,
+                                              child: Padding(
+                                                padding: EdgeInsets.all(
+                                                  breakpoint.gutters,
+                                                ),
+                                                child: ReplyItem(
+                                                  inCardView: true,
+                                                  contentNeedCollapsed: false,
+                                                  threadJson: fakeThread,
+                                                ),
+                                              ),
+                                            ),
+                                          if (!appState.setting.isCardView)
+                                            const Padding(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                              ),
+                                              child: Divider(height: 2),
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                        SliverToBoxAdapter(
+                          child: ValueListenableBuilder<PageState>(
+                            valueListenable: _pageManager.nextPageStateNotifier,
+                            builder: (context, state, child) {
+                              if (_pageManager.isEmpty) {
+                                return const SizedBox.shrink();
                               }
+
+                              Widget content;
+                              switch (state) {
+                                case PageLoading():
+                                  return const SizedBox.shrink();
+                                case PageFullLoaded():
+                                  content = Center(
+                                    child: Text(
+                                      "--- 已到达世界的尽头 ---",
+                                      style: TextStyle(
+                                        color: Theme.of(context).hintColor,
+                                      ),
+                                    ),
+                                  );
+                                case PageError(
+                                  error: final err,
+                                  retry: final retry,
+                                ):
+                                  content = Center(
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          "加载更多失败: $err",
+                                          style: TextStyle(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.error,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        ElevatedButton(
+                                          onPressed: retry,
+                                          child: const Text('重试'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                case PageHasMore():
+                                  return const SizedBox.shrink();
+                              }
+                              return Padding(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: breakpoint.gutters,
+                                ),
+                                child: content,
+                              );
                             },
                           ),
-                        );
-                      },
-                    ),
-                    SliverToBoxAdapter(
-                      child: ValueListenableBuilder<PageState>(
-                        valueListenable: _pageManager.nextPageStateNotifier,
-                        builder: (context, state, child) {
-                          if (_pageManager.isEmpty) {
-                            return const SizedBox.shrink();
-                          }
-
-                          Widget content;
-                          switch (state) {
-                            case PageLoading():
-                              return const SizedBox.shrink();
-                            case PageFullLoaded():
-                              content = Center(
-                                child: Text(
-                                  "--- 已到达世界的尽头 ---",
-                                  style: TextStyle(
-                                    color: Theme.of(context).hintColor,
-                                  ),
-                                ),
-                              );
-                            case PageError(
-                              error: final err,
-                              retry: final retry,
-                            ):
-                              content = Center(
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      "加载更多失败: $err",
-                                      style: TextStyle(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.error,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ElevatedButton(
-                                      onPressed: retry,
-                                      child: const Text('重试'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            case PageHasMore():
-                              return const SizedBox.shrink();
-                          }
-                          return Padding(
-                            padding: EdgeInsets.symmetric(vertical: breakpoint.gutters),
-                            child: content,
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                        ),
+                      ],
+                    );
+                  },
                 ),
               );
             },
@@ -1052,7 +1115,7 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
       },
     );
   }
-  
+
   @override
   List<Widget> buildDrawerContent(BuildContext context) {
     final appState = Provider.of<MyAppState>(context, listen: false);
@@ -1164,10 +1227,11 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
       ),
     ];
   }
-  
+
   @override
   Widget? buildFloatingActionButton(BuildContext context) {
-    if (_pageManager.nextPageStateNotifier.value is PageLoading && _pageManager.isEmpty) {
+    if (_pageManager.nextPageStateNotifier.value is PageLoading &&
+        _pageManager.isEmpty) {
       return null;
     }
     return ValueListenableBuilder<ForumSelection>(
@@ -1175,32 +1239,45 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
       builder: (context, currentSelection, child) {
         final appState = Provider.of<MyAppState>(context, listen: false);
         return FloatingActionButton.extended(
-                  onPressed: () => showReplyBottomSheet(
-                                  context,
-                                  true,
-                                  currentSelection.isTimeline
-                                      ? appState.forumMap.values
-                                            .firstWhere(
-                                              (forum) => forum.name == "综合版1",
-                                              orElse: () =>
-                                                  appState.forumMap.values.first,
-                                            )
-                                            .id
-                                      : currentSelection.id,
-                                  -1,
-                                  fakeThread,
-                                  _postImageFile,
-                                  (image) => _postImageFile = image,
-                                  _postTitleControler,
-                                  _postAuthorControler,
-                                  _postTextControler,
-                                  () => _initializePageManager(),
-                                ),
-                  tooltip: '发串',
-                  label: const Text('发串'),
-                  icon: const Icon(Icons.edit),
-                );
-      }
+          onPressed: () => showReplyBottomSheet(
+            context,
+            true,
+            currentSelection.isTimeline
+                ? appState.forumMap.values
+                      .firstWhere(
+                        (forum) => forum.name == "综合版1",
+                        orElse: () => appState.forumMap.values.first,
+                      )
+                      .id
+                : currentSelection.id,
+            -1,
+            fakeThread,
+            _postImageFile,
+            (image) => _postImageFile = image,
+            _postTitleControler,
+            _postAuthorControler,
+            _postTextControler,
+            () => _initializePageManager(),
+          ),
+          tooltip: '发串',
+          label: const Text('发串'),
+          icon: const Icon(Icons.edit),
+        );
+      },
     );
+  }
+
+  @override
+  bool onReLocated(BuildContext anchorContext) {
+    if (_scrollController.position.pixels != 0) {
+      _scrollController.animateTo(
+        0,
+        duration: Durations.long4,
+        curve: Curves.easeOutExpo,
+      );
+      return true;
+    } else {
+      return false;
+    }
   }
 }
