@@ -81,7 +81,9 @@ class ThreadPage2 extends StatefulWidget {
 }
 
 class _ThreadPage2State extends State<ThreadPage2> {
-  final _fetchRefThrottle = IntervalRunner<RefHtml>(interval: Duration(milliseconds: 750));
+  final _fetchRefThrottle = IntervalRunner<RefHtml>(
+    interval: Duration(milliseconds: 750),
+  );
   final _scrollController = TsukuyomiListScrollController();
   late ThreadPageManager _pageManager;
   ThreadPageManager? _poPageManager;
@@ -398,7 +400,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
             );
           },
         );
-      }, 
+      },
     );
   }
 
@@ -836,7 +838,10 @@ class _ThreadPage2State extends State<ThreadPage2> {
     }
 
     final loadingReply = Padding(
-      padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+      padding: EdgeInsets.symmetric(
+        horizontal: breakpoint.gutters,
+        vertical: breakpoint.gutters / 2,
+      ),
       child: Skeletonizer(
         effect: ShimmerEffect(
           baseColor: Theme.of(
@@ -1118,9 +1123,12 @@ class _ThreadPage2State extends State<ThreadPage2> {
                                             ),
                                         '(｀･ω･)',
                                       ),
-                                      Text(style: Theme.of(context)
-                                            .textTheme
-                                            .titleLarge, '暂时没有回复噢'),
+                                      Text(
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleLarge,
+                                        '暂时没有回复噢',
+                                      ),
                                       ElevatedButton.icon(
                                         onPressed: () {
                                           _handlePageManagerError(
