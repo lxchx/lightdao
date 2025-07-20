@@ -122,6 +122,7 @@ class _AppPageState extends State<AppPage> {
               ),
             ),
             ...content,
+            SizedBox(height: MediaQuery.of(context).padding.bottom,),
           ],
         ),
       ),
@@ -232,11 +233,14 @@ class _AppPageState extends State<AppPage> {
                             horizontal: breakpoint.gutters / 2,
                           ),
                           child: Column(
-                            children:
-                                _forumPageKey.currentState?.buildDrawerContent(
-                                  context,
-                                ) ??
-                                [],
+                            children: [
+                              ...(_forumPageKey.currentState
+                                      ?.buildDrawerContent(context) ??
+                                  []),
+                              SizedBox(
+                                height: MediaQuery.of(context).padding.bottom,
+                              ),
+                            ],
                           ),
                         ),
                       ),
