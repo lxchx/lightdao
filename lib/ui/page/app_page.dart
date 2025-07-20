@@ -67,6 +67,7 @@ class _AppPageState extends State<AppPage> {
       ForumPage(
         key: _forumPageKey,
         forumSelectionNotifier: _forumSelectionNotifier,
+        scaffoldSetState: () => setState(() {}),
       ),
       starPage(context),
       TrendPage(refCache: trendRefCache),
@@ -128,8 +129,9 @@ class _AppPageState extends State<AppPage> {
   Widget? _buildCurrentPageFab() {
     if (!_isInitialized || _selectedPageIndex != 0) return null;
     final breakpoint = Breakpoint.fromMediaQuery(context);
-    if (breakpoint.window >= WindowSize.small || !_isBottomBarVisible)
+    if (breakpoint.window >= WindowSize.small || !_isBottomBarVisible) {
       return null;
+    }
     return _forumPageKey.currentState?.buildFloatingActionButton(context);
   }
 

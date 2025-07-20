@@ -35,8 +35,9 @@ class ForumSelection {
 
 class ForumPage extends StatefulWidget {
   final ValueNotifier<ForumSelection> forumSelectionNotifier;
+  final VoidCallback? scaffoldSetState;
   
-  ForumPage({super.key, required this.forumSelectionNotifier});
+  const ForumPage({super.key, required this.forumSelectionNotifier, this.scaffoldSetState});
 
   @override
   State<ForumPage> createState() => _ForumPageState();
@@ -125,6 +126,9 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
 
   void _onPageStateChanged() {
     if (mounted) setState(() {});
+    if (widget.scaffoldSetState != null) {
+      widget.scaffoldSetState!();
+    }
   }
 
   @override
@@ -1163,6 +1167,9 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
   
   @override
   Widget? buildFloatingActionButton(BuildContext context) {
+    if (_pageManager.nextPageStateNotifier.value is PageLoading && _pageManager.isEmpty) {
+      return null;
+    }
     return ValueListenableBuilder<ForumSelection>(
       valueListenable: widget.forumSelectionNotifier,
       builder: (context, currentSelection, child) {
