@@ -86,7 +86,7 @@ class _AppPageState extends State<AppPage> {
 
   void _onDestinationSelected(int index) {
     if (_selectedPageIndex == 0 && _selectedPageIndex == index) {
-      if (! _forumPageKey.currentState!.onReLocated(context)) {
+      if (!_forumPageKey.currentState!.onReLocated(context)) {
         _scaffoldKey.currentState?.openDrawer();
       }
       return;
@@ -122,7 +122,7 @@ class _AppPageState extends State<AppPage> {
               ),
             ),
             ...content,
-            SizedBox(height: MediaQuery.of(context).padding.bottom,),
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
           ],
         ),
       ),
@@ -132,7 +132,9 @@ class _AppPageState extends State<AppPage> {
   Widget? _buildCurrentPageFab() {
     if (!_isInitialized || _selectedPageIndex != 0) return null;
     final breakpoint = Breakpoint.fromMediaQuery(context);
-    if (breakpoint.window >= WindowSize.small || !_isBottomBarVisible) {
+    final appState = Provider.of<MyAppState>(context, listen: false);
+    if (breakpoint.window >= WindowSize.small ||
+        (!appState.setting.fixedBottomBar && !_isBottomBarVisible)) {
       return null;
     }
     return _forumPageKey.currentState?.buildFloatingActionButton(context);
