@@ -81,6 +81,7 @@ class ThreadPage2 extends StatefulWidget {
 }
 
 class _ThreadPage2State extends State<ThreadPage2> {
+  final _fetchRefThrottle = IntervalRunner<RefHtml>(interval: Duration(milliseconds: 750));
   final _scrollController = TsukuyomiListScrollController();
   late ThreadPageManager _pageManager;
   ThreadPageManager? _poPageManager;
@@ -397,7 +398,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
             );
           },
         );
-      },
+      }, 
     );
   }
 
@@ -978,6 +979,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                           imageInitIndex: _poReply.img == '' ? null : 0,
                           imageNames: allImageNames,
                           onImageEdit: _onImageEdit,
+                          throttle: _fetchRefThrottle,
                         ),
                       ),
                     ),

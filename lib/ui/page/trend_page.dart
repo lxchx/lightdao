@@ -6,6 +6,7 @@ import 'package:lightdao/data/xdao/ref.dart';
 import 'package:lightdao/data/xdao/reply.dart';
 import 'package:lightdao/ui/widget/reply_item.dart';
 import 'package:lightdao/utils/kv_store.dart';
+import 'package:lightdao/utils/throttle.dart';
 import 'package:lightdao/utils/time_parse.dart';
 import 'package:lightdao/utils/xdao_api.dart';
 import 'package:provider/provider.dart';
@@ -22,6 +23,7 @@ class _TrendPageState extends State<TrendPage> {
   ReplyJson? _reply;
   String? _error;
   bool _isLoading = false;
+  final _fetchRefThrottle = IntervalRunner<RefHtml>(interval: Duration(milliseconds: 350));
 
   @override
   void initState() {
@@ -147,6 +149,7 @@ class _TrendPageState extends State<TrendPage> {
                       refCache: widget.refCache,
                       poUserHash: "WaKod1l",
                       contentNeedCollapsed: false,
+                      throttle: _fetchRefThrottle,
                     ),
                   ),
       ),

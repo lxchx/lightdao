@@ -10,6 +10,7 @@ import 'package:lightdao/ui/widget/line_limited_html_widget.dart';
 import 'package:lightdao/ui/widget/reply_item.dart';
 import 'package:lightdao/utils/content_widget_factory.dart';
 import 'package:lightdao/utils/xdao_api.dart';
+import 'package:lightdao/utils/throttle.dart';
 import 'package:provider/provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:swipeable_page_route/swipeable_page_route.dart';
@@ -29,6 +30,7 @@ class RefView extends StatefulWidget {
   final bool mustCollapsed;
   final bool isThreadFirstOrForumPreview; // 在这两种情况下Content本身在Hero中了，组件就不能有Hero
   final Function(File image, Object? heroTag)? onImageEdit;
+  final IntervalRunner<RefHtml>? throttle;
 
   RefView(
       {required this.refId,
@@ -39,7 +41,8 @@ class RefView extends StatefulWidget {
       required this.inPopView,
       this.isThreadFirstOrForumPreview = false,
       this.mustCollapsed = false,
-      this.onImageEdit});
+      this.onImageEdit,
+      this.throttle});
 
   @override
   State<RefView> createState() => _RefViewState();
@@ -72,12 +75,14 @@ class _RefViewState extends State<RefView> with SingleTickerProviderStateMixin {
     }
     if (widget.refCache != null) {
       final ref = widget.refCache!.get(widget.refId);
-      _futureReply =
-          ref ?? fetchRefFromHtml(widget.refId, appState.getCurrentCookie());
+      _futureReply = ref ??
+          fetchRefFromHtml(widget.refId, appState.getCurrentCookie(),
+              throttle: widget.throttle);
       widget.refCache!.put(widget.refId, _futureReply);
     } else {
-      _futureReply =
-          fetchRefFromHtml(widget.refId, appState.getCurrentCookie());
+      _futureReply = fetchRefFromHtml(
+          widget.refId, appState.getCurrentCookie(),
+          throttle: widget.throttle);
     }
   }
 

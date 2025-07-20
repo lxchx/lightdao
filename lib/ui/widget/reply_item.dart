@@ -8,6 +8,7 @@ import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/data/xdao/reply.dart';
 import 'package:lightdao/ui/widget/line_limited_html_widget.dart';
 import 'package:lightdao/utils/content_widget_factory.dart';
+import 'package:lightdao/utils/throttle.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/xdao/ref.dart';
@@ -41,6 +42,7 @@ class ReplyItem extends StatelessWidget {
   final int? imageInitIndex;
   final bool cacheImageSize;
   final Function(File image, Object? heroTag)? onImageEdit;
+  final IntervalRunner<RefHtml>? throttle;
 
   ReplyItem({
     super.key,
@@ -59,6 +61,7 @@ class ReplyItem extends StatelessWidget {
     this.imageInitIndex,
     this.cacheImageSize = false,
     this.onImageEdit,
+    this.throttle,
   }) {
     assert(
         // 如果imageInitIndex有效（非null且>=0），则imageNames必须有效（非null且非空）
@@ -195,7 +198,8 @@ class ReplyItem extends StatelessWidget {
                           inPopView: false,
                           isThreadFirstOrForumPreview:
                               isThreadFirstOrForumPreview,
-                          onImageEdit: onImageEdit),
+                          onImageEdit: onImageEdit,
+                          throttle: throttle),
                     )
                   else
                     HtmlWidget(

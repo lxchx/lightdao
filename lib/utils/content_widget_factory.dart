@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:lightdao/data/xdao/ref.dart';
 import 'package:lightdao/ui/widget/ref_view.dart';
+import 'package:lightdao/utils/throttle.dart';
 
 import 'kv_store.dart';
 
@@ -54,6 +55,7 @@ class ContentWidgetFactory extends WidgetFactory {
   final bool inPopView;
   final bool isThreadFirstOrForumPreview;
   final bool refMustCollapsed;
+  final IntervalRunner<RefHtml>? throttle;
   late BuildOp refOp;
   late BuildOp hidableOp;
   final Function(File image, Object? heroTag)? onImageEdit;
@@ -65,7 +67,8 @@ class ContentWidgetFactory extends WidgetFactory {
       required this.inPopView,
       this.refMustCollapsed = false,
       this.isThreadFirstOrForumPreview = false,
-      this.onImageEdit}) {
+      this.onImageEdit,
+      this.throttle}) {
     refOp = BuildOp(
       onRenderBlock: (meta, child) {
         return RefView(
@@ -78,6 +81,7 @@ class ContentWidgetFactory extends WidgetFactory {
           isThreadFirstOrForumPreview: isThreadFirstOrForumPreview,
           mustCollapsed: refMustCollapsed,
           onImageEdit: onImageEdit,
+          throttle: throttle,
         );
       },
     );

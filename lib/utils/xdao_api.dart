@@ -20,9 +20,8 @@ class XDaoApiExeption implements Exception {}
 
 class XDaoApiMsgException implements XDaoApiExeption {
   final String msg;
-  XDaoApiMsgException(String rawMsg) 
-    : msg = _tryDecodeUnicode(rawMsg);
-  
+  XDaoApiMsgException(String rawMsg) : msg = _tryDecodeUnicode(rawMsg);
+
   static String _tryDecodeUnicode(String input) {
     try {
       // 尝试将字符串作为JSON字符串解析，这会自动处理Unicode转义
@@ -86,20 +85,20 @@ Map<String, dynamic> getOKJsonMap(String mayJsonStr) {
 Future<List<ForumList>> fetchForumList() async {
   final response = await http.get(
     Uri.parse('https://api.nmb.best/api/getForumList'),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
 
   if (response.statusCode == 200) {
     final data = getOKJsonList(response.body);
     try {
-      final List<ForumList> forumLists =
-          data.map((e) => ForumList.fromJson(e)).toList();
+      final List<ForumList> forumLists = data
+          .map((e) => ForumList.fromJson(e))
+          .toList();
       return forumLists;
     } catch (e) {
       throw Exception(
-          'Failed to build ForumList from json str: ${e.toString()}');
+        'Failed to build ForumList from json str: ${e.toString()}',
+      );
     }
   } else {
     throw Exception('Failed to load forum_list: ${response.statusCode}');
@@ -109,9 +108,7 @@ Future<List<ForumList>> fetchForumList() async {
 Future<List<Timeline>> fetchTimelines() async {
   final response = await http.get(
     Uri.parse('https://api.nmb.best/api/getTimelineList'),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
 
   if (response.statusCode == 200) {
@@ -121,7 +118,8 @@ Future<List<Timeline>> fetchTimelines() async {
       return timelines;
     } catch (e) {
       throw Exception(
-          'Failed to build List<Timeline> from json str: ${e.toString()}');
+        'Failed to build List<Timeline> from json str: ${e.toString()}',
+      );
     }
   } else {
     throw Exception('Failed to load timeline_list: ${response.statusCode}');
@@ -129,37 +127,39 @@ Future<List<Timeline>> fetchTimelines() async {
 }
 
 Future<List<ThreadJson>> fetchForumThreads(
-    int forumId, int page, String? cookie) async {
+  int forumId,
+  int page,
+  String? cookie,
+) async {
   if (page <= 0) {
     throw ArgumentError('Page number must be greater than 0');
   }
 
   late Map<String, String>? headers;
   if (cookie != null) {
-    headers = {
-      'Cookie': 'userhash=$cookie',
-    };
+    headers = {'Cookie': 'userhash=$cookie'};
   } else {
     headers = null;
   }
 
   final response = await http.get(
-    Uri.parse('https://api.nmb.best/api/showf').replace(queryParameters: {
-      'id': forumId.toString(),
-      'page': page.toString(),
-    }),
+    Uri.parse('https://api.nmb.best/api/showf').replace(
+      queryParameters: {'id': forumId.toString(), 'page': page.toString()},
+    ),
     headers: headers,
   ) /*.timeout(Duration(seconds: 10))*/;
 
   if (response.statusCode == 200) {
     final List<dynamic> data = getOKJsonList(response.body);
     try {
-      final List<ThreadJson> threads =
-          data.map((json) => ThreadJson.fromJson(json)).toList();
+      final List<ThreadJson> threads = data
+          .map((json) => ThreadJson.fromJson(json))
+          .toList();
       return threads;
     } catch (e) {
       throw Exception(
-          'Failed to build List<ThreadJson> from json str: ${e.toString()}');
+        'Failed to build List<ThreadJson> from json str: ${e.toString()}',
+      );
     }
   } else {
     throw Exception('Failed to load threads: ${response.statusCode}');
@@ -167,37 +167,39 @@ Future<List<ThreadJson>> fetchForumThreads(
 }
 
 Future<List<ThreadJson>> fetchTimelineThreads(
-    int timelineId, int page, String? cookie) async {
+  int timelineId,
+  int page,
+  String? cookie,
+) async {
   if (page <= 0) {
     throw ArgumentError('Page number must be greater than 0');
   }
 
   late Map<String, String>? headers;
   if (cookie != null) {
-    headers = {
-      'Cookie': 'userhash=$cookie',
-    };
+    headers = {'Cookie': 'userhash=$cookie'};
   } else {
     headers = null;
   }
 
   final response = await http.get(
-    Uri.parse('https://api.nmb.best/api/timeline').replace(queryParameters: {
-      'id': timelineId.toString(),
-      'page': page.toString(),
-    }),
+    Uri.parse('https://api.nmb.best/api/timeline').replace(
+      queryParameters: {'id': timelineId.toString(), 'page': page.toString()},
+    ),
     headers: headers,
   );
 
   if (response.statusCode == 200) {
     final List<dynamic> data = getOKJsonList(response.body);
     try {
-      final List<ThreadJson> threads =
-          data.map((json) => ThreadJson.fromJson(json)).toList();
+      final List<ThreadJson> threads = data
+          .map((json) => ThreadJson.fromJson(json))
+          .toList();
       return threads;
     } catch (e) {
       throw Exception(
-          'Failed to build List<ThreadJson> from json str: ${e.toString()}');
+        'Failed to build List<ThreadJson> from json str: ${e.toString()}',
+      );
     }
   } else {
     throw Exception('Failed to load threads: ${response.statusCode}');
@@ -216,10 +218,16 @@ Future<List<ThreadJson>> fetchTimelineThreads(
 //  return 2; // from http
 //}
 
-Future<ThreadJson> _getThreadGeneric(String baseUrl, int threadId, int page, String? cookie) async {
+Future<ThreadJson> _getThreadGeneric(
+  String baseUrl,
+  int threadId,
+  int page,
+  String? cookie,
+) async {
   final url = Uri.parse(baseUrl).replace(
-      queryParameters: {'id': threadId.toString(), 'page': page.toString()});
-  
+    queryParameters: {'id': threadId.toString(), 'page': page.toString()},
+  );
+
   // 1. 从cache拿
   final threadJsonFile = await MyThreadCacheManager().getFileFromCache(
     url.toString(),
@@ -234,21 +242,16 @@ Future<ThreadJson> _getThreadGeneric(String baseUrl, int threadId, int page, Str
     }
     return thread;
   }
-  
+
   // 2. 从http拿
   late Map<String, String>? headers;
   if (cookie != null) {
-    headers = {
-      'Cookie': 'userhash=$cookie',
-    };
+    headers = {'Cookie': 'userhash=$cookie'};
   } else {
     headers = null;
   }
-  
-  final response = await http.get(
-    url,
-    headers: headers,
-  );
+
+  final response = await http.get(url, headers: headers);
 
   if (response.statusCode == 200) {
     final data = getOKJsonMap(response.body);
@@ -257,16 +260,31 @@ Future<ThreadJson> _getThreadGeneric(String baseUrl, int threadId, int page, Str
     return thread;
   } else {
     throw Exception(
-        'Failed to fetch thread, http status code: ${response.statusCode}');
+      'Failed to fetch thread, http status code: ${response.statusCode}',
+    );
   }
 }
 
 Future<ThreadJson> getThread(int threadId, int page, String? cookie) async {
-  return _getThreadGeneric('https://api.nmb.best/api/thread', threadId, page, cookie);
+  return _getThreadGeneric(
+    'https://api.nmb.best/api/thread',
+    threadId,
+    page,
+    cookie,
+  );
 }
 
-Future<ThreadJson> getThreadPoOnly(int threadId, int page, String? cookie) async {
-  return _getThreadGeneric('https://api.nmb.best/api/po', threadId, page, cookie);
+Future<ThreadJson> getThreadPoOnly(
+  int threadId,
+  int page,
+  String? cookie,
+) async {
+  return _getThreadGeneric(
+    'https://api.nmb.best/api/po',
+    threadId,
+    page,
+    cookie,
+  );
 }
 
 //Future<ThreadJson> getThreadFromCache(
@@ -350,15 +368,12 @@ Future<ThreadJson> getThreadPoOnly(int threadId, int page, String? cookie) async
 //}
 
 Future<RefJson> fetchRef(int refId, String? cookie) async {
-  final url =
-      Uri.parse('https://api.nmb.best/api/ref').replace(queryParameters: {
-    'id': refId.toString(),
-  });
+  final url = Uri.parse(
+    'https://api.nmb.best/api/ref',
+  ).replace(queryParameters: {'id': refId.toString()});
   late Map<String, String>? headers;
   if (cookie != null) {
-    headers = {
-      'Cookie': 'userhash=$cookie',
-    };
+    headers = {'Cookie': 'userhash=$cookie'};
   } else {
     headers = null;
   }
@@ -372,31 +387,45 @@ Future<RefJson> fetchRef(int refId, String? cookie) async {
   return RefJson.fromJson(data);
 }
 
-final fetchRefThrottle =
-    IntervalRunner<RefHtml>(interval: Duration(milliseconds: 150));
-Future<RefHtml> fetchRefFromHtml(int refId, String? cookie) async {
-  return fetchRefThrottle.run(() async {
+final fetchRefThrottle = IntervalRunner<RefHtml>(
+  interval: Duration(milliseconds: 150),
+);
+Future<RefHtml> fetchRefFromHtml(
+  int refId,
+  String? cookie, {
+  IntervalRunner<RefHtml>? throttle,
+}) async {
+  final runner = throttle ?? fetchRefThrottle;
+  return runner.run(() async {
     //print('${DateTime.now()} 排到了refId: $refId');
-    final url = Uri.parse('https://www.nmbxd1.com/Home/Forum/ref')
-        .replace(queryParameters: {
-      'id': refId.toString(),
-    });
+    final url = Uri.parse(
+      'https://www.nmbxd1.com/Home/Forum/ref',
+    ).replace(queryParameters: {'id': refId.toString()});
 
     late Map<String, String>? headers;
     if (cookie != null) {
-      headers = {
-        'Cookie': 'userhash=$cookie',
-      };
+      headers = {'Cookie': 'userhash=$cookie'};
     } else {
       headers = null;
     }
 
-    File responseFile;
-    responseFile = await MyThreadCacheManager().getSingleFile(
-      url.toString(),
-      headers: headers,
-    );
+    File? responseFile;
+    try {
+      responseFile = await MyThreadCacheManager().getSingleFile(
+        url.toString(),
+        headers: headers,
+      );
+    } on HttpException catch (e) {
+      if (e.message.contains('statusCode: 429')) {
+        await Future.delayed(Duration(seconds: 1));
+        responseFile = responseFile = await MyThreadCacheManager()
+            .getSingleFile(url.toString(), headers: headers);
+      }
+    }
 
+    if (responseFile == null) {
+      throw Exception('获取串失败');
+    }
     final responseBody = await responseFile.readAsString();
 
     try {
@@ -422,7 +451,7 @@ Future<RefHtml> fetchRefFromHtml(int refId, String? cookie) async {
       try {
         return RefHtml.fromHtml(document);
       } catch (e) {
-        throw Exception('串不存在？');
+        throw Exception('串不存在');
       }
     }
   });
@@ -439,16 +468,17 @@ Future<Post> postThread({
 }) async {
   final url = Uri.parse('https://www.nmbxd.com/home/forum/doPostThread.html');
   await _sendRequest(
-      url,
-      {
-        'content': content,
-        'fid': fid.toString(),
-        'name': name,
-        'title': title,
-        'water': water ? "1" : "0",
-      },
-      image,
-      cookie);
+    url,
+    {
+      'content': content,
+      'fid': fid.toString(),
+      'name': name,
+      'title': title,
+      'water': water ? "1" : "0",
+    },
+    image,
+    cookie,
+  );
   return getLastPost(cookie);
 }
 
@@ -463,21 +493,26 @@ Future<Post> replyThread({
 }) async {
   final url = Uri.parse('https://www.nmbxd.com/home/forum/doReplyThread.html');
   await _sendRequest(
-      url,
-      {
-        'content': content,
-        'resto': threadId.toString(),
-        'name': name,
-        'title': title,
-        'water': water ? "1" : "0",
-      },
-      image,
-      cookie);
+    url,
+    {
+      'content': content,
+      'resto': threadId.toString(),
+      'name': name,
+      'title': title,
+      'water': water ? "1" : "0",
+    },
+    image,
+    cookie,
+  );
   return getLastPost(cookie);
 }
 
 Future<void> _sendRequest(
-    Uri url, Map<String, String> fields, File? image, String cookie) async {
+  Uri url,
+  Map<String, String> fields,
+  File? image,
+  String cookie,
+) async {
   var request = http.MultipartRequest('POST', url);
   request.fields.addAll(fields);
   if (image != null) {
@@ -492,8 +527,9 @@ Future<void> _sendRequest(
       request = http.MultipartRequest('POST', Uri.parse(newUrl));
       request.fields.addAll(fields);
       if (image != null) {
-        request.files
-            .add(await http.MultipartFile.fromPath('image', image.path));
+        request.files.add(
+          await http.MultipartFile.fromPath('image', image.path),
+        );
       }
       request.headers['Cookie'] = 'userhash=$cookie';
       response = await request.send();
@@ -523,9 +559,7 @@ Future<Post> getLastPost(String? cookie) async {
   final url = Uri.parse('https://www.nmbxd1.com/Api/getLastPost');
   late Map<String, String>? headers;
   if (cookie != null) {
-    headers = {
-      'Cookie': 'userhash=$cookie',
-    };
+    headers = {'Cookie': 'userhash=$cookie'};
   } else {
     headers = null;
   }
@@ -541,9 +575,7 @@ Future<Post> getLastPost(String? cookie) async {
 Future<List<FeedInfo>> getFeedInfos(String uuid, int page) async {
   final response = await http.get(
     Uri.parse('https://api.nmb.best/api/feed?uuid=$uuid&page=$page'),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
   if (response.statusCode == 200) {
     if (response.body.trim() == '') {
@@ -559,9 +591,7 @@ Future<List<FeedInfo>> getFeedInfos(String uuid, int page) async {
 Future<void> addFeed(String uuid, int tid) async {
   final response = await http.post(
     Uri.parse('https://api.nmb.best/api/addFeed?uuid=$uuid&tid=$tid'),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
   if (response.statusCode == 200) {
     if (jsonDecode(response.body.trim()) == '订阅大成功→_→') {
@@ -577,9 +607,7 @@ Future<void> addFeed(String uuid, int tid) async {
 Future<void> delFeed(String uuid, int tid) async {
   final response = await http.post(
     Uri.parse('https://api.nmb.best/api/delFeed?uuid=$uuid&tid=$tid'),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
   if (response.statusCode == 200) {
     if (jsonDecode(response.body.trim()) == '取消订阅成功!') {
@@ -592,16 +620,15 @@ Future<void> delFeed(String uuid, int tid) async {
   }
 }
 
-
 Future<ReplyJson> getLatestTrend(String? cookie) async {
   const int trendThreadId = 50248044;
-  
+
   ThreadJson firstPageThread = await getThread(trendThreadId, 1, cookie);
-  
+
   final int lastPage = (firstPageThread.replyCount / 19).ceil();
-  
+
   ThreadJson lastPageThread = await getThread(trendThreadId, lastPage, cookie);
-  
+
   final ReplyJson latestReply = lastPageThread.replies.last;
 
   return latestReply;
@@ -619,14 +646,12 @@ Future<NoticeInfo> getNotice() async {
   try {
     final file = await noticeCacheManager.getSingleFile(
       'https://nmb.ovear.info/nmb-notice.json',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
     );
-    
+
     final jsonStr = await file.readAsString();
     final data = getOKJsonMap(jsonStr);
-    
+
     return NoticeInfo.fromJson(data);
   } catch (e) {
     throw Exception('获取公告失败: ${e.toString()}');
