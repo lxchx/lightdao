@@ -81,422 +81,432 @@ Widget starPage(BuildContext context) {
   final appState = Provider.of<MyAppState>(context);
   final breakpoint = Breakpoint.fromMediaQuery(context);
   final loaderOverlay = context.loaderOverlay;
-  return ReplysPage(
-    title: "收藏",
-    actions: [
-      StatefulBuilder(
-        builder: (context, setState) {
-          return IconButton(
-            tooltip: "与订阅同步",
-            onPressed: () async {
-              if (appState.setting.feedUuid == '') {
-                scaffoldMessengerKey.currentState?.showSnackBar(
-                  SnackBar(content: Text("订阅uuid为空！")),
-                );
-                return;
-              }
-
-              final syncStatus = ValueNotifier('开始同步...');
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) {
-                  return Dialog(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24.0),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                        child: Container(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHigh.withAlpha(50),
-                          child: ValueListenableBuilder<String>(
-                            valueListenable: syncStatus,
-                            builder: (context, value, child) {
-                              return Padding(
-                                padding: EdgeInsets.all(breakpoint.gutters),
-                                child: Text(
-                                  value,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurface,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              );
-
-              // 状态变量
-              var remoteOnly = <ReplyJson>[];
-              var localOnly = <ReplyJsonWithPage>[];
-
-              try {
-                // 拉取远程订阅数据
-                var page = 1;
-                var remoteFeeds = <ReplyJson>[];
-                int retryCount = 0;
-                const maxRetries = 5;
-                while (true) {
-                  try {
-                    syncStatus.value = '正在拉取远程订阅的第 $page 页...';
-                    await Future.delayed(const Duration(milliseconds: 100));
-                    final feedInfos = await getFeedInfos(
-                      appState.setting.feedUuid,
-                      page,
-                    ).timeout(const Duration(seconds: 10));
-                    if (feedInfos.isEmpty) break;
-                    remoteFeeds.addAll(
-                      feedInfos.map((feed) => ReplyJson.fromFeedInfo(feed)),
-                    );
-                    page += 1;
-                    retryCount = 0; // Reset retry count on success
-                  } catch (e) {
-                    if (retryCount >= maxRetries) {
-                      throw Exception('超过最大重试次数');
-                    }
-                    final retryDelay = Duration(
-                      milliseconds: 100 * (1 << retryCount),
-                    );
-                    if (retryDelay.inSeconds >= 1) {
-                      throw Exception('单页重试时间超过1秒');
-                    }
-                    syncStatus.value =
-                        '拉取失败，${retryDelay.inMilliseconds}ms后重试...';
-                    await Future.delayed(retryDelay);
-                    retryCount++;
-                  }
-                }
-
-                // 比对远程和本地的订阅历史
-                final localFeeds = appState.setting.starHistory;
-
-                remoteOnly = remoteFeeds
-                    .where(
-                      (feed) =>
-                          !localFeeds.any((local) => local.threadId == feed.id),
-                    )
-                    .toList();
-
-                localOnly = localFeeds
-                    .where(
-                      (local) =>
-                          !remoteFeeds.any((feed) => feed.id == local.threadId),
-                    )
-                    .toList();
-
-                // 比对完成后关闭状态弹窗
-                if (context.mounted)
-                  Navigator.of(context, rootNavigator: true).pop();
-                syncStatus.value = '正在比对订阅数据...';
-
-                if (localOnly.isEmpty && remoteOnly.isEmpty) {
+  return StatefulBuilder(
+    builder: (context, setState) => ReplysPage(
+      title: "收藏",
+      actions: [
+        StatefulBuilder(
+          builder: (context, setState) {
+            return IconButton(
+              tooltip: "与订阅同步",
+              onPressed: () async {
+                if (appState.setting.feedUuid == '') {
                   scaffoldMessengerKey.currentState?.showSnackBar(
-                    SnackBar(content: Text('本地云端数据一致')),
+                    SnackBar(content: Text("订阅uuid为空！")),
                   );
                   return;
                 }
 
-                // 动态设置默认同步策略
-                String? syncStrategy = remoteOnly.isNotEmpty
-                    ? "cloud" // 如果有云端独有串，默认云端为主
-                    : localOnly.isNotEmpty
-                    ? "local" // 如果有本地独有串且云端没有，默认本地为主
-                    : null; // 如果两者都不需要同步，保持null
-                bool dontDelete = true; // 默认保留独有串
-
-                await showDialog(
-                  // ignore: use_build_context_synchronously
+                final syncStatus = ValueNotifier('开始同步...');
+                showDialog(
                   context: context,
+                  barrierDismissible: false,
                   builder: (context) {
-                    return StatefulBuilder(
-                      builder: (context, setState) {
-                        // 检查是否需要显示同步选项和“不做删除”选项
-                        bool shouldShowCloudToLocalOption() =>
-                            remoteOnly.isNotEmpty || localOnly.isNotEmpty;
-                        bool shouldShowLocalToCloudOption() =>
-                            localOnly.isNotEmpty || remoteOnly.isNotEmpty;
-                        bool shouldShowDontDeleteOption() {
-                          if (syncStrategy == "cloud") {
-                            return shouldShowCloudToLocalOption() &&
-                                localOnly.isNotEmpty;
-                          } else {
-                            return shouldShowLocalToCloudOption() &&
-                                remoteOnly.isNotEmpty;
-                          }
-                        }
-
-                        // 动态生成操作描述
-                        String getDescription() {
-                          if (syncStrategy == "cloud") {
-                            if (!shouldShowCloudToLocalOption()) {
-                              return "无需同步，云端与本地已一致";
-                            }
-                            return shouldShowDontDeleteOption()
-                                ? dontDelete
-                                      ? remoteOnly.isEmpty
-                                            ? "什么也不做"
-                                            : "下载${remoteOnly.length}条云端串到本地，本地不做删除"
-                                      : remoteOnly.isEmpty
-                                      ? "删除${localOnly.length}条仅在本地的串"
-                                      : "下载${remoteOnly.length}条云端串到本地，同时删除${localOnly.length}条仅在本地的串"
-                                : "下载${remoteOnly.length}条云端串到本地";
-                          } else {
-                            if (!shouldShowLocalToCloudOption()) {
-                              return "无需同步，本地与云端已一致";
-                            }
-                            return shouldShowDontDeleteOption()
-                                ? dontDelete
-                                      ? localOnly.isEmpty
-                                            ? "什么也不做"
-                                            : "将${localOnly.length}条串同步到云端，云端不做删除"
-                                      : localOnly.isEmpty
-                                      ? "删除${remoteOnly.length}条仅在云端的串"
-                                      : "将${localOnly.length}条串同步到云端，同时删除${remoteOnly.length}条仅在云端的串"
-                                : "将${localOnly.length}条串同步到云端";
-                          }
-                        }
-
-                        // 返回动态生成的弹窗
-                        return AlertDialog(
-                          title: Text("同步订阅"),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // 同步策略选择
-                              ListTile(
-                                title: Text(
-                                  "同步操作",
-                                  style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
+                    return Dialog(
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24.0),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                          child: Container(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHigh.withAlpha(50),
+                            child: ValueListenableBuilder<String>(
+                              valueListenable: syncStatus,
+                              builder: (context, value, child) {
+                                return Padding(
+                                  padding: EdgeInsets.all(breakpoint.gutters),
+                                  child: Text(
+                                    value,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
+                                      fontSize: 16,
+                                    ),
                                   ),
-                                ),
-                                dense: true,
-                              ),
-                              if (shouldShowCloudToLocalOption())
-                                RadioListTile<String>(
-                                  value: "cloud",
-                                  groupValue: syncStrategy,
-                                  onChanged: (value) =>
-                                      setState(() => syncStrategy = value),
-                                  title: Text("本地👈云端"),
-                                ),
-                              if (shouldShowLocalToCloudOption())
-                                RadioListTile<String>(
-                                  value: "local",
-                                  groupValue: syncStrategy,
-                                  onChanged: (value) =>
-                                      setState(() => syncStrategy = value),
-                                  title: Text("本地👉云端"),
-                                ),
-
-                              // 显示"不做删除"选项（仅当需要时显示）
-                              if (shouldShowDontDeleteOption())
-                                CheckboxListTile(
-                                  title: Text('不做删除'),
-                                  value: dontDelete,
-                                  onChanged: (value) => setState(
-                                    () => dontDelete = value ?? false,
-                                  ),
-                                ),
-
-                              // 动态生成的操作描述
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8.0,
-                                ),
-                                child: Text(
-                                  getDescription(),
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.labelMedium,
-                                ),
-                              ),
-                            ],
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: Text("取消"),
+                                );
+                              },
                             ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop({
-                                "syncStrategy": syncStrategy,
-                                "dontDelete": dontDelete,
-                              }),
-                              child: Text("确定"),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ).then((result) async {
-                  if (result == null) return;
-
-                  // 根据用户选择执行操作
-                  final isCloudPrimary = result["syncStrategy"] == "cloud";
-                  final dontDelete = result["dontDelete"] == true;
-
-                  loaderOverlay.show();
-
-                  if (isCloudPrimary) {
-                    if (!dontDelete) {
-                      // 云端为主：删除本地独有，添加云端独有
-                      appState.setState((_) {
-                        appState.setting.starHistory.removeWhere(
-                          (local) => localOnly.contains(local),
-                        );
-                      });
-                    }
-                    appState.setState((_) {
-                      appState.setting.starHistory.insertAll(
-                        0,
-                        remoteOnly.map(
-                          (thread) => ReplyJsonWithPage(
-                            1,
-                            0,
-                            thread.id,
-                            thread,
-                            thread,
                           ),
                         ),
+                      ),
+                    );
+                  },
+                );
+
+                // 状态变量
+                var remoteOnly = <ReplyJson>[];
+                var localOnly = <ReplyJsonWithPage>[];
+
+                try {
+                  // 拉取远程订阅数据
+                  var page = 1;
+                  var remoteFeeds = <ReplyJson>[];
+                  int retryCount = 0;
+                  const maxRetries = 5;
+                  while (true) {
+                    try {
+                      syncStatus.value = '正在拉取远程订阅的第 $page 页...';
+                      await Future.delayed(const Duration(milliseconds: 100));
+                      final feedInfos = await getFeedInfos(
+                        appState.setting.feedUuid,
+                        page,
+                      ).timeout(const Duration(seconds: 10));
+                      if (feedInfos.isEmpty) break;
+                      remoteFeeds.addAll(
+                        feedInfos.map((feed) => ReplyJson.fromFeedInfo(feed)),
                       );
-                    });
-                  } else {
-                    if (!dontDelete) {
-                      // 本地为主：删除云端独有，添加本地独有
-                      for (final feed in remoteOnly) {
-                        await delFeed(appState.setting.feedUuid, feed.id);
+                      page += 1;
+                      retryCount = 0; // Reset retry count on success
+                    } catch (e) {
+                      if (retryCount >= maxRetries) {
+                        throw Exception('超过最大重试次数');
                       }
-                    }
-                    for (final feed in localOnly) {
-                      await addFeed(appState.setting.feedUuid, feed.threadId);
+                      final retryDelay = Duration(
+                        milliseconds: 100 * (1 << retryCount),
+                      );
+                      if (retryDelay.inSeconds >= 1) {
+                        throw Exception('单页重试时间超过1秒');
+                      }
+                      syncStatus.value =
+                          '拉取失败，${retryDelay.inMilliseconds}ms后重试...';
+                      await Future.delayed(retryDelay);
+                      retryCount++;
                     }
                   }
 
-                  scaffoldMessengerKey.currentState?.showSnackBar(
-                    SnackBar(content: Text('同步完成')),
-                  );
+                  // 比对远程和本地的订阅历史
+                  final localFeeds = appState.setting.starHistory;
 
-                  loaderOverlay.hide();
-                });
-              } catch (e) {
-                scaffoldMessengerKey.currentState?.showSnackBar(
-                  SnackBar(content: Text(e.toString())),
-                );
-              } finally {
-                loaderOverlay.hide();
-              }
-            },
-            icon: Icon(Icons.sync),
-          );
-        },
-      ),
-      IconButton(
-        tooltip: "配置",
-        onPressed: () => settingFeedUuid(context, appState),
-        icon: Icon(Icons.manage_accounts),
-      ),
-    ],
-    listDelegate: SliverChildBuilderDelegate((context, index) {
-      final re = appState.setting.starHistory[index];
-      return HistoryReply(
-        re: re,
-        contentHeroTag: 'ThreadCard ${re.thread.id}',
-        onLongPress: () => showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text('取消收藏？'),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text('保持收藏'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    appState.setState((_) {
-                      appState.setting.starHistory.removeWhere(
-                        (r) => r.threadId == re.threadId,
+                  remoteOnly = remoteFeeds
+                      .where(
+                        (feed) => !localFeeds.any(
+                          (local) => local.threadId == feed.id,
+                        ),
+                      )
+                      .toList();
+
+                  localOnly = localFeeds
+                      .where(
+                        (local) => !remoteFeeds.any(
+                          (feed) => feed.id == local.threadId,
+                        ),
+                      )
+                      .toList();
+
+                  // 比对完成后关闭状态弹窗
+                  if (context.mounted)
+                    Navigator.of(context, rootNavigator: true).pop();
+                  syncStatus.value = '正在比对订阅数据...';
+
+                  if (localOnly.isEmpty && remoteOnly.isEmpty) {
+                    scaffoldMessengerKey.currentState?.showSnackBar(
+                      SnackBar(content: Text('本地云端数据一致')),
+                    );
+                    return;
+                  }
+
+                  // 动态设置默认同步策略
+                  String? syncStrategy = remoteOnly.isNotEmpty
+                      ? "cloud" // 如果有云端独有串，默认云端为主
+                      : localOnly.isNotEmpty
+                      ? "local" // 如果有本地独有串且云端没有，默认本地为主
+                      : null; // 如果两者都不需要同步，保持null
+                  bool dontDelete = true; // 默认保留独有串
+
+                  await showDialog(
+                    // ignore: use_build_context_synchronously
+                    context: context,
+                    builder: (context) {
+                      return StatefulBuilder(
+                        builder: (context, setState) {
+                          // 检查是否需要显示同步选项和“不做删除”选项
+                          bool shouldShowCloudToLocalOption() =>
+                              remoteOnly.isNotEmpty || localOnly.isNotEmpty;
+                          bool shouldShowLocalToCloudOption() =>
+                              localOnly.isNotEmpty || remoteOnly.isNotEmpty;
+                          bool shouldShowDontDeleteOption() {
+                            if (syncStrategy == "cloud") {
+                              return shouldShowCloudToLocalOption() &&
+                                  localOnly.isNotEmpty;
+                            } else {
+                              return shouldShowLocalToCloudOption() &&
+                                  remoteOnly.isNotEmpty;
+                            }
+                          }
+
+                          // 动态生成操作描述
+                          String getDescription() {
+                            if (syncStrategy == "cloud") {
+                              if (!shouldShowCloudToLocalOption()) {
+                                return "无需同步，云端与本地已一致";
+                              }
+                              return shouldShowDontDeleteOption()
+                                  ? dontDelete
+                                        ? remoteOnly.isEmpty
+                                              ? "什么也不做"
+                                              : "下载${remoteOnly.length}条云端串到本地，本地不做删除"
+                                        : remoteOnly.isEmpty
+                                        ? "删除${localOnly.length}条仅在本地的串"
+                                        : "下载${remoteOnly.length}条云端串到本地，同时删除${localOnly.length}条仅在本地的串"
+                                  : "下载${remoteOnly.length}条云端串到本地";
+                            } else {
+                              if (!shouldShowLocalToCloudOption()) {
+                                return "无需同步，本地与云端已一致";
+                              }
+                              return shouldShowDontDeleteOption()
+                                  ? dontDelete
+                                        ? localOnly.isEmpty
+                                              ? "什么也不做"
+                                              : "将${localOnly.length}条串同步到云端，云端不做删除"
+                                        : localOnly.isEmpty
+                                        ? "删除${remoteOnly.length}条仅在云端的串"
+                                        : "将${localOnly.length}条串同步到云端，同时删除${remoteOnly.length}条仅在云端的串"
+                                  : "将${localOnly.length}条串同步到云端";
+                            }
+                          }
+
+                          // 返回动态生成的弹窗
+                          return AlertDialog(
+                            title: Text("同步订阅"),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // 同步策略选择
+                                ListTile(
+                                  title: Text(
+                                    "同步操作",
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                  ),
+                                  dense: true,
+                                ),
+                                if (shouldShowCloudToLocalOption())
+                                  RadioListTile<String>(
+                                    value: "cloud",
+                                    groupValue: syncStrategy,
+                                    onChanged: (value) =>
+                                        setState(() => syncStrategy = value),
+                                    title: Text("本地👈云端"),
+                                  ),
+                                if (shouldShowLocalToCloudOption())
+                                  RadioListTile<String>(
+                                    value: "local",
+                                    groupValue: syncStrategy,
+                                    onChanged: (value) =>
+                                        setState(() => syncStrategy = value),
+                                    title: Text("本地👉云端"),
+                                  ),
+
+                                // 显示"不做删除"选项（仅当需要时显示）
+                                if (shouldShowDontDeleteOption())
+                                  CheckboxListTile(
+                                    title: Text('不做删除'),
+                                    value: dontDelete,
+                                    onChanged: (value) => setState(
+                                      () => dontDelete = value ?? false,
+                                    ),
+                                  ),
+
+                                // 动态生成的操作描述
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8.0,
+                                  ),
+                                  child: Text(
+                                    getDescription(),
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelMedium,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: Text("取消"),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop({
+                                  "syncStrategy": syncStrategy,
+                                  "dontDelete": dontDelete,
+                                }),
+                                child: Text("确定"),
+                              ),
+                            ],
+                          );
+                        },
                       );
-                    });
-                  },
-                  child: Text('不再收藏'),
-                ),
-              ],
+                    },
+                  ).then((result) async {
+                    if (result == null) return;
+
+                    // 根据用户选择执行操作
+                    final isCloudPrimary = result["syncStrategy"] == "cloud";
+                    final dontDelete = result["dontDelete"] == true;
+
+                    loaderOverlay.show();
+
+                    if (isCloudPrimary) {
+                      if (!dontDelete) {
+                        // 云端为主：删除本地独有，添加云端独有
+                        appState.setState((_) {
+                          appState.setting.starHistory.removeWhere(
+                            (local) => localOnly.contains(local),
+                          );
+                        });
+                      }
+                      appState.setState((_) {
+                        appState.setting.starHistory.insertAll(
+                          0,
+                          remoteOnly.map(
+                            (thread) => ReplyJsonWithPage(
+                              1,
+                              0,
+                              thread.id,
+                              thread,
+                              thread,
+                            ),
+                          ),
+                        );
+                      });
+                    } else {
+                      if (!dontDelete) {
+                        // 本地为主：删除云端独有，添加本地独有
+                        for (final feed in remoteOnly) {
+                          await delFeed(appState.setting.feedUuid, feed.id);
+                        }
+                      }
+                      for (final feed in localOnly) {
+                        await addFeed(appState.setting.feedUuid, feed.threadId);
+                      }
+                    }
+
+                    scaffoldMessengerKey.currentState?.showSnackBar(
+                      SnackBar(content: Text('同步完成')),
+                    );
+
+                    loaderOverlay.hide();
+                  });
+                } catch (e) {
+                  scaffoldMessengerKey.currentState?.showSnackBar(
+                    SnackBar(content: Text(e.toString())),
+                  );
+                } finally {
+                  loaderOverlay.hide();
+                }
+              },
+              icon: Icon(Icons.sync),
             );
           },
         ),
-        onTap: () => appState.navigateThreadPage2(
-          context,
-          re.threadId,
-          false,
-          thread: ThreadJson.fromReplyJson(re.thread, []),
+        IconButton(
+          tooltip: "配置",
+          onPressed: () => settingFeedUuid(context, appState),
+          icon: Icon(Icons.manage_accounts),
         ),
-      );
-    }, childCount: appState.setting.starHistory.length),
+      ],
+      listDelegate: SliverChildBuilderDelegate((context, index) {
+        final re = appState.setting.starHistory[index];
+        return HistoryReply(
+          re: re,
+          contentHeroTag: 'ThreadCard ${re.thread.id}',
+          onLongPress: () => showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: Text('取消收藏？'),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('保持收藏'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      appState.setState((_) {
+                        appState.setting.starHistory.removeWhere(
+                          (r) => r.threadId == re.threadId,
+                        );
+                      });
+                      setState(() {});
+                    },
+                    child: Text('不再收藏'),
+                  ),
+                ],
+              );
+            },
+          ),
+          onTap: () => appState.navigateThreadPage2(
+            context,
+            re.threadId,
+            false,
+            thread: ThreadJson.fromReplyJson(re.thread, []),
+          ),
+        );
+      }, childCount: appState.setting.starHistory.length),
+    ),
   );
 }
 
 Widget replyPage(BuildContext context) {
   final appState = Provider.of<MyAppState>(context);
-  return ReplysPage(
-    title: "发言",
-    listDelegate: SliverChildBuilderDelegate((context, index) {
-      final re = appState.setting.replyHistory[index];
-      return HistoryReply(
-        re: re,
-        onLongPress: () => showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text('删除发言记录'),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text('取消'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    appState.setState((_) {
-                      appState.setting.replyHistory.removeWhere(
-                        (r) => r.reply.id == re.reply.id,
-                      );
-                    });
-                  },
-                  child: Text('删除'),
-                ),
-              ],
-            );
-          },
-        ),
-        onTap: () => appState.navigateThreadPage2(
-          context,
-          re.threadId,
-          false,
-          thread: ThreadJson.fromReplyJson(re.thread, []),
-        ),
+  return StatefulBuilder(
+    builder: (context, setState) {
+      return ReplysPage(
+        title: "发言",
+        listDelegate: SliverChildBuilderDelegate((context, index) {
+          final re = appState.setting.replyHistory[index];
+          return HistoryReply(
+            re: re,
+            onLongPress: () => showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: Text('删除发言记录'),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text('取消'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        appState.setState((_) {
+                          appState.setting.replyHistory.removeWhere(
+                            (r) => r.reply.id == re.reply.id,
+                          );
+                        });
+                        setState(() {});
+                      },
+                      child: Text('删除'),
+                    ),
+                  ],
+                );
+              },
+            ),
+            onTap: () => appState.navigateThreadPage2(
+              context,
+              re.threadId,
+              false,
+              thread: ThreadJson.fromReplyJson(re.thread, []),
+            ),
+          );
+        }, childCount: appState.setting.replyHistory.length),
       );
-    }, childCount: appState.setting.replyHistory.length),
+    },
   );
 }
 
@@ -626,70 +636,75 @@ class MorePage extends StatelessWidget {
                             Navigator.push(
                               context,
                               pageRoute(
-                                builder: (context) => ReplysPage(
-                                  title: "浏览",
-                                  listDelegate: SliverChildBuilderDelegate(
-                                    (context, index) {
-                                      final re = appState.setting.viewHistory
-                                          .getIndex(index);
-                                      if (re != null) {
-                                        return HistoryReply(
-                                          re: re,
-                                          contentHeroTag:
-                                              'ThreadCard ${re.thread.id}',
-                                          onLongPress: () => showDialog(
-                                            context: context,
-                                            builder: (BuildContext context) {
-                                              return AlertDialog(
-                                                title: Text('删除浏览记录？'),
-                                                actions: <Widget>[
-                                                  TextButton(
-                                                    onPressed: () {
-                                                      Navigator.of(
-                                                        context,
-                                                      ).pop();
-                                                    },
-                                                    child: Text('取消'),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: () {
-                                                      Navigator.of(
-                                                        context,
-                                                      ).pop();
-                                                      appState.setState((_) {
-                                                        appState
-                                                            .setting
-                                                            .viewHistory
-                                                            .remove(
-                                                              re.threadId,
-                                                            );
-                                                      });
-                                                    },
-                                                    child: Text('删除'),
-                                                  ),
-                                                ],
-                                              );
-                                            },
-                                          ),
-                                          onTap: () =>
-                                              appState.navigateThreadPage2(
-                                                context,
-                                                re.threadId,
-                                                false,
-                                                thread:
-                                                    ThreadJson.fromReplyJson(
-                                                      re.thread,
-                                                      [],
-                                                    ),
+                                builder: (context) => StatefulBuilder(
+                                  builder: (context, setState) {
+                                    return ReplysPage(
+                                      title: "浏览",
+                                      listDelegate: SliverChildBuilderDelegate(
+                                        (context, index) {
+                                          final re = appState.setting.viewHistory
+                                              .getIndex(index);
+                                          if (re != null) {
+                                            return HistoryReply(
+                                              re: re,
+                                              contentHeroTag:
+                                                  'ThreadCard ${re.thread.id}',
+                                              onLongPress: () => showDialog(
+                                                context: context,
+                                                builder: (BuildContext context) {
+                                                  return AlertDialog(
+                                                    title: Text('删除浏览记录？'),
+                                                    actions: <Widget>[
+                                                      TextButton(
+                                                        onPressed: () {
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                        },
+                                                        child: Text('取消'),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () {
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          appState.setState((_) {
+                                                            appState
+                                                                .setting
+                                                                .viewHistory
+                                                                .remove(
+                                                                  re.threadId,
+                                                                );
+                                                          });
+                                                          setState((){});
+                                                        },
+                                                        child: Text('删除'),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
                                               ),
-                                        );
-                                      } else {
-                                        return Text("?");
-                                      }
-                                    },
-                                    childCount:
-                                        appState.setting.viewHistory.length,
-                                  ),
+                                              onTap: () =>
+                                                  appState.navigateThreadPage2(
+                                                    context,
+                                                    re.threadId,
+                                                    false,
+                                                    thread:
+                                                        ThreadJson.fromReplyJson(
+                                                          re.thread,
+                                                          [],
+                                                        ),
+                                                  ),
+                                            );
+                                          } else {
+                                            return Text("?");
+                                          }
+                                        },
+                                        childCount:
+                                            appState.setting.viewHistory.length,
+                                      ),
+                                    );
+                                  }
                                 ),
                               ),
                             );
