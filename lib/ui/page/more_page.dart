@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:breakpoint/breakpoint.dart';
 import 'package:flutter/material.dart';
 import 'package:lightdao/data/global_storage.dart';
@@ -23,64 +25,67 @@ import '../../data/setting.dart';
 import 'more/theme_selector.dart';
 
 void settingFeedUuid(BuildContext context, MyAppState appState) async {
-  final TextEditingController uuidController =
-      TextEditingController(text: appState.setting.feedUuid);
+  final TextEditingController uuidController = TextEditingController(
+    text: appState.setting.feedUuid,
+  );
   showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('配置订阅ID'),
-          content: TextField(
-            controller: uuidController,
-            decoration: InputDecoration(
-              labelText: '订阅id',
-            ),
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text('配置订阅ID'),
+        content: TextField(
+          controller: uuidController,
+          decoration: InputDecoration(labelText: '订阅id'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {},
+            onLongPress: () async {
+              if (await Permission.phone.isGranted) {
+                String uuid = await generateDeviceUuid();
+                uuidController.text = uuid;
+              } else {
+                var status = await Permission.phone.request();
+                if (status.isGranted) {
+                  String uuid = await generateDeviceUuid();
+                  uuidController.text = uuid;
+                } else {
+                  scaffoldMessengerKey.currentState?.showSnackBar(
+                    SnackBar(content: Text('设备信息权限获取失败')),
+                  );
+                }
+              }
+            },
+            child: Text('从设备信息生成一个(长按)'),
           ),
-          actions: [
-            TextButton(
-                onPressed: () {},
-                onLongPress: () async {
-                  if (await Permission.phone.isGranted) {
-                    String uuid = await generateDeviceUuid();
-                    uuidController.text = uuid;
-                  } else {
-                    var status = await Permission.phone.request();
-                    if (status.isGranted) {
-                      String uuid = await generateDeviceUuid();
-                      uuidController.text = uuid;
-                    } else {
-                      scaffoldMessengerKey.currentState?.showSnackBar(
-                        SnackBar(content: Text('设备信息权限获取失败')),
-                      );
-                    }
-                  }
-                },
-                child: Text('从设备信息生成一个(长按)')),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('取消'),
-            ),
-            TextButton(
-              onPressed: () {
-                appState.setState((_) {
-                  appState.setting.feedUuid = uuidController.text;
-                });
-                Navigator.pop(context);
-              },
-              child: Text('确定'),
-            )
-          ],
-        );
-      });
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              appState.setState((_) {
+                appState.setting.feedUuid = uuidController.text;
+              });
+              Navigator.pop(context);
+            },
+            child: Text('确定'),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 Widget starPage(BuildContext context) {
   final appState = Provider.of<MyAppState>(context);
+  final breakpoint = Breakpoint.fromMediaQuery(context);
   final loaderOverlay = context.loaderOverlay;
   return ReplysPage(
-      title: "收藏",
-      actions: [
-        StatefulBuilder(builder: (context, setState) {
+    title: "收藏",
+    actions: [
+      StatefulBuilder(
+        builder: (context, setState) {
           return IconButton(
             tooltip: "与订阅同步",
             onPressed: () async {
@@ -91,7 +96,46 @@ Widget starPage(BuildContext context) {
                 return;
               }
 
-              loaderOverlay.show();
+              final syncStatus = ValueNotifier('开始同步...');
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) {
+                  return Dialog(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24.0),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                        child: Container(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHigh.withAlpha(50),
+                          child: ValueListenableBuilder<String>(
+                            valueListenable: syncStatus,
+                            builder: (context, value, child) {
+                              return Padding(
+                                padding: EdgeInsets.all(breakpoint.gutters),
+                                child: Text(
+                                  value,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
 
               // 状态变量
               var remoteOnly = <ReplyJson>[];
@@ -101,33 +145,60 @@ Widget starPage(BuildContext context) {
                 // 拉取远程订阅数据
                 var page = 1;
                 var remoteFeeds = <ReplyJson>[];
+                int retryCount = 0;
+                const maxRetries = 5;
                 while (true) {
-                  final feedInfos =
-                      await getFeedInfos(appState.setting.feedUuid, page)
-                          .timeout(
-                    Duration(seconds: 10),
-                  );
-                  if (feedInfos.isEmpty) break;
-                  remoteFeeds.addAll(
-                      feedInfos.map((feed) => ReplyJson.fromFeedInfo(feed)));
-                  page += 1;
+                  try {
+                    syncStatus.value = '正在拉取远程订阅的第 $page 页...';
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    final feedInfos = await getFeedInfos(
+                      appState.setting.feedUuid,
+                      page,
+                    ).timeout(const Duration(seconds: 10));
+                    if (feedInfos.isEmpty) break;
+                    remoteFeeds.addAll(
+                      feedInfos.map((feed) => ReplyJson.fromFeedInfo(feed)),
+                    );
+                    page += 1;
+                    retryCount = 0; // Reset retry count on success
+                  } catch (e) {
+                    if (retryCount >= maxRetries) {
+                      throw Exception('超过最大重试次数');
+                    }
+                    final retryDelay = Duration(
+                      milliseconds: 100 * (1 << retryCount),
+                    );
+                    if (retryDelay.inSeconds >= 1) {
+                      throw Exception('单页重试时间超过1秒');
+                    }
+                    syncStatus.value =
+                        '拉取失败，${retryDelay.inMilliseconds}ms后重试...';
+                    await Future.delayed(retryDelay);
+                    retryCount++;
+                  }
                 }
 
                 // 比对远程和本地的订阅历史
                 final localFeeds = appState.setting.starHistory;
 
                 remoteOnly = remoteFeeds
-                    .where((feed) =>
-                        !localFeeds.any((local) => local.threadId == feed.id))
+                    .where(
+                      (feed) =>
+                          !localFeeds.any((local) => local.threadId == feed.id),
+                    )
                     .toList();
 
                 localOnly = localFeeds
-                    .where((local) =>
-                        !remoteFeeds.any((feed) => feed.id == local.threadId))
+                    .where(
+                      (local) =>
+                          !remoteFeeds.any((feed) => feed.id == local.threadId),
+                    )
                     .toList();
 
-                // 显示弹窗前隐藏loaderOverlay
-                loaderOverlay.hide();
+                // 比对完成后关闭状态弹窗
+                if (context.mounted)
+                  Navigator.of(context, rootNavigator: true).pop();
+                syncStatus.value = '正在比对订阅数据...';
 
                 if (localOnly.isEmpty && remoteOnly.isEmpty) {
                   scaffoldMessengerKey.currentState?.showSnackBar(
@@ -140,8 +211,8 @@ Widget starPage(BuildContext context) {
                 String? syncStrategy = remoteOnly.isNotEmpty
                     ? "cloud" // 如果有云端独有串，默认云端为主
                     : localOnly.isNotEmpty
-                        ? "local" // 如果有本地独有串且云端没有，默认本地为主
-                        : null; // 如果两者都不需要同步，保持null
+                    ? "local" // 如果有本地独有串且云端没有，默认本地为主
+                    : null; // 如果两者都不需要同步，保持null
                 bool dontDelete = true; // 默认保留独有串
 
                 await showDialog(
@@ -173,12 +244,12 @@ Widget starPage(BuildContext context) {
                             }
                             return shouldShowDontDeleteOption()
                                 ? dontDelete
-                                    ? remoteOnly.isEmpty
-                                        ? "什么也不做"
-                                        : "下载${remoteOnly.length}条云端串到本地，本地不做删除"
-                                    : remoteOnly.isEmpty
-                                        ? "删除${localOnly.length}条仅在本地的串"
-                                        : "下载${remoteOnly.length}条云端串到本地，同时删除${localOnly.length}条仅在本地的串"
+                                      ? remoteOnly.isEmpty
+                                            ? "什么也不做"
+                                            : "下载${remoteOnly.length}条云端串到本地，本地不做删除"
+                                      : remoteOnly.isEmpty
+                                      ? "删除${localOnly.length}条仅在本地的串"
+                                      : "下载${remoteOnly.length}条云端串到本地，同时删除${localOnly.length}条仅在本地的串"
                                 : "下载${remoteOnly.length}条云端串到本地";
                           } else {
                             if (!shouldShowLocalToCloudOption()) {
@@ -186,12 +257,12 @@ Widget starPage(BuildContext context) {
                             }
                             return shouldShowDontDeleteOption()
                                 ? dontDelete
-                                    ? localOnly.isEmpty
-                                        ? "什么也不做"
-                                        : "将${localOnly.length}条串同步到云端，云端不做删除"
-                                    : localOnly.isEmpty
-                                        ? "删除${remoteOnly.length}条仅在云端的串"
-                                        : "将${localOnly.length}条串同步到云端，同时删除${remoteOnly.length}条仅在云端的串"
+                                      ? localOnly.isEmpty
+                                            ? "什么也不做"
+                                            : "将${localOnly.length}条串同步到云端，云端不做删除"
+                                      : localOnly.isEmpty
+                                      ? "删除${remoteOnly.length}条仅在云端的串"
+                                      : "将${localOnly.length}条串同步到云端，同时删除${remoteOnly.length}条仅在云端的串"
                                 : "将${localOnly.length}条串同步到云端";
                           }
                         }
@@ -207,8 +278,9 @@ Widget starPage(BuildContext context) {
                                 title: Text(
                                   "同步操作",
                                   style: TextStyle(
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                   ),
                                 ),
                                 dense: true,
@@ -236,17 +308,20 @@ Widget starPage(BuildContext context) {
                                   title: Text('不做删除'),
                                   value: dontDelete,
                                   onChanged: (value) => setState(
-                                      () => dontDelete = value ?? false),
+                                    () => dontDelete = value ?? false,
+                                  ),
                                 ),
 
                               // 动态生成的操作描述
                               Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8.0),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8.0,
+                                ),
                                 child: Text(
                                   getDescription(),
-                                  style:
-                                      Theme.of(context).textTheme.labelMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.labelMedium,
                                 ),
                               ),
                             ],
@@ -281,15 +356,23 @@ Widget starPage(BuildContext context) {
                     if (!dontDelete) {
                       // 云端为主：删除本地独有，添加云端独有
                       appState.setState((_) {
-                        appState.setting.starHistory
-                            .removeWhere((local) => localOnly.contains(local));
+                        appState.setting.starHistory.removeWhere(
+                          (local) => localOnly.contains(local),
+                        );
                       });
                     }
                     appState.setState((_) {
                       appState.setting.starHistory.insertAll(
                         0,
-                        remoteOnly.map((thread) =>
-                            ReplyJsonWithPage(1, 0, thread.id, thread, thread)),
+                        remoteOnly.map(
+                          (thread) => ReplyJsonWithPage(
+                            1,
+                            0,
+                            thread.id,
+                            thread,
+                            thread,
+                          ),
+                        ),
                       );
                     });
                   } else {
@@ -320,95 +403,101 @@ Widget starPage(BuildContext context) {
             },
             icon: Icon(Icons.sync),
           );
-        }),
-        IconButton(
-            tooltip: "配置",
-            onPressed: () => settingFeedUuid(context, appState),
-            icon: Icon(Icons.manage_accounts))
-      ],
-      listDelegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final re = appState.setting.starHistory[index];
-          return HistoryReply(
-            re: re,
-            contentHeroTag: 'ThreadCard ${re.thread.id}',
-            onLongPress: () => showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  title: Text('取消收藏？'),
-                  actions: <Widget>[
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: Text('保持收藏'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        appState.setState((_) {
-                          appState.setting.starHistory
-                              .removeWhere((r) => r.threadId == re.threadId);
-                        });
-                      },
-                      child: Text('不再收藏'),
-                    ),
-                  ],
-                );
-              },
-            ),
-            onTap: () => appState.navigateThreadPage2(
-                context, re.threadId, false,
-                thread: ThreadJson.fromReplyJson(re.thread, [])),
-          );
         },
-        childCount: appState.setting.starHistory.length,
-      ));
+      ),
+      IconButton(
+        tooltip: "配置",
+        onPressed: () => settingFeedUuid(context, appState),
+        icon: Icon(Icons.manage_accounts),
+      ),
+    ],
+    listDelegate: SliverChildBuilderDelegate((context, index) {
+      final re = appState.setting.starHistory[index];
+      return HistoryReply(
+        re: re,
+        contentHeroTag: 'ThreadCard ${re.thread.id}',
+        onLongPress: () => showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('取消收藏？'),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('保持收藏'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    appState.setState((_) {
+                      appState.setting.starHistory.removeWhere(
+                        (r) => r.threadId == re.threadId,
+                      );
+                    });
+                  },
+                  child: Text('不再收藏'),
+                ),
+              ],
+            );
+          },
+        ),
+        onTap: () => appState.navigateThreadPage2(
+          context,
+          re.threadId,
+          false,
+          thread: ThreadJson.fromReplyJson(re.thread, []),
+        ),
+      );
+    }, childCount: appState.setting.starHistory.length),
+  );
 }
 
 Widget replyPage(BuildContext context) {
   final appState = Provider.of<MyAppState>(context);
   return ReplysPage(
-      title: "发言",
-      listDelegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final re = appState.setting.replyHistory[index];
-          return HistoryReply(
-            re: re,
-            onLongPress: () => showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  title: Text('删除发言记录'),
-                  actions: <Widget>[
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: Text('取消'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        appState.setState((_) {
-                          appState.setting.replyHistory
-                              .removeWhere((r) => r.reply.id == re.reply.id);
-                        });
-                      },
-                      child: Text('删除'),
-                    ),
-                  ],
-                );
-              },
-            ),
-            onTap: () => appState.navigateThreadPage2(
-                context, re.threadId, false,
-                thread: ThreadJson.fromReplyJson(re.thread, [])),
-          );
-        },
-        childCount: appState.setting.replyHistory.length,
-      ));
+    title: "发言",
+    listDelegate: SliverChildBuilderDelegate((context, index) {
+      final re = appState.setting.replyHistory[index];
+      return HistoryReply(
+        re: re,
+        onLongPress: () => showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('删除发言记录'),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('取消'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    appState.setState((_) {
+                      appState.setting.replyHistory.removeWhere(
+                        (r) => r.reply.id == re.reply.id,
+                      );
+                    });
+                  },
+                  child: Text('删除'),
+                ),
+              ],
+            );
+          },
+        ),
+        onTap: () => appState.navigateThreadPage2(
+          context,
+          re.threadId,
+          false,
+          thread: ThreadJson.fromReplyJson(re.thread, []),
+        ),
+      );
+    }, childCount: appState.setting.replyHistory.length),
+  );
 }
 
 class MorePage extends StatelessWidget {
@@ -418,9 +507,7 @@ class MorePage extends StatelessWidget {
     final breakpoint = Breakpoint.fromMediaQuery(context);
     final brightness = MediaQuery.of(context).platformBrightness;
     final isDarkMode = brightness == Brightness.dark;
-    pageRoute({
-      required Widget Function(BuildContext) builder,
-    }) {
+    pageRoute({required Widget Function(BuildContext) builder}) {
       final setting = Provider.of<MyAppState>(context, listen: false).setting;
       if (setting.enableSwipeBack) {
         return SwipeablePageRoute(builder: builder);
@@ -430,9 +517,7 @@ class MorePage extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('更多'),
-      ),
+      appBar: AppBar(title: Text('更多')),
       body: SafeArea(
         child: ListView(
           children: [
@@ -449,9 +534,11 @@ class MorePage extends StatelessWidget {
                           onTap: () {
                             Navigator.push(
                               context,
-                              pageRoute(builder: (context) {
-                                return starPage(context);
-                              }),
+                              pageRoute(
+                                builder: (context) {
+                                  return starPage(context);
+                                },
+                              ),
                             );
                           },
                           child: Padding(
@@ -461,9 +548,9 @@ class MorePage extends StatelessWidget {
                                 Text(
                                   appState.setting.starHistory.length
                                       .toString(),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.headlineMedium,
                                 ),
                                 Text('收藏'),
                               ],
@@ -473,10 +560,9 @@ class MorePage extends StatelessWidget {
                       ),
                       Padding(
                         padding: EdgeInsets.symmetric(
-                            vertical: breakpoint.gutters / 2),
-                        child: VerticalDivider(
-                          width: 2,
+                          vertical: breakpoint.gutters / 2,
                         ),
+                        child: VerticalDivider(width: 2),
                       ),
                       Expanded(
                         child: InkWell(
@@ -484,25 +570,31 @@ class MorePage extends StatelessWidget {
                             Navigator.push(
                               context,
                               pageRoute(
-                                  builder: (context) => ReplysPage(
-                                      title: "发言",
-                                      listDelegate: SliverChildBuilderDelegate(
-                                        (context, index) {
-                                          final re = appState
-                                              .setting.replyHistory[index];
-                                          return HistoryReply(
-                                            re: re,
-                                            onTap: () =>
-                                                appState.navigateThreadPage2(
-                                                    context, re.threadId, false,
-                                                    thread: ThreadJson
-                                                        .fromReplyJson(
-                                                            re.thread, [])),
-                                          );
-                                        },
-                                        childCount: appState
-                                            .setting.replyHistory.length,
-                                      ))),
+                                builder: (context) => ReplysPage(
+                                  title: "发言",
+                                  listDelegate: SliverChildBuilderDelegate(
+                                    (context, index) {
+                                      final re =
+                                          appState.setting.replyHistory[index];
+                                      return HistoryReply(
+                                        re: re,
+                                        onTap: () =>
+                                            appState.navigateThreadPage2(
+                                              context,
+                                              re.threadId,
+                                              false,
+                                              thread: ThreadJson.fromReplyJson(
+                                                re.thread,
+                                                [],
+                                              ),
+                                            ),
+                                      );
+                                    },
+                                    childCount:
+                                        appState.setting.replyHistory.length,
+                                  ),
+                                ),
+                              ),
                             );
                           },
                           child: Padding(
@@ -512,9 +604,9 @@ class MorePage extends StatelessWidget {
                                 Text(
                                   appState.setting.replyHistory.length
                                       .toString(),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.headlineMedium,
                                 ),
                                 Text('发言'),
                               ],
@@ -524,10 +616,9 @@ class MorePage extends StatelessWidget {
                       ),
                       Padding(
                         padding: EdgeInsets.symmetric(
-                            vertical: breakpoint.gutters / 2),
-                        child: VerticalDivider(
-                          width: 2,
+                          vertical: breakpoint.gutters / 2,
                         ),
+                        child: VerticalDivider(width: 2),
                       ),
                       Expanded(
                         child: InkWell(
@@ -535,66 +626,72 @@ class MorePage extends StatelessWidget {
                             Navigator.push(
                               context,
                               pageRoute(
-                                  builder: (context) => ReplysPage(
-                                      title: "浏览",
-                                      listDelegate: SliverChildBuilderDelegate(
-                                        (context, index) {
-                                          final re = appState
-                                              .setting.viewHistory
-                                              .getIndex(index);
-                                          if (re != null) {
-                                            return HistoryReply(
-                                              re: re,
-                                              contentHeroTag:
-                                                  'ThreadCard ${re.thread.id}',
-                                              onLongPress: () => showDialog(
-                                                context: context,
-                                                builder:
-                                                    (BuildContext context) {
-                                                  return AlertDialog(
-                                                    title: Text('删除浏览记录？'),
-                                                    actions: <Widget>[
-                                                      TextButton(
-                                                        onPressed: () {
-                                                          Navigator.of(context)
-                                                              .pop();
-                                                        },
-                                                        child: Text('取消'),
-                                                      ),
-                                                      TextButton(
-                                                        onPressed: () {
-                                                          Navigator.of(context)
-                                                              .pop();
-                                                          appState
-                                                              .setState((_) {
-                                                            appState.setting
-                                                                .viewHistory
-                                                                .remove(re
-                                                                    .threadId);
-                                                          });
-                                                        },
-                                                        child: Text('删除'),
-                                                      ),
-                                                    ],
-                                                  );
-                                                },
+                                builder: (context) => ReplysPage(
+                                  title: "浏览",
+                                  listDelegate: SliverChildBuilderDelegate(
+                                    (context, index) {
+                                      final re = appState.setting.viewHistory
+                                          .getIndex(index);
+                                      if (re != null) {
+                                        return HistoryReply(
+                                          re: re,
+                                          contentHeroTag:
+                                              'ThreadCard ${re.thread.id}',
+                                          onLongPress: () => showDialog(
+                                            context: context,
+                                            builder: (BuildContext context) {
+                                              return AlertDialog(
+                                                title: Text('删除浏览记录？'),
+                                                actions: <Widget>[
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      Navigator.of(
+                                                        context,
+                                                      ).pop();
+                                                    },
+                                                    child: Text('取消'),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      Navigator.of(
+                                                        context,
+                                                      ).pop();
+                                                      appState.setState((_) {
+                                                        appState
+                                                            .setting
+                                                            .viewHistory
+                                                            .remove(
+                                                              re.threadId,
+                                                            );
+                                                      });
+                                                    },
+                                                    child: Text('删除'),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          ),
+                                          onTap: () =>
+                                              appState.navigateThreadPage2(
+                                                context,
+                                                re.threadId,
+                                                false,
+                                                thread:
+                                                    ThreadJson.fromReplyJson(
+                                                      re.thread,
+                                                      [],
+                                                    ),
                                               ),
-                                              onTap: () =>
-                                                  appState.navigateThreadPage2(
-                                                      context,
-                                                      re.threadId,
-                                                      false,
-                                                      thread: ThreadJson
-                                                          .fromReplyJson(
-                                                              re.thread, [])),
-                                            );
-                                          } else {
-                                            return Text("?");
-                                          }
-                                        },
-                                        childCount:
-                                            appState.setting.viewHistory.length,
-                                      ))),
+                                        );
+                                      } else {
+                                        return Text("?");
+                                      }
+                                    },
+                                    childCount:
+                                        appState.setting.viewHistory.length,
+                                  ),
+                                ),
+                              ),
                             );
                           },
                           child: Padding(
@@ -604,9 +701,9 @@ class MorePage extends StatelessWidget {
                                 Text(
                                   appState.setting.viewHistory.length
                                       .toString(),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.headlineMedium,
                                 ),
                                 Text('浏览'),
                               ],
@@ -619,17 +716,18 @@ class MorePage extends StatelessWidget {
                 ),
               ),
             ),
-            SizedBox(
-              height: breakpoint.gutters,
-            ),
+            SizedBox(height: breakpoint.gutters),
             ListTile(
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: breakpoint.gutters,
+              ),
               leading: Icon(Icons.color_lens_rounded),
               title: Text('主题选择'),
               onTap: () {
-                final appState =
-                    Provider.of<MyAppState>(context, listen: false);
+                final appState = Provider.of<MyAppState>(
+                  context,
+                  listen: false,
+                );
                 final brightness = MediaQuery.of(context).platformBrightness;
                 final isSysDarkMode = brightness == Brightness.dark;
                 final isUserDarkMode = appState.setting.userSettingIsDarkMode;
@@ -640,9 +738,9 @@ class MorePage extends StatelessWidget {
                 Navigator.push(
                   context,
                   pageRoute(
-                      builder: (context) => ThemeSelectorPage(
-                            initIndex: initIndex,
-                          )),
+                    builder: (context) =>
+                        ThemeSelectorPage(initIndex: initIndex),
+                  ),
                 );
               },
               trailing: SizedBox(
@@ -650,10 +748,7 @@ class MorePage extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Text(
-                      '暗色',
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
+                    Text('暗色', style: Theme.of(context).textTheme.labelSmall),
                     SizedBox(width: 5),
                     Switch(
                       value: appState.setting.followedSysDarkMode
@@ -661,9 +756,9 @@ class MorePage extends StatelessWidget {
                           : appState.setting.userSettingIsDarkMode,
                       onChanged: (bool value) {
                         if (appState.setting.followedSysDarkMode) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text('已取消跟随系统暗色模式'),
-                          ));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('已取消跟随系统暗色模式')),
+                          );
                           appState.setState((state) {
                             state.setting.followedSysDarkMode = false;
                           });
@@ -678,30 +773,35 @@ class MorePage extends StatelessWidget {
               ),
             ),
             ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: breakpoint.gutters),
-                leading: Icon(Icons.cookie),
-                title: Text('饼干管理'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    pageRoute(builder: (context) => CookieManagementPage()),
-                  );
-                }),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: breakpoint.gutters,
+              ),
+              leading: Icon(Icons.cookie),
+              title: Text('饼干管理'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  pageRoute(builder: (context) => CookieManagementPage()),
+                );
+              },
+            ),
             ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: breakpoint.gutters),
-                leading: Icon(Icons.visibility_off),
-                title: Text('屏蔽管理'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    pageRoute(builder: (context) => FiltersManagementPage()),
-                  );
-                }),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: breakpoint.gutters,
+              ),
+              leading: Icon(Icons.visibility_off),
+              title: Text('屏蔽管理'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  pageRoute(builder: (context) => FiltersManagementPage()),
+                );
+              },
+            ),
             ListTile(
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: breakpoint.gutters,
+              ),
               leading: Icon(Icons.manage_accounts),
               title: Text('用户系统'),
               onTap: () async {
@@ -710,8 +810,9 @@ class MorePage extends StatelessWidget {
               },
             ),
             ListTile(
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: breakpoint.gutters,
+              ),
               leading: Icon(Icons.settings),
               title: Text('设置'),
               onTap: () async {
@@ -722,18 +823,28 @@ class MorePage extends StatelessWidget {
               },
             ),
             ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: breakpoint.gutters),
-                leading: Icon(Icons.info),
-                title: Text('关于'),
-                onTap: () async {
-                  PackageInfo packageInfo = await PackageInfo.fromPlatform();
-                  if (!context.mounted) return;
-                  Navigator.push(context, pageRoute(builder: (context) {
-                    final appState = Provider.of<MyAppState>(context);
-                    return AboutPage(appState: appState, packageInfo: packageInfo);
-                  }));
-                }),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: breakpoint.gutters,
+              ),
+              leading: Icon(Icons.info),
+              title: Text('关于'),
+              onTap: () async {
+                PackageInfo packageInfo = await PackageInfo.fromPlatform();
+                if (!context.mounted) return;
+                Navigator.push(
+                  context,
+                  pageRoute(
+                    builder: (context) {
+                      final appState = Provider.of<MyAppState>(context);
+                      return AboutPage(
+                        appState: appState,
+                        packageInfo: packageInfo,
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -742,55 +853,56 @@ class MorePage extends StatelessWidget {
 
   void settingUuid(MyAppState appState, BuildContext context) {
     {
-      final TextEditingController uuidController =
-          TextEditingController(text: appState.setting.feedUuid);
+      final TextEditingController uuidController = TextEditingController(
+        text: appState.setting.feedUuid,
+      );
       showDialog(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              title: Text('配置订阅ID'),
-              content: TextField(
-                controller: uuidController,
-                decoration: InputDecoration(
-                  labelText: '订阅id',
-                ),
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('配置订阅ID'),
+            content: TextField(
+              controller: uuidController,
+              decoration: InputDecoration(labelText: '订阅id'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {},
+                onLongPress: () async {
+                  if (await Permission.phone.isGranted) {
+                    String uuid = await generateDeviceUuid();
+                    uuidController.text = uuid;
+                  } else {
+                    var status = await Permission.phone.request();
+                    if (status.isGranted) {
+                      String uuid = await generateDeviceUuid();
+                      uuidController.text = uuid;
+                    } else {
+                      scaffoldMessengerKey.currentState?.showSnackBar(
+                        SnackBar(content: Text('设备信息权限获取失败')),
+                      );
+                    }
+                  }
+                },
+                child: Text('从设备信息生成一个(长按)'),
               ),
-              actions: [
-                TextButton(
-                    onPressed: () {},
-                    onLongPress: () async {
-                      if (await Permission.phone.isGranted) {
-                        String uuid = await generateDeviceUuid();
-                        uuidController.text = uuid;
-                      } else {
-                        var status = await Permission.phone.request();
-                        if (status.isGranted) {
-                          String uuid = await generateDeviceUuid();
-                          uuidController.text = uuid;
-                        } else {
-                          scaffoldMessengerKey.currentState?.showSnackBar(
-                            SnackBar(content: Text('设备信息权限获取失败')),
-                          );
-                        }
-                      }
-                    },
-                    child: Text('从设备信息生成一个(长按)')),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('取消'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    appState.setState((_) {
-                      appState.setting.feedUuid = uuidController.text;
-                    });
-                    Navigator.pop(context);
-                  },
-                  child: Text('确定'),
-                )
-              ],
-            );
-          });
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('取消'),
+              ),
+              TextButton(
+                onPressed: () {
+                  appState.setState((_) {
+                    appState.setting.feedUuid = uuidController.text;
+                  });
+                  Navigator.pop(context);
+                },
+                child: Text('确定'),
+              ),
+            ],
+          );
+        },
+      );
     }
   }
 }
@@ -819,8 +931,9 @@ class HistoryReply extends StatelessWidget {
           onLongPress: onLongPress,
           child: Padding(
             padding: EdgeInsets.symmetric(
-                horizontal: breakpoint.gutters,
-                vertical: breakpoint.gutters / 2),
+              horizontal: breakpoint.gutters,
+              vertical: breakpoint.gutters / 2,
+            ),
             child: Column(
               children: [
                 ReplyItem(
@@ -832,9 +945,10 @@ class HistoryReply extends StatelessWidget {
                 if (re.thread.id != re.reply.id)
                   Padding(
                     padding: EdgeInsets.only(
-                        left: breakpoint.gutters / 2,
-                        right: breakpoint.gutters / 2,
-                        top: breakpoint.gutters / 2),
+                      left: breakpoint.gutters / 2,
+                      right: breakpoint.gutters / 2,
+                      top: breakpoint.gutters / 2,
+                    ),
                     child: Card.filled(
                       child: Padding(
                         padding: const EdgeInsets.all(10),
@@ -853,9 +967,7 @@ class HistoryReply extends StatelessWidget {
         ),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters / 2),
-          child: Divider(
-            height: 2,
-          ),
+          child: Divider(height: 2),
         ),
       ],
     );
