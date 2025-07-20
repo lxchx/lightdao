@@ -108,11 +108,11 @@ Widget starPage(BuildContext context) {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(24.0),
                         child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                           child: Container(
                             color: Theme.of(
                               context,
-                            ).colorScheme.surfaceContainerHigh.withAlpha(50),
+                            ).colorScheme.surfaceContainerHigh.withAlpha(85),
                             child: ValueListenableBuilder<String>(
                               valueListenable: syncStatus,
                               builder: (context, value, child) {
@@ -381,12 +381,89 @@ Widget starPage(BuildContext context) {
                     } else {
                       if (!dontDelete) {
                         // 本地为主：删除云端独有，添加本地独有
-                        for (final feed in remoteOnly) {
-                          await delFeed(appState.setting.feedUuid, feed.id);
+                        final totalToDelete = remoteOnly.length;
+                        for (final entry in remoteOnly.asMap().entries) {
+                          final index = entry.key;
+                          final feed = entry.value;
+                          int retryCount = 0;
+
+                          while (true) {
+                            try {
+                              syncStatus.value =
+                                  '正在删除第 ${index + 1}/$totalToDelete 个串...';
+                              await Future.delayed(
+                                const Duration(milliseconds: 100),
+                              );
+
+                              await delFeed(appState.setting.feedUuid, feed.id);
+
+                              break;
+                            } catch (e) {
+                              retryCount++;
+                              if (retryCount > maxRetries) {
+                                throw Exception(
+                                  '删除项目 ${feed.id} 失败：已超过最大重试次数。',
+                                );
+                              }
+
+                              final retryDelay = Duration(
+                                milliseconds: 100 * (1 << (retryCount - 1)),
+                              );
+
+                              if (retryDelay.inSeconds >= 2) {
+                                throw Exception('删除项目 ${feed.id} 失败：重试等待时间过长。');
+                              }
+
+                              syncStatus.value =
+                                  '删除失败，${retryDelay.inMilliseconds}ms后重试 (第$retryCount次)...';
+                              await Future.delayed(retryDelay);
+                            }
+                          }
                         }
                       }
-                      for (final feed in localOnly) {
-                        await addFeed(appState.setting.feedUuid, feed.threadId);
+                      final totalToAdd = localOnly.length;
+                      for (final entry in localOnly.asMap().entries) {
+                        final index = entry.key;
+                        final feed = entry.value;
+                        int retryCount = 0;
+
+                        while (true) {
+                          try {
+                            syncStatus.value =
+                                '正在添加第 ${index + 1}/$totalToAdd 个串...';
+                            await Future.delayed(
+                              const Duration(milliseconds: 100),
+                            );
+
+                            await addFeed(
+                              appState.setting.feedUuid,
+                              feed.threadId,
+                            );
+
+                            break;
+                          } catch (e) {
+                            retryCount++;
+                            if (retryCount > maxRetries) {
+                              throw Exception(
+                                '添加项目 ${feed.threadId} 失败：已超过最大重试次数。',
+                              );
+                            }
+
+                            final retryDelay = Duration(
+                              milliseconds: 100 * (1 << (retryCount - 1)),
+                            );
+
+                            if (retryDelay.inSeconds >= 2) {
+                              throw Exception(
+                                '添加项目 ${feed.threadId} 失败：重试等待时间过长。',
+                              );
+                            }
+
+                            syncStatus.value =
+                                '添加失败，${retryDelay.inMilliseconds}ms后重试 (第$retryCount次)...';
+                            await Future.delayed(retryDelay);
+                          }
+                        }
                       }
                     }
 
@@ -642,7 +719,9 @@ class MorePage extends StatelessWidget {
                                       title: "浏览",
                                       listDelegate: SliverChildBuilderDelegate(
                                         (context, index) {
-                                          final re = appState.setting.viewHistory
+                                          final re = appState
+                                              .setting
+                                              .viewHistory
                                               .getIndex(index);
                                           if (re != null) {
                                             return HistoryReply(
@@ -668,7 +747,9 @@ class MorePage extends StatelessWidget {
                                                           Navigator.of(
                                                             context,
                                                           ).pop();
-                                                          appState.setState((_) {
+                                                          appState.setState((
+                                                            _,
+                                                          ) {
                                                             appState
                                                                 .setting
                                                                 .viewHistory
@@ -676,7 +757,7 @@ class MorePage extends StatelessWidget {
                                                                   re.threadId,
                                                                 );
                                                           });
-                                                          setState((){});
+                                                          setState(() {});
                                                         },
                                                         child: Text('删除'),
                                                       ),
@@ -704,7 +785,7 @@ class MorePage extends StatelessWidget {
                                             appState.setting.viewHistory.length,
                                       ),
                                     );
-                                  }
+                                  },
                                 ),
                               ),
                             );
