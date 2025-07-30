@@ -47,5 +47,18 @@
 	<true/>
 	<key>io.flutter.embedded_views_preview</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>http</string>
+		<string>https</string>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>此应用需要访问相机以拍摄照片</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>此应用需要访问相册以选择照片作为背景或附件</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>此应用需要写入权限以保存您绘制的图片和下载的图片到相册</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>此应用需要访问麦克风以录制视频</string>
 </dict>
 </plist>
