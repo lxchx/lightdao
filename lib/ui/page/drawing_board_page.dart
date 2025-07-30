@@ -3,11 +3,14 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'package:gal/gal.dart';
+
 import 'package:image_picker/image_picker.dart' as image_picker;
 import 'package:image_picker/image_picker.dart';
 import 'package:lightdao/ui/widget/conditional_hero.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:lightdao/utils/permission_helper.dart';
+import 'package:lightdao/utils/permission_debug.dart';
+import 'package:lightdao/utils/photo_saver.dart';
 import 'dart:io';
 
 class DrawingBoardPage extends StatefulWidget {
@@ -33,6 +36,7 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
   Size? _bgImageSize;
   double _currentBoardWidth = 0;
   double _currentBoardHeight = 0;
+  File? _backgroundImageFile;
 
   @override
   void initState() {
@@ -42,14 +46,17 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
   }
 
   Future<void> _loadBackgroundImage() async {
-    if (widget.backgroundImage != null) {
-      final data = await widget.backgroundImage!.readAsBytes();
+    final imageFile = _backgroundImageFile ?? widget.backgroundImage;
+    if (imageFile != null) {
+      final data = await imageFile.readAsBytes();
       final codec = await ui.instantiateImageCodec(data);
       final frameInfo = await codec.getNextFrame();
       setState(() {
         _bgImage = frameInfo.image;
-        _bgImageSize =
-            Size(_bgImage!.width.toDouble(), _bgImage!.height.toDouble());
+        _bgImageSize = Size(
+          _bgImage!.width.toDouble(),
+          _bgImage!.height.toDouble(),
+        );
       });
     }
   }
@@ -105,7 +112,9 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
 
     final ui.PictureRecorder recorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(
-        recorder, Rect.fromLTWH(0, 0, finalImageWidth, finalImageHeight));
+      recorder,
+      Rect.fromLTWH(0, 0, finalImageWidth, finalImageHeight),
+    );
 
     if (_bgImage != null) {
       paintImage(
@@ -125,11 +134,13 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
       if (_bgImage != null) {
         // 计算背景图在画板中的实际渲染尺寸和位置
         final FittedSizes fittedBgInBoard = applyBoxFit(
-            BoxFit.contain,
-            Size(_bgImage!.width.toDouble(),
-                _bgImage!.height.toDouble()), // 原始背景图尺寸
-            Size(_currentBoardWidth, _currentBoardHeight) // 画板组件尺寸
-            );
+          BoxFit.contain,
+          Size(
+            _bgImage!.width.toDouble(),
+            _bgImage!.height.toDouble(),
+          ), // 原始背景图尺寸
+          Size(_currentBoardWidth, _currentBoardHeight), // 画板组件尺寸
+        );
 
         // drawingImage（从controller.getImageData()获取）对应整个画板区域（_currentBoardWidth x _currentBoardHeight）
         // 用户是相对于fittedBgInBoard.destination区域进行绘制的
@@ -137,11 +148,19 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
         // 缩放到覆盖原始_bgImage（finalImageWidth x finalImageHeight）
 
         // srcRect是drawingImage中对应可见背景图的部分
-        final Rect srcRect = Rect.fromLTWH(0, 0, drawingImage.width.toDouble(),
-            drawingImage.height.toDouble());
+        final Rect srcRect = Rect.fromLTWH(
+          0,
+          0,
+          drawingImage.width.toDouble(),
+          drawingImage.height.toDouble(),
+        );
         // dstRect是最终图片的完整尺寸（原始背景图尺寸）
-        final Rect dstRect =
-            Rect.fromLTWH(0, 0, finalImageWidth, finalImageHeight);
+        final Rect dstRect = Rect.fromLTWH(
+          0,
+          0,
+          finalImageWidth,
+          finalImageHeight,
+        );
 
         canvas.drawImageRect(drawingImage, srcRect, dstRect, Paint());
       } else {
@@ -150,11 +169,13 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
       }
     }
 
-    final ui.Image finalImage = await recorder
-        .endRecording()
-        .toImage(finalImageWidth.toInt(), finalImageHeight.toInt());
-    final ByteData? pngBytes =
-        await finalImage.toByteData(format: ui.ImageByteFormat.png);
+    final ui.Image finalImage = await recorder.endRecording().toImage(
+      finalImageWidth.toInt(),
+      finalImageHeight.toInt(),
+    );
+    final ByteData? pngBytes = await finalImage.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
 
     drawingImage?.dispose();
 
@@ -171,21 +192,32 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
   }
 
   void _saveAsDrawing() async {
-    final directory = await getTemporaryDirectory();
+    try {
+      final directory = await getTemporaryDirectory();
+      final xFile = await _saveImageToFile(directory, 'drawing');
+      if (!mounted) return;
+      if (xFile == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('保存失败！')));
+        return;
+      }
 
-    final xFile = await _saveImageToFile(directory, 'drawing');
-    if (!mounted) return;
-    if (xFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('保存失败！')),
+      // 使用PhotoSaver，让它自己处理权限
+      final success = await PhotoSaver.saveImageToGallery(
+        xFile.path,
+        context: context,
       );
-      return;
-    }
-    await Gal.putImage(xFile.path);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已保存到相册')),
-      );
+
+      if (success && mounted) {
+        PhotoSaver.showSuccessMessage(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('保存失败: $e')));
+      }
     }
   }
 
@@ -261,18 +293,22 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
       final double screenHeightAvailable =
           screenSize.height - appBarHeight - topPadding;
 
-      final FittedSizes fittedSizes = applyBoxFit(BoxFit.contain, _bgImageSize!,
-          Size(screenWidth, screenHeightAvailable));
+      final FittedSizes fittedSizes = applyBoxFit(
+        BoxFit.contain,
+        _bgImageSize!,
+        Size(screenWidth, screenHeightAvailable),
+      );
 
       boardWidth = fittedSizes.destination.width;
       boardHeight = fittedSizes.destination.height;
       _currentBoardWidth = boardWidth;
       _currentBoardHeight = boardHeight;
 
+      final imageFile = _backgroundImageFile ?? widget.backgroundImage;
       boardBackground = ConditionalHero(
         tag: widget.heroTag,
         child: Image.file(
-          widget.backgroundImage!,
+          imageFile!,
           fit: BoxFit.contain,
           width: boardWidth,
           height: boardHeight,
@@ -297,6 +333,57 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
           title: Text('画板'),
           actions: [
             IconButton(
+              icon: Icon(Icons.camera_alt),
+              tooltip: '拍照作为背景',
+              onPressed: () async {
+                try {
+                  // 请求相机权限
+                  final hasPermission =
+                      await PermissionHelper.requestCameraPermission(context);
+                  if (!hasPermission) {
+                    return;
+                  }
+
+                  final picker = image_picker.ImagePicker();
+                  final file = await picker.pickImage(
+                    source: image_picker.ImageSource.camera,
+                  );
+                  if (file != null) {
+                    setState(() {
+                      _backgroundImageFile = File(file.path);
+                    });
+                    await _loadBackgroundImage();
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('拍照失败: $e')));
+                }
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.photo_library),
+              tooltip: '从相册选择背景',
+              onPressed: () async {
+                try {
+                  final picker = image_picker.ImagePicker();
+                  final file = await picker.pickImage(
+                    source: image_picker.ImageSource.gallery,
+                  );
+                  if (file != null) {
+                    setState(() {
+                      _backgroundImageFile = File(file.path);
+                    });
+                    await _loadBackgroundImage();
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('选择图片失败: $e')));
+                }
+              },
+            ),
+            IconButton(
               icon: Icon(Icons.save_as),
               tooltip: '保存到相册',
               onPressed: (_hasDrawn || _bgImage != null)
@@ -310,6 +397,14 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
                   ? () => _saveDrawing(false)
                   : null, // 如果有背景图也允许完成
             ),
+            if (Platform.isIOS)
+              IconButton(
+                icon: Icon(Icons.bug_report),
+                tooltip: '权限调试',
+                onPressed: () async {
+                  await PermissionDebug.debugPhotoPermission(context);
+                },
+              ),
           ],
         ),
         body: SafeArea(
@@ -322,52 +417,51 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
             showDefaultActions: true,
             showDefaultTools: true,
             defaultToolsBuilder: (Type t, _) =>
-                DrawingBoard.defaultTools(t, _drawingController)
-                  ..insert(
-                    0,
-                    DefToolItem(
-                      icon: Icons.circle_rounded,
-                      activeColor: _drawingController.getColor,
-                      onTap: () async {
-                        Color selectedColor = _drawingController.getColor;
-                        final color = await showDialog<Color>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text('选择颜色'),
-                            content: SingleChildScrollView(
-                              child: ColorPicker(
-                                pickerColor: _drawingController.getColor,
-                                onColorChanged: (color) {
-                                  setState(() {
-                                    selectedColor = color;
-                                  });
-                                },
-                                pickerAreaHeightPercent: 0.8,
-                              ),
+                DrawingBoard.defaultTools(t, _drawingController)..insert(
+                  0,
+                  DefToolItem(
+                    icon: Icons.circle_rounded,
+                    activeColor: _drawingController.getColor,
+                    onTap: () async {
+                      Color selectedColor = _drawingController.getColor;
+                      final color = await showDialog<Color>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text('选择颜色'),
+                          content: SingleChildScrollView(
+                            child: ColorPicker(
+                              pickerColor: _drawingController.getColor,
+                              onColorChanged: (color) {
+                                setState(() {
+                                  selectedColor = color;
+                                });
+                              },
+                              pickerAreaHeightPercent: 0.8,
                             ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: Text('取消'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context, selectedColor);
-                                },
-                                child: Text('确定'),
-                              ),
-                            ],
                           ),
-                        );
-                        if (color != null) {
-                          setState(() {
-                            _drawingController.setStyle(color: color);
-                          });
-                        }
-                      },
-                      isActive: true,
-                    ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text('取消'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context, selectedColor);
+                              },
+                              child: Text('确定'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (color != null) {
+                        setState(() {
+                          _drawingController.setStyle(color: color);
+                        });
+                      }
+                    },
+                    isActive: true,
                   ),
+                ),
           ),
         ),
       ),
