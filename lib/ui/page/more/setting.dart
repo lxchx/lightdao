@@ -6,7 +6,8 @@ import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/const_data.dart';
 import 'package:lightdao/data/phrase.dart';
 import 'package:lightdao/ui/page/more/icon_select.dart';
-import 'package:lightdao/ui/page/debug/test.dart';
+import 'package:lightdao/ui/page/debug/tsukuyomi_test.dart';
+import 'package:lightdao/ui/page/debug/reply_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:swipeable_page_route/swipeable_page_route.dart';
 import 'package:file_picker/file_picker.dart';
@@ -484,9 +485,42 @@ class SettingsPage extends StatelessWidget {
                       EdgeInsets.symmetric(horizontal: breakpoint.gutters),
                   title: Text('调试'),
                   onTap: () async {
-                    Navigator.push(
-                      context,
-                      pageRoute(builder: (context) => const TestPage()),
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('选择调试页面'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              title: const Text('TsukuyomiList 测试'),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  pageRoute(builder: (context) => const TsukuyomiTestPage()),
+                                );
+                              },
+                            ),
+                            ListTile(
+                              title: const Text('弹窗全屏测试'),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  pageRoute(builder: (context) => const ReplyDialogTestPage()),
+                                );
+                              },
+                            ),
+                            ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('取消'),
+                          ),
+                        ],
+                      ),
                     );
                   })
             ],

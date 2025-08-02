@@ -20,16 +20,16 @@ class ChatItem {
   });
 }
 
-class TestPage extends StatefulWidget {
-  const TestPage({
+class TsukuyomiTestPage extends StatefulWidget {
+  const TsukuyomiTestPage({
     super.key,
   });
 
   @override
-  State<TestPage> createState() => _TestPageState();
+  State<TsukuyomiTestPage> createState() => _TsukuyomiTestPageState();
 }
 
-class _TestPageState extends State<TestPage> {
+class _TsukuyomiTestPageState extends State<TsukuyomiTestPage> {
   final tsukuyomiListController = TsukuyomiListScrollController();
   bool shouldShowBar = true;
 
@@ -175,7 +175,7 @@ class _TestPageState extends State<TestPage> {
         visible: shouldShowBar,
         duration: Durations.long4,
         child: AppBar(
-          title: const Text('TsukuyomiList Example'),
+          title: const Text('TsukuyomiList 测试'),
         ),
       ),
       body: _renderList(),
