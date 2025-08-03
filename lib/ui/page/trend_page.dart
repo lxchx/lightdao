@@ -212,6 +212,7 @@ class _TrendPageState extends ScaffoldAccessoryBuilder<TrendPage> {
                       final trend = _dailyTrend!.trends[index];
                       final cacheRef = _refCache.get(trend.threadId);
                       return Card(
+                        shadowColor: Colors.transparent,
                         clipBehavior: Clip.hardEdge,
                         child: InkWell(
                           onTap: () => appState.navigateThreadPage2(
