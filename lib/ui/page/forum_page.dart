@@ -85,6 +85,7 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
 
   void _onForumSelectionChanged() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollController.jumpTo(0);
       if (mounted) _initializePageManager();
     });
   }
