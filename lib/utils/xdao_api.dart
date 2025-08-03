@@ -223,24 +223,27 @@ Future<ThreadJson> _getThreadGeneric(
   int threadId,
   int page,
   String? cookie,
+  {bool forceFromWeb = false}
 ) async {
   final url = Uri.parse(baseUrl).replace(
     queryParameters: {'id': threadId.toString(), 'page': page.toString()},
   );
 
-  // 1. 从cache拿
-  final threadJsonFile = await MyThreadCacheManager().getFileFromCache(
-    url.toString(),
-  );
-  while (threadJsonFile != null) {
-    final threadJsonStr = await threadJsonFile.file.readAsString();
-    final data = getOKJsonMap(threadJsonStr);
-    final thread = ThreadJson.fromJson(data);
-    if (thread.replyCount ~/ 19 + 1 <= page) {
-      // 可能有更新，需要从Http拉取
-      break;
+  if (!forceFromWeb) {
+    // 1. 从cache拿
+    final threadJsonFile = await MyThreadCacheManager().getFileFromCache(
+      url.toString(),
+    );
+    while (threadJsonFile != null) {
+      final threadJsonStr = await threadJsonFile.file.readAsString();
+      final data = getOKJsonMap(threadJsonStr);
+      final thread = ThreadJson.fromJson(data);
+      if (thread.replyCount ~/ 19 + 1 <= page) {
+        // 可能有更新，需要从Http拉取
+        break;
+      }
+      return thread;
     }
-    return thread;
   }
 
   // 2. 从http拿
@@ -265,12 +268,13 @@ Future<ThreadJson> _getThreadGeneric(
   }
 }
 
-Future<ThreadJson> getThread(int threadId, int page, String? cookie) async {
+Future<ThreadJson> getThread(int threadId, int page, String? cookie, {bool forceFromWeb = false}) async {
   return _getThreadGeneric(
     'https://api.nmb.best/api/thread',
     threadId,
     page,
     cookie,
+    forceFromWeb: forceFromWeb,
   );
 }
 
@@ -278,12 +282,14 @@ Future<ThreadJson> getThreadPoOnly(
   int threadId,
   int page,
   String? cookie,
+  {bool forceFromWeb = false}
 ) async {
   return _getThreadGeneric(
     'https://api.nmb.best/api/po',
     threadId,
     page,
     cookie,
+    forceFromWeb: forceFromWeb,
   );
 }
 
@@ -623,11 +629,11 @@ Future<void> delFeed(String uuid, int tid) async {
 Future<ReplyJson> getLatestTrend(String? cookie) async {
   const int trendThreadId = 50248044;
 
-  ThreadJson firstPageThread = await getThread(trendThreadId, 1, cookie);
+  ThreadJson firstPageThread = await getThread(trendThreadId, 1, cookie, forceFromWeb: true);
 
   final int lastPage = (firstPageThread.replyCount / 19).ceil();
 
-  ThreadJson lastPageThread = await getThread(trendThreadId, lastPage, cookie);
+  ThreadJson lastPageThread = await getThread(trendThreadId, lastPage, cookie, forceFromWeb: true);
 
   final ReplyJson latestReply = lastPageThread.replies.last;
 
