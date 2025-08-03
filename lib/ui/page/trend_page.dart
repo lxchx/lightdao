@@ -35,6 +35,7 @@ class _TrendPageState extends ScaffoldAccessoryBuilder<TrendPage> {
   );
   final _refCache = LRUCache<int, RefHtml>(50);
   final _threadRefCache = LRUCache<int, Future<RefHtml>>(100);
+  final _refFutureMap = <int, Future<RefHtml>>{};
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -229,11 +230,18 @@ class _TrendPageState extends ScaffoldAccessoryBuilder<TrendPage> {
                             child: cacheRef != null
                                 ? getRefWidget(cacheRef, trend)
                                 : FutureBuilder<RefHtml>(
-                                    future: fetchRefFromHtml(
-                                      trend.threadId,
-                                      appState.getCurrentCookie(),
-                                      throttle: _fetchRefThrottle,
-                                    ),
+                                    future: (() {
+                                       var future = _refFutureMap[trend.threadId];
+                                       if (future == null) {
+                                         future = fetchRefFromHtml(
+                                           trend.threadId,
+                                           appState.getCurrentCookie(),
+                                           throttle: _fetchRefThrottle,
+                                         );
+                                          _refFutureMap[trend.threadId] = future;
+                                       }
+                                       return future;
+                                     }()),
                                     builder: (context, snapshot) {
                                       if (snapshot.error != null) {
                                         return ListTile(
@@ -254,14 +262,25 @@ class _TrendPageState extends ScaffoldAccessoryBuilder<TrendPage> {
                                             '\n残留信息：${trend.content}',
                                           ),
                                           trailing: TextButton(
-                                            onPressed: () {
-                                              setState(() {});
+                                              onPressed: () {
+                                                setState(() {
+                                                  _refFutureMap[trend
+                                                          .threadId] =
+                                                      fetchRefFromHtml(
+                                                        trend.threadId,
+                                                        appState
+                                                            .getCurrentCookie(),
+                                                        throttle:
+                                                            _fetchRefThrottle,
+                                                      );
+                                                });
                                             },
                                             child: Text('重试'),
                                           ),
                                         );
                                       } else if (snapshot.connectionState ==
                                           ConnectionState.done) {
+                                        _refCache.put(trend.threadId, snapshot.data!);
                                         return getRefWidget(
                                           snapshot.data!,
                                           trend,
