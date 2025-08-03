@@ -20,8 +20,11 @@ class ForumOrTimeline {
   final String name;
   final bool isTimeline;
 
-  ForumOrTimeline(
-      {required this.id, required this.name, required this.isTimeline});
+  ForumOrTimeline({
+    required this.id,
+    required this.name,
+    required this.isTimeline,
+  });
 }
 
 class SettingsPage extends StatelessWidget {
@@ -29,9 +32,7 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = Provider.of<MyAppState>(context);
     final breakpoint = Breakpoint.fromMediaQuery(context);
-    pageRoute({
-      required Widget Function(BuildContext) builder,
-    }) {
+    pageRoute({required Widget Function(BuildContext) builder}) {
       final setting = Provider.of<MyAppState>(context, listen: false).setting;
       if (setting.enableSwipeBack) {
         return SwipeablePageRoute(builder: builder);
@@ -41,12 +42,22 @@ class SettingsPage extends StatelessWidget {
     }
 
     final forumOrTimelines = [
-      ...appState.setting.cacheTimelines.map((timeline) => ForumOrTimeline(
-          id: timeline.id, name: timeline.getShowName(), isTimeline: true)),
+      ...appState.setting.cacheTimelines.map(
+        (timeline) => ForumOrTimeline(
+          id: timeline.id,
+          name: timeline.getShowName(),
+          isTimeline: true,
+        ),
+      ),
       ...appState.setting.cacheForumLists
           .expand((forumList) => forumList.forums)
-          .map((forum) => ForumOrTimeline(
-              id: forum.id, name: forum.getShowName(), isTimeline: false)),
+          .map(
+            (forum) => ForumOrTimeline(
+              id: forum.id,
+              name: forum.getShowName(),
+              isTimeline: false,
+            ),
+          ),
     ];
 
     final currentForumOrTimelineIndex = forumOrTimelines.indexWhere(
@@ -59,9 +70,7 @@ class SettingsPage extends StatelessWidget {
         : forumOrTimelines[currentForumOrTimelineIndex];
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('设置'),
-      ),
+      appBar: AppBar(title: Text('设置')),
       body: ListView(
         children: [
           // 个性化
@@ -119,8 +128,9 @@ class SettingsPage extends StatelessWidget {
                 },
               ),
               ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: breakpoint.gutters,
+                ),
                 title: Text('氢岛图标选择'),
                 trailing: Padding(
                   padding: const EdgeInsets.all(2),
@@ -129,9 +139,7 @@ class SettingsPage extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    pageRoute(
-                      builder: (context) => IconSelectionPage(),
-                    ),
+                    pageRoute(builder: (context) => IconSelectionPage()),
                   );
                 },
               ),
@@ -158,8 +166,9 @@ class SettingsPage extends StatelessWidget {
                 },
               ),
               ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: breakpoint.gutters,
+                ),
                 title: Text('启动版面设置'),
                 trailing: SizedBox(
                   height: 45,
@@ -167,24 +176,26 @@ class SettingsPage extends StatelessWidget {
                   child: DropdownButton2<ForumOrTimeline?>(
                     isExpanded: true,
                     customButton: Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHigh,
-                            borderRadius: BorderRadius.all(
-                              Radius.circular(30),
-                            )),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Align(
-                              alignment: Alignment.center,
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: HtmlWidget(
-                                    currentForumOrTimeline?.name ?? '（请设置）'),
-                              )),
-                        )),
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.all(Radius.circular(30)),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: HtmlWidget(
+                              currentForumOrTimeline?.name ?? '（请设置）',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     value: currentForumOrTimeline,
                     alignment: AlignmentDirectional.centerEnd,
                     iconStyleData: IconStyleData(iconSize: 0),
@@ -205,10 +216,13 @@ class SettingsPage extends StatelessWidget {
                       }
                     },
                     items: forumOrTimelines
-                        .map((forumOrTimeline) =>
-                            DropdownMenuItem<ForumOrTimeline?>(
+                        .map(
+                          (forumOrTimeline) =>
+                              DropdownMenuItem<ForumOrTimeline?>(
                                 value: forumOrTimeline,
-                                child: HtmlWidget(forumOrTimeline.name)))
+                                child: HtmlWidget(forumOrTimeline.name),
+                              ),
+                        )
                         .toList(),
                   ),
                 ),
@@ -368,8 +382,9 @@ class SettingsPage extends StatelessWidget {
             title: Text('高级'),
             children: [
               ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: breakpoint.gutters,
+                ),
                 title: Text('刷新时间线和板块列表的缓存(长按)'),
                 onLongPress: () {
                   appState.setState((_) {
@@ -379,33 +394,70 @@ class SettingsPage extends StatelessWidget {
                     appState.tryFetchForumLists(scaffoldMessengerKey);
                   });
                   scaffoldMessengerKey.currentState?.showSnackBar(
-                    SnackBar(
-                      content: Text('清除成功，正在刷新...'),
-                    ),
+                    SnackBar(content: Text('清除成功，正在刷新...')),
                   );
                 },
               ),
               ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: breakpoint.gutters,
+                ),
                 title: Text('重置自带表情的顺序(长按)'),
                 subtitle: Text('自定义的表情会放在最后'),
                 onLongPress: () {
                   appState.setState((_) {
-                    appState.setting.phrases
-                        .removeWhere((phrase) => phrase.canEdit == false);
+                    appState.setting.phrases.removeWhere(
+                      (phrase) => phrase.canEdit == false,
+                    );
                     appState.setting.phrases.insertAll(0, xDaoPhrases);
                   });
                   scaffoldMessengerKey.currentState?.showSnackBar(
-                    SnackBar(
-                      content: Text('重置成功'),
+                    SnackBar(content: Text('重置成功')),
+                  );
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: breakpoint.gutters,
+                ),
+                title: Text('重置App配置(长按)'),
+                subtitle: Text('重置所有App配置为默认值，保留用户数据'),
+                onLongPress: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text('确认重置'),
+                      content: Text('这将重置所有App配置为默认值，但保留您的用户数据（如收藏、历史记录等）'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('取消'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            appState.resetAppSettings();
+                            appState.setState((_) {
+                              appState.setting.cacheTimelines.clear();
+                              appState.tryFetchTimelines(scaffoldMessengerKey);
+                              appState.setting.cacheForumLists.clear();
+                              appState.tryFetchForumLists(scaffoldMessengerKey);
+                            });
+                            Navigator.pop(context);
+                            scaffoldMessengerKey.currentState?.showSnackBar(
+                              SnackBar(content: Text('App配置已重置')),
+                            );
+                          },
+                          child: Text('确定'),
+                        ),
+                      ],
                     ),
                   );
                 },
               ),
               ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: breakpoint.gutters,
+                ),
                 title: Text('备份数据'),
                 onTap: () async {
                   try {
@@ -416,115 +468,114 @@ class SettingsPage extends StatelessWidget {
                         .replaceAll('-', '');
                     String? filePath = await FilePicker.platform
                         .getDirectoryPath(
-                            dialogTitle: '选择保存路径', lockParentWindow: true);
+                          dialogTitle: '选择保存路径',
+                          lockParentWindow: true,
+                        );
 
                     if (filePath != null) {
-                      final destinationPath =
-                          join(filePath, 'lightdao_backup_$timeStr.hive');
+                      final destinationPath = join(
+                        filePath,
+                        'lightdao_backup_$timeStr.hive',
+                      );
                       await appState.exportSettingToFile(destinationPath);
                       scaffoldMessengerKey.currentState?.showSnackBar(
-                        SnackBar(
-                          content: Text('保存成功（$destinationPath）'),
-                        ),
+                        SnackBar(content: Text('保存成功（$destinationPath）')),
                       );
                     } else {
                       scaffoldMessengerKey.currentState?.showSnackBar(
-                        SnackBar(
-                          content: Text('操作已取消'),
-                        ),
+                        SnackBar(content: Text('操作已取消')),
                       );
                     }
                   } catch (e) {
                     scaffoldMessengerKey.currentState?.showSnackBar(
-                      SnackBar(
-                        content: Text('发生错误: $e'),
-                      ),
+                      SnackBar(content: Text('发生错误: $e')),
                     );
                   }
                 },
               ),
               ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: breakpoint.gutters,
+                ),
                 title: Text('恢复备份'),
                 onTap: () async {
                   try {
                     // 打开选择文件对话框
                     String? filePath = await FilePicker.platform
-                        .pickFiles(
-                          dialogTitle: '选择备份文件',
-                        )
+                        .pickFiles(dialogTitle: '选择备份文件')
                         .then((result) => result?.files.single.path);
 
                     if (filePath != null) {
                       await appState.importSettingFromFile(filePath);
 
                       scaffoldMessengerKey.currentState?.showSnackBar(
-                        SnackBar(
-                          content: Text('恢复成功（$filePath）'),
-                        ),
+                        SnackBar(content: Text('恢复成功（$filePath）')),
                       );
                     } else {
                       scaffoldMessengerKey.currentState?.showSnackBar(
-                        SnackBar(
-                          content: Text('操作已取消'),
-                        ),
+                        SnackBar(content: Text('操作已取消')),
                       );
                     }
                   } catch (e) {
                     scaffoldMessengerKey.currentState?.showSnackBar(
-                      SnackBar(
-                        content: Text('发生错误: $e'),
-                      ),
+                      SnackBar(content: Text('发生错误: $e')),
                     );
                   }
                 },
               ),
               ListTile(
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: breakpoint.gutters),
-                  title: Text('调试'),
-                  onTap: () async {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('选择调试页面'),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              title: const Text('TsukuyomiList 测试'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                Navigator.push(
-                                  context,
-                                  pageRoute(builder: (context) => const TsukuyomiTestPage()),
-                                );
-                              },
-                            ),
-                            ListTile(
-                              title: const Text('弹窗全屏测试'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                Navigator.push(
-                                  context,
-                                  pageRoute(builder: (context) => const ReplyDialogTestPage()),
-                                );
-                              },
-                            ),
-                            ],
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('取消'),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: breakpoint.gutters,
+                ),
+                title: Text('调试'),
+                onTap: () async {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('选择调试页面'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            title: const Text('TsukuyomiList 测试'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                pageRoute(
+                                  builder: (context) =>
+                                      const TsukuyomiTestPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          ListTile(
+                            title: const Text('弹窗全屏测试'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                pageRoute(
+                                  builder: (context) =>
+                                      const ReplyDialogTestPage(),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
-                    );
-                  })
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('取消'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -545,8 +596,9 @@ class SettingsSection extends StatelessWidget {
       children: [
         if (title != null)
           ListTile(
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: breakpoint.gutters,
+            ),
             dense: true,
             title: title!,
             titleTextStyle: TextStyle(
@@ -567,47 +619,51 @@ class SettingsTile {
     required ValueChanged<String> onChanged,
     required double contentPadding,
   }) {
-    return Builder(builder: (context) {
-      return ListTile(
-        contentPadding: EdgeInsets.symmetric(horizontal: contentPadding),
-        title: Text(title),
-        subtitle: subtitle == null ? null : Text(subtitle),
-        leadingAndTrailingTextStyle: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
-        trailing: Text(value),
-        onTap: () {
-          showDialog(
-            context: context,
-            builder: (context) {
-              final controller = TextEditingController(text: value);
-              return AlertDialog(
-                title: Text(title),
-                content: TextField(
-                  controller: controller,
-                  keyboardType: TextInputType.number,
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    child: Text('取消'),
+    return Builder(
+      builder: (context) {
+        return ListTile(
+          contentPadding: EdgeInsets.symmetric(horizontal: contentPadding),
+          title: Text(title),
+          subtitle: subtitle == null ? null : Text(subtitle),
+          leadingAndTrailingTextStyle: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+          trailing: Text(value),
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) {
+                final controller = TextEditingController(text: value);
+                return AlertDialog(
+                  title: Text(title),
+                  content: TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
                   ),
-                  TextButton(
-                    onPressed: () {
-                      onChanged(controller.text);
-                      Navigator.of(context).pop();
-                    },
-                    child: Text('确定'),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      );
-    });
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text('取消'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        onChanged(controller.text);
+                        Navigator.of(context).pop();
+                      },
+                      child: Text('确定'),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
+
   static Widget switchTile({
     required String title,
     String? subtitle,

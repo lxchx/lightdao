@@ -225,6 +225,53 @@ class LightDaoSetting extends HiveObject {
   })  : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
         viewPoOnlyHistory =
             viewPoOnlyHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
+
+  LightDaoSetting.withAppDefaults({
+    required this.cookies,
+    required this.currentCookie,
+    required this.replyHistory,
+    required this.starHistory,
+    required this.lightModeCustomThemeColor,
+    required this.darkModeCustomThemeColor,
+    required this.threadUserData,
+    required this.feedUuid,
+    required this.favoredForums,
+    required this.threadFilters,
+    required this.phrases,
+    LRUCache<int, ReplyJsonWithPage>? viewHistory,
+    LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
+  })  : refCollapsing = 2,
+        refPoping = 3,
+        followedSysDarkMode = true,
+        userSettingIsDarkMode = false,
+        isCardView = true,
+        collapsedLen = 100,
+        lightModeThemeColor = Color.fromARGB(255, 241, 98, 100),
+        darkModeThemeColor = Color.fromARGB(255, 241, 98, 100),
+        dynamicThemeColor = false,
+        selectIcon = 0,
+        useAmoledBlack = false,
+        fontSizeFactor = 1.0,
+        dividerBetweenReply = false,
+        cacheTimelines = [],
+        cacheForumLists = [],
+        fixedBottomBar = false,
+        displayExactTime = false,
+        latestTrend = null,
+        dragToDissmissImage = true,
+        dontShowFilttedForumInTimeLine = true,
+        enableSwipeBack = false,
+        initForumOrTimelineId = 1,
+        initIsTimeline = true,
+        initForumOrTimelineName = '综合线',
+        predictiveBack = false,
+        columnWidth = 445,
+        isMultiColumn = true,
+        phraseWidth = 175,
+        fetchTimeout = 3,
+        seenNoticeDate = 0,
+        viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
+        viewPoOnlyHistory = viewPoOnlyHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
 }
 
 class MaterialColorAdapter extends TypeAdapter<MaterialColor> {
@@ -442,50 +489,20 @@ class MyAppState with ChangeNotifier {
   Future<void> loadSettings() async {
     final tmpsetting = await _store.get(0);
     setting = tmpsetting ??
-        LightDaoSetting(
+        LightDaoSetting.withAppDefaults(
           cookies: [],
           currentCookie: -1,
-          refCollapsing: 2,
-          refPoping: 3,
-          followedSysDarkMode: true,
-          userSettingIsDarkMode: false,
-          isCardView: true,
-          collapsedLen: 100,
-          lightModeThemeColor: Color.fromARGB(255, 241, 98, 100),
-          darkModeThemeColor: Color.fromARGB(255, 241, 98, 100),
-          dynamicThemeColor: false,
           viewHistory: LRUCache<int, ReplyJsonWithPage>(5000),
           replyHistory: [],
           starHistory: [],
           lightModeCustomThemeColor: Color.fromARGB(255, 96, 125, 138),
           darkModeCustomThemeColor: Color.fromARGB(255, 96, 125, 138),
           threadUserData: {},
-          selectIcon: 0,
           feedUuid: '',
-          useAmoledBlack: false,
-          fontSizeFactor: 1.0,
-          dividerBetweenReply: false,
-          cacheTimelines: [],
-          cacheForumLists: [],
-          fixedBottomBar: false,
-          displayExactTime: false,
           favoredForums: [],
           threadFilters: [],
-          latestTrend: null,
-          dragToDissmissImage: true,
-          dontShowFilttedForumInTimeLine: true,
           phrases: [],
-          enableSwipeBack: false,
-          initForumOrTimelineId: 1,
-          initIsTimeline: true,
-          initForumOrTimelineName: '综合线',
-          predictiveBack: false,
-          columnWidth: 445,
-          isMultiColumn: true,
           viewPoOnlyHistory: LRUCache<int, ReplyJsonWithPage>(5000),
-          seenNoticeDate: 0,
-          phraseWidth: 175,
-          fetchTimeout: 3,
         );
     setting.phrases = mergePhraseLists(setting.phrases, xDaoPhrases);
     notifyListeners();
@@ -493,6 +510,26 @@ class MyAppState with ChangeNotifier {
 
   Future<void> saveSettings() async {
     return _store.put(0, setting);
+  }
+
+  void resetAppSettings() {
+    setting = LightDaoSetting.withAppDefaults(
+      cookies: setting.cookies,
+      currentCookie: setting.currentCookie,
+      replyHistory: setting.replyHistory,
+      starHistory: setting.starHistory,
+      lightModeCustomThemeColor: setting.lightModeCustomThemeColor,
+      darkModeCustomThemeColor: setting.darkModeCustomThemeColor,
+      threadUserData: setting.threadUserData,
+      feedUuid: setting.feedUuid,
+      favoredForums: setting.favoredForums,
+      threadFilters: setting.threadFilters,
+      phrases: setting.phrases,
+      viewHistory: setting.viewHistory,
+      viewPoOnlyHistory: setting.viewPoOnlyHistory,
+    );
+    notifyListeners();
+    saveSettings();
   }
 
   Future<void> navigateThreadPage2(
