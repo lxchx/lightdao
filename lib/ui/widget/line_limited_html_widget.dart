@@ -22,7 +22,7 @@ class LineLimitedHtmlWidget extends StatefulWidget {
 
 class _LineLimitedHtmlWidgetState extends State<LineLimitedHtmlWidget> {
   static final threadUrlRegex =
-      RegExp(r'(https?:\/\/)?www\.nmbxd1\.com\/t\/(\d+)');
+      RegExp(r'(https?://)?www\.nmbxd1?\.com\/(m\/)?t\/(\d+)');
   bool _isExpanded = false;
 
   @override
@@ -62,7 +62,7 @@ class _LineLimitedHtmlWidgetState extends State<LineLimitedHtmlWidget> {
                 onTapUrl: (url) async {
                   final threadIdMatch = threadUrlRegex.firstMatch(url);
                   if (threadIdMatch != null) {
-                    final threadId = int.tryParse(threadIdMatch.group(2) ?? '');
+                    final threadId = int.tryParse(threadIdMatch.group(3) ?? '');
                     final appState =
                         Provider.of<MyAppState>(context, listen: false);
                     if (threadId == null) return false;

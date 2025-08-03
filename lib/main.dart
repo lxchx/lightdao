@@ -178,7 +178,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   static final threadUrlRegex =
-      RegExp(r'(https?:\/\/)?www\.nmbxd1?\.com\/t\/(\d+)');
+      RegExp(r'(https?:\/\/)?www\.nmbxd1?\.com\/(m\/)?t\/(\d+)');
   String lastClipBoardData = '';
   bool isDialogShown = false;
 
@@ -241,7 +241,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       if (clipText != null && clipText != lastClipBoardData) {
         final threadIdMatch = threadUrlRegex.firstMatch(clipText);
         if (threadIdMatch == null) return;
-        final threadId = int.tryParse(threadIdMatch.group(2) ?? '');
+        final threadId = int.tryParse(threadIdMatch.group(3) ?? '');
         if (threadId == null || !mounted) return;
         if (!isDialogShown) {
           setState(() {
