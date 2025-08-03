@@ -20,12 +20,20 @@ class AppPage extends StatefulWidget {
 
 class _AppPageState extends State<AppPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final GlobalKey<ScaffoldAccessoryBuilder<ForumPage>> _forumPageKey =
-      GlobalKey<ScaffoldAccessoryBuilder<ForumPage>>();
+  final List<GlobalKey?> _pageKeys = [];
 
   int _selectedPageIndex = 0;
   bool _isBottomBarVisible = true;
   bool _isOutSideDrawerExpanded = true;
+
+  // 获取当前页面的 ScaffoldAccessoryBuilder
+  ScaffoldAccessoryBuilder? get _currentPageScaffoldAccessoryBuilder {
+    if (_selectedPageIndex < 0 || _selectedPageIndex >= _pageKeys.length) return null;
+    final key = _pageKeys[_selectedPageIndex];
+    if (key == null) return null;
+    final state = key.currentState;
+    return state is ScaffoldAccessoryBuilder ? state : null;
+  }
 
   // 声明为 late，因为它们的初始化被安全地移到了 didChangeDependencies 中。
   late final ValueNotifier<ForumSelection> _forumSelectionNotifier;
@@ -63,16 +71,28 @@ class _AppPageState extends State<AppPage> {
     );
 
     // 现在在这里初始化页面列表是安全的，因为 context 可用。
+    final forumPageKey = GlobalKey<ScaffoldAccessoryBuilder<ForumPage>>();
+    final trendPageKey = GlobalKey<ScaffoldAccessoryBuilder<TrendPage>>();
     _pages = [
       ForumPage(
-        key: _forumPageKey,
+        key: forumPageKey,
         forumSelectionNotifier: _forumSelectionNotifier,
         scaffoldSetState: () => setState(() {}),
       ),
       starPage(context),
-      TrendPage(refCache: trendRefCache),
+      TrendPage(
+        key: trendPageKey,
+        refCache: trendRefCache,
+      ),
       MorePage(),
     ];
+
+    _pageKeys.addAll([
+      forumPageKey, 
+      null,
+      trendPageKey,
+      null,
+    ]);
 
     // 设置标志位，表示初始化已完成。
     _isInitialized = true;
@@ -85,8 +105,8 @@ class _AppPageState extends State<AppPage> {
   }
 
   void _onDestinationSelected(int index) {
-    if (_selectedPageIndex == 0 && _selectedPageIndex == index) {
-      if (!_forumPageKey.currentState!.onReLocated(context)) {
+    if (_selectedPageIndex == index) {
+      if (!(_currentPageScaffoldAccessoryBuilder?.onReLocated(context) ?? false)) {
         _scaffoldKey.currentState?.openDrawer();
       }
       return;
@@ -101,9 +121,9 @@ class _AppPageState extends State<AppPage> {
 
   /// 为小屏幕构建一个完整的抽屉Widget。
   Widget? _buildSmallScreenDrawer() {
-    if (!_isInitialized || _selectedPageIndex != 0) return null;
+    if (!_isInitialized) return null;
 
-    final content = _forumPageKey.currentState?.buildDrawerContent(context);
+    final content = _currentPageScaffoldAccessoryBuilder?.buildDrawerContent(context);
     if (content == null || content.isEmpty) return null;
 
     return Drawer(
@@ -130,14 +150,14 @@ class _AppPageState extends State<AppPage> {
   }
 
   Widget? _buildCurrentPageFab() {
-    if (!_isInitialized || _selectedPageIndex != 0) return null;
+    if (!_isInitialized) return null;
     final breakpoint = Breakpoint.fromMediaQuery(context);
     final appState = Provider.of<MyAppState>(context, listen: false);
     if (breakpoint.window >= WindowSize.small ||
         (!appState.setting.fixedBottomBar && !_isBottomBarVisible)) {
       return null;
     }
-    return _forumPageKey.currentState?.buildFloatingActionButton(context);
+    return _currentPageScaffoldAccessoryBuilder?.buildFloatingActionButton(context);
   }
 
   @override
@@ -220,7 +240,8 @@ class _AppPageState extends State<AppPage> {
                       ),
                     ),
                     if (_isOutSideDrawerExpanded &&
-                        _selectedPageIndex == 0) ...[
+                        _currentPageScaffoldAccessoryBuilder != null &&
+                        _currentPageScaffoldAccessoryBuilder!.buildDrawerContent(context) != null) ...[
                       const Padding(
                         padding: EdgeInsets.fromLTRB(28, 16, 28, 10),
                         child: Divider(), // 视觉分割线
@@ -236,9 +257,7 @@ class _AppPageState extends State<AppPage> {
                           ),
                           child: Column(
                             children: [
-                              ...(_forumPageKey.currentState
-                                      ?.buildDrawerContent(context) ??
-                                  []),
+                              ...(_currentPageScaffoldAccessoryBuilder?.buildDrawerContent(context) ?? []),
                               SizedBox(
                                 height: MediaQuery.of(context).padding.bottom,
                               ),

@@ -43,6 +43,7 @@ class ReplyItem extends StatelessWidget {
   final bool cacheImageSize;
   final Function(File image, Object? heroTag)? onImageEdit;
   final IntervalRunner<RefHtml>? throttle;
+  final Widget? topRightWidget;
 
   ReplyItem({
     super.key,
@@ -62,6 +63,7 @@ class ReplyItem extends StatelessWidget {
     this.cacheImageSize = false,
     this.onImageEdit,
     this.throttle,
+    this.topRightWidget,
   }) {
     assert(
         // 如果imageInitIndex有效（非null且>=0），则imageNames必须有效（非null且非空）
@@ -97,59 +99,76 @@ class ReplyItem extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Expanded(
-                          child: Row(
-                        children: [
-                          Text(threadJson.userHash,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: threadJson.admin
-                                      ? Theme.of(context).colorScheme.error
-                                      : Theme.of(context)
-                                          .colorScheme
-                                          .onPrimaryContainer)),
-                          if (isPo) Padding(padding: EdgeInsets.all(2)),
-                          if (isPo)
-                            Badge(
-                                padding: EdgeInsets.symmetric(horizontal: 5),
-                                backgroundColor: Theme.of(context)
-                                    .colorScheme
-                                    .secondaryContainer,
-                                label: Text("po",
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    threadJson.userHash,
                                     style: TextStyle(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSecondaryContainer))),
-                        ],
-                      )),
-                      Container(
-                        alignment: Alignment.centerRight,
-                        child: threadJson.userHash != "Tips"
-                            ? Text(
-                                'No.${threadJson.id.toString()}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                        color: Theme.of(context).hintColor),
-                              )
-                            : null,
-                      )
+                                      fontWeight: FontWeight.bold,
+                                      color: threadJson.admin
+                                          ? Theme.of(context).colorScheme.error
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimaryContainer,
+                                    ),
+                                  ),
+                                  if (isPo) Padding(padding: EdgeInsets.all(2)),
+                                  if (isPo)
+                                    Badge(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 5,
+                                      ),
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.secondaryContainer,
+                                      label: Text(
+                                        "po",
+                                        style: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSecondaryContainer,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              if (threadJson.userHash != "Tips")
+                                Text(
+                                  parseJsonTimeStr(
+                                    threadJson.now,
+                                    displayExactTime:
+                                        appState.setting.displayExactTime,
+                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(context).hintColor,
+                                      ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          alignment: Alignment.centerRight,
+                          child:
+                              topRightWidget ??
+                              (threadJson.userHash != "Tips"
+                                  ? Text(
+                                      'No.${threadJson.id.toString()}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: Theme.of(context).hintColor,
+                                          ),
+                                    )
+                                  : null),
+                        )
                     ],
                   ),
-                  if (threadJson.userHash != "Tips")
-                    Text(
-                      parseJsonTimeStr(threadJson.now,
-                          displayExactTime: appState.setting.displayExactTime),
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: Theme.of(context).hintColor),
-                    ),
-                  if (inCardView)
-                    SizedBox(
-                      height: 5,
-                    ),
                   if (threadJson.sage)
                     Text(
                       '已SAGE',
