@@ -198,111 +198,107 @@ class _TrendPageState extends ScaffoldAccessoryBuilder<TrendPage> {
                               .toInt() +
                           1
                     : 1;
-                return Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: breakpoint.gutters,
-                  ),
-                  child: MasonryGridView.count(
-                    controller: _scrollController,
-                    cacheExtent: 10000,
-                    crossAxisCount: forumRowCount,
-                    mainAxisSpacing: breakpoint.gutters,
-                    crossAxisSpacing: breakpoint.gutters,
-                    itemCount: _dailyTrend!.trends.length,
-                    itemBuilder: (context, index) {
-                      final trend = _dailyTrend!.trends[index];
-                      final cacheRef = _refCache.get(trend.threadId);
-                      return Card(
-                        shadowColor: Colors.transparent,
-                        clipBehavior: Clip.hardEdge,
-                        child: InkWell(
-                          onTap: () => appState.navigateThreadPage2(
-                            context,
-                            trend.threadId,
-                            false,
-                            thread: cacheRef == null
-                                ? null
-                                : ThreadJson.fromRefHtml(cacheRef),
-                            fullThread: false,
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.all(breakpoint.gutters),
-                            child: cacheRef != null
-                                ? getRefWidget(cacheRef, trend)
-                                : FutureBuilder<RefHtml>(
-                                    future: (() {
-                                       var future = _refFutureMap[trend.threadId];
-                                       if (future == null) {
-                                         future = fetchRefFromHtml(
-                                           trend.threadId,
-                                           appState.getCurrentCookie(),
-                                           throttle: _fetchRefThrottle,
-                                         );
-                                          _refFutureMap[trend.threadId] = future;
-                                       }
-                                       return future;
-                                     }()),
-                                    builder: (context, snapshot) {
-                                      if (snapshot.error != null) {
-                                        return ListTile(
-                                          contentPadding: EdgeInsets.all(0),
-                                          dense: true,
-                                          title: Text(
-                                            '串信息获取失败：${snapshot.error}',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodyMedium
-                                                ?.copyWith(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.error,
-                                                ),
-                                          ),
-                                          subtitle: Text(
-                                            '\n残留信息：${trend.content}',
-                                          ),
-                                          trailing: TextButton(
-                                              onPressed: () {
-                                                setState(() {
-                                                  _refFutureMap[trend
-                                                          .threadId] =
-                                                      fetchRefFromHtml(
-                                                        trend.threadId,
-                                                        appState
-                                                            .getCurrentCookie(),
-                                                        throttle:
-                                                            _fetchRefThrottle,
-                                                      );
-                                                });
-                                            },
-                                            child: Text('重试'),
-                                          ),
-                                        );
-                                      } else if (snapshot.connectionState ==
-                                          ConnectionState.done) {
-                                        _refCache.put(trend.threadId, snapshot.data!);
-                                        return getRefWidget(
-                                          snapshot.data!,
-                                          trend,
-                                        );
-                                      } else if (snapshot.connectionState ==
-                                          ConnectionState.waiting) {
-                                        return ListTile(
-                                          contentPadding: EdgeInsets.all(0),
-                                          dense: true,
-                                          leading:
-                                              const CircularProgressIndicator(),
-                                          subtitle: Text(trend.content),
-                                        );
-                                      }
-                                      return Text('???');
-                                    },
-                                  ),
-                          ),
+                return MasonryGridView.count(
+                  padding: EdgeInsets.all(breakpoint.gutters),
+                  controller: _scrollController,
+                  cacheExtent: 10000,
+                  crossAxisCount: forumRowCount,
+                  mainAxisSpacing: breakpoint.gutters,
+                  crossAxisSpacing: breakpoint.gutters,
+                  itemCount: _dailyTrend!.trends.length,
+                  itemBuilder: (context, index) {
+                    final trend = _dailyTrend!.trends[index];
+                    final cacheRef = _refCache.get(trend.threadId);
+                    return Card(
+                      shadowColor: Colors.transparent,
+                      clipBehavior: Clip.hardEdge,
+                      child: InkWell(
+                        onTap: () => appState.navigateThreadPage2(
+                          context,
+                          trend.threadId,
+                          false,
+                          thread: cacheRef == null
+                              ? null
+                              : ThreadJson.fromRefHtml(cacheRef),
+                          fullThread: false,
                         ),
-                      );
-                    },
-                  ),
+                        child: Padding(
+                          padding: EdgeInsets.all(breakpoint.gutters),
+                          child: cacheRef != null
+                              ? getRefWidget(cacheRef, trend)
+                              : FutureBuilder<RefHtml>(
+                                  future: (() {
+                                     var future = _refFutureMap[trend.threadId];
+                                     if (future == null) {
+                                       future = fetchRefFromHtml(
+                                         trend.threadId,
+                                         appState.getCurrentCookie(),
+                                         throttle: _fetchRefThrottle,
+                                       );
+                                        _refFutureMap[trend.threadId] = future;
+                                     }
+                                     return future;
+                                   }()),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.error != null) {
+                                      return ListTile(
+                                        contentPadding: EdgeInsets.all(0),
+                                        dense: true,
+                                        title: Text(
+                                          '串信息获取失败：${snapshot.error}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.error,
+                                              ),
+                                        ),
+                                        subtitle: Text(
+                                          '\n残留信息：${trend.content}',
+                                        ),
+                                        trailing: TextButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                _refFutureMap[trend
+                                                        .threadId] =
+                                                    fetchRefFromHtml(
+                                                      trend.threadId,
+                                                      appState
+                                                          .getCurrentCookie(),
+                                                      throttle:
+                                                          _fetchRefThrottle,
+                                                    );
+                                              });
+                                          },
+                                          child: Text('重试'),
+                                        ),
+                                      );
+                                    } else if (snapshot.connectionState ==
+                                        ConnectionState.done) {
+                                      _refCache.put(trend.threadId, snapshot.data!);
+                                      return getRefWidget(
+                                        snapshot.data!,
+                                        trend,
+                                      );
+                                    } else if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return ListTile(
+                                        contentPadding: EdgeInsets.all(0),
+                                        dense: true,
+                                        leading:
+                                            const CircularProgressIndicator(),
+                                        subtitle: Text(trend.content),
+                                      );
+                                    }
+                                    return Text('???');
+                                  },
+                                ),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             )
