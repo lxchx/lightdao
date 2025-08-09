@@ -196,17 +196,20 @@ class _DragDismissibleState extends State<DragDismissible>
 
   @override
   Widget build(BuildContext context) {
-    final Widget content = WillPopScope(
+    final Widget content = PopScope(
+      canPop: false,
       // 拦截退出做一些修改，否则之前的page会被背景挡住，把渐变动画播完。
-      onWillPop: () async {
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) {
+          return;
+        }
         setState(() {
           _isExiting = true;
-          _scaleAnimation = AlwaysStoppedAnimation(1.0);  // 让缩放动画失效
+          _scaleAnimation = AlwaysStoppedAnimation(1.0); // 让缩放动画失效
         });
 
         _animateController.forward();
-
-        return true;
+        Navigator.pop(context);
       },
       child: DecoratedBoxTransition(
         decoration: _opacityAnimation,

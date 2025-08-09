@@ -55,12 +55,16 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
         CachedNetworkImageProvider('https://image.nmb.best/image/$imageName');
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: WillPopScope(
-        onWillPop: () async {
+      body: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (bool didPop, Object? result) {
+          if (didPop) {
+            return;
+          }
           setState(() {
             _showBottomBar = false;
           });
-          return true;
+          Navigator.pop(context);
         },
         child: Listener(
           onPointerDown: (event) {
