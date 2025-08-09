@@ -280,17 +280,17 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
 
   /// 粉色调试遮罩
   Color? get _pinkDebugMask {
-    return widget.debugMask ? Colors.pink.withOpacity(0.33) : null;
+    return widget.debugMask ? Colors.pink.withAlpha((255 * 0.33).round()) : null;
   }
 
   /// 紫色调试遮罩
   Color? get _purpleDebugMask {
-    return widget.debugMask ? Colors.purple.withOpacity(0.33) : null;
+    return widget.debugMask ? Colors.purple.withAlpha((255 * 0.33).round()) : null;
   }
 
   /// 绿色调试遮罩
   Color? get _greenDebugMask {
-    return widget.debugMask ? Colors.green.withOpacity(0.33) : null;
+    return widget.debugMask ? Colors.green.withAlpha((255 * 0.33).round()) : null;
   }
 
   /// 列表末尾空白部分占比

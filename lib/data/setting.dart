@@ -281,13 +281,13 @@ class MaterialColorAdapter extends TypeAdapter<MaterialColor> {
   @override
   MaterialColor read(BinaryReader reader) {
     final value = reader.readInt();
-    return Colors.primaries.firstWhere((color) => color.value == value,
+    return Colors.primaries.firstWhere((color) => color.toARGB32() == value,
         orElse: () => Colors.green);
   }
 
   @override
   void write(BinaryWriter writer, MaterialColor obj) {
-    writer.writeInt(obj.value);
+    writer.writeInt(obj.toARGB32());
   }
 }
 
@@ -302,7 +302,7 @@ class ColorAdapter extends TypeAdapter<Color> {
 
   @override
   void write(BinaryWriter writer, Color obj) {
-    writer.writeUint32(obj.value);
+    writer.writeUint32(obj.toARGB32());
   }
 }
 
@@ -394,6 +394,7 @@ class MyAppState with ChangeNotifier {
           .catchError((err) {
         fetchTimelinesStatus = SimpleStatus.error;
         notifyListeners();
+        if (!scaffoldMessengerKey.currentContext!.mounted) return;
         scaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(
               content: Text('拉取时间线错误： ${err.toString()}'),
@@ -427,6 +428,7 @@ class MyAppState with ChangeNotifier {
           .catchError((err) {
         fetchForumsStatus = SimpleStatus.completed;
         notifyListeners();
+        if (!scaffoldMessengerKey.currentContext!.mounted) return;
         scaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(
               content: Text('拉取板块错误： ${err.toString()}'),
@@ -544,7 +546,11 @@ class MyAppState with ChangeNotifier {
 
     // 如果有startPage，不要用历史
     if (threadHistory != null && startPage == null) {
-      if (popIfFinish) Navigator.pop(context);
+      if (popIfFinish) {
+        if (!context.mounted) return;
+        Navigator.pop(context);
+      }
+      if (!context.mounted) return;
       Navigator.push(
         context,
         createPageRoute(
@@ -557,9 +563,11 @@ class MyAppState with ChangeNotifier {
       );
     } else if (thread != null) {
       if (popIfFinish) {
+        if (!context.mounted) return;
         Navigator.pop(context);
         isPop = true;
       }
+      if (!context.mounted) return;
       Navigator.push(
         context,
         createPageRoute(
@@ -576,10 +584,13 @@ class MyAppState with ChangeNotifier {
       final thread = getThread(threadId, startPage ?? 1, getCurrentCookie());
       thread.then((thread) {
         if (popIfFinish) {
+          if (!context.mounted) return;
           Navigator.pop(context);
           isPop = true;
         }
+        if (!context.mounted) return;
         loaderOverlay.hide();
+        if (!context.mounted) return;
         Navigator.push(
           context,
           createPageRoute(
@@ -594,12 +605,14 @@ class MyAppState with ChangeNotifier {
       }).catchError((error) {
         try {
           if (popIfFinish && !isPop) {
+            if (!context.mounted) return;
             Navigator.pop(context);
           }
         } catch (e) {
           // 忽略 pop 失败
         }
         loaderOverlay.hide();
+        if (!context.mounted) return;
         scaffoldMessengerKey.currentState?.showSnackBar(SnackBar(
           content: Text(error.toString()),
         ));

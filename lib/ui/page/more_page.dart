@@ -199,8 +199,9 @@ Widget starPage(BuildContext context) {
                       .toList();
 
                   // 比对完成后关闭状态弹窗
-                  if (context.mounted)
+                  if (context.mounted) {
                     Navigator.of(context, rootNavigator: true).pop();
+                  }
                   syncStatus.value = '正在比对订阅数据...';
 
                   if (localOnly.isEmpty && remoteOnly.isEmpty) {

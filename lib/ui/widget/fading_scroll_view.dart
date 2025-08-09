@@ -91,7 +91,7 @@ class _FadingScrollViewState extends State<FadingScrollView> {
                 colors: [
                   Colors.white, 
                   Colors.white, 
-                  Colors.white.withOpacity(0.1)
+                  Colors.white.withAlpha((255 * 0.1).round())
                 ],
                 stops: [0.0, widget.fadeStart, widget.fadeEnd],
               ).createShader(rect);

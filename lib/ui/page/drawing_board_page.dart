@@ -124,7 +124,7 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
     if (drawingImage != null) {
       if (_bgImage != null) {
         // 计算背景图在画板中的实际渲染尺寸和位置
-        final FittedSizes fittedBgInBoard = applyBoxFit(
+        applyBoxFit(
             BoxFit.contain,
             Size(_bgImage!.width.toDouble(),
                 _bgImage!.height.toDouble()), // 原始背景图尺寸

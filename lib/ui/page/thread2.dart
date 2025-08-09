@@ -192,48 +192,49 @@ class _ThreadPage2State extends State<ThreadPage2> {
       _replyImageFile = editedImage;
     });
 
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    showReplyBottomSheet(
-      context,
-      false,
-      _poReply.id,
-      _curPageManager.maxPage ?? 1,
-      _poReply,
-      _replyImageFile,
-      (image) => _replyImageFile = image,
-      _replyTitleControler,
-      _replyAuthorControler,
-      _replyTextControler,
-      () {
-        // 在回调中首先检查组件是否仍然挂载
-        if (!mounted) return;
+    if (mounted) Navigator.of(context).pop();
+    if (mounted) {
+      showReplyBottomSheet(
+        context,
+        false,
+        _poReply.id,
+        _curPageManager.maxPage ?? 1,
+        _poReply,
+        _replyImageFile,
+        (image) => _replyImageFile = image,
+        _replyTitleControler,
+        _replyAuthorControler,
+        _replyTextControler,
+        () {
+          // 在回调中首先检查组件是否仍然挂载
+          if (!mounted) return;
 
-        // 如果已经加载到最后一页，重新加载以刷出自己的回复
-        if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
-          _handlePageManagerError(_curPageManager.forceLoadNextPage());
-        }
+          // 如果已经加载到最后一页，重新加载以刷出自己的回复
+          if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
+            _handlePageManagerError(_curPageManager.forceLoadNextPage());
+          }
 
-        // 显示发送成功提示
-        if (mounted) {
-          scaffoldMessengerKey.currentState?.showSnackBar(
-            SnackBar(
-              content: Text('发送成功'),
-              duration: Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              action: SnackBarAction(
-                label: '查看回复',
-                onPressed: () {
-                  // 跳转到最后一页前检查组件是否仍然挂载
-                  if (!mounted) return;
-                  _jumpToPage(_curPageManager.maxPage ?? 1, true);
-                },
+          // 显示发送成功提示
+          if (mounted) {
+            scaffoldMessengerKey.currentState?.showSnackBar(
+              SnackBar(
+                content: Text('发送成功'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+                action: SnackBarAction(
+                  label: '查看回复',
+                  onPressed: () {
+                    // 跳转到最后一页前检查组件是否仍然挂载
+                    if (!mounted) return;
+                    _jumpToPage(_curPageManager.maxPage ?? 1, true);
+                  },
+                ),
               ),
-            ),
-          );
-        }
-      },
-    );
+            );
+          }
+        },
+      );
+    }
   }
 
   void _toggleFavorite(BuildContext context) {
@@ -336,7 +337,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                             },
                           ),
                         ),
-                        SizedBox(width: 5),
+                        SizedBox(width: 5), 
                         Text('/ $maxPage'),
                         IconButton(
                           icon: Icon(Icons.navigate_next),
@@ -415,7 +416,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
           if (!mounted) return Future.value(null);
           if (error is XDaoApiNotSuccussException ||
               error is XDaoApiMsgException) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            scaffoldMessengerKey.currentState?.showSnackBar(
               SnackBar(
                 content: Text(error.toString()),
                 behavior: SnackBarBehavior.floating,
@@ -426,7 +427,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
           // 对于其他类型的错误，显示吐司但仍然抛出
           if (error != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            scaffoldMessengerKey.currentState?.showSnackBar(
               SnackBar(
                 content: Text('发生错误: ${error.toString()}'),
                 behavior: SnackBarBehavior.floating,
@@ -594,6 +595,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
         }
 
         // 创建复制内容选项
+        // 创建复制内容选项
         Widget buildCopyContentOption() {
           return SimpleDialogOption(
             child: Text('复制内容'),
@@ -612,46 +614,49 @@ class _ThreadPage2State extends State<ThreadPage2> {
               }
 
               Navigator.of(context).pop();
-              Navigator.of(context).push(
-                pageRoute(
-                  builder: (BuildContext context) => Scaffold(
-                    appBar: AppBar(title: Text('自由复制')),
-                    body: Theme(
-                      data: Theme.of(context).copyWith(
-                        textTheme: Theme.of(context).textTheme.apply(
-                          fontSizeFactor: appState.setting.fontSizeFactor,
+              if (context.mounted) {
+                Navigator.of(context).push(
+                  pageRoute(
+                    builder: (BuildContext context) => Scaffold(
+                      appBar: AppBar(title: Text('自由复制')),
+                      body: Theme(
+                        data: Theme.of(context).copyWith(
+                          textTheme: Theme.of(context).textTheme.apply(
+                            fontSizeFactor: appState.setting.fontSizeFactor,
+                          ),
                         ),
-                      ),
-                      child: SelectionArea(
-                        child: ListView(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: Theme(
-                                data: Theme.of(context).copyWith(
-                                  textTheme: Theme.of(context).textTheme.apply(
-                                    fontSizeFactor:
-                                        appState.setting.fontSizeFactor,
+                        child: SelectionArea(
+                          child: ListView(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                    textTheme:
+                                        Theme.of(context).textTheme.apply(
+                                      fontSizeFactor:
+                                          appState.setting.fontSizeFactor,
+                                    ),
+                                  ),
+                                  child: ReplyItem(
+                                    poUserHash: _poReply.userHash,
+                                    threadJson: reply,
+                                    contentNeedCollapsed: false,
+                                    noMoreParse: true,
+                                    contentHeroTag: "reply${reply.id}",
                                   ),
                                 ),
-                                child: ReplyItem(
-                                  poUserHash: _poReply.userHash,
-                                  threadJson: reply,
-                                  contentNeedCollapsed: false,
-                                  noMoreParse: true,
-                                  contentHeroTag: "reply${reply.id}",
-                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              );
+                );
+              }
             },
           );
         }
@@ -1069,6 +1074,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                                     _curPageManager.forceLoadNextPage(),
                                   ).then((replyCount) {
                                     if (replyCount == 0) {
+                                      if (!context.mounted) return;
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -1135,6 +1141,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                                             _curPageManager.forceLoadNextPage(),
                                           ).then((replyCount) {
                                             if (replyCount == 0) {
+                                              if (!context.mounted) return;
                                               ScaffoldMessenger.of(
                                                 context,
                                               ).showSnackBar(

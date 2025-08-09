@@ -158,10 +158,10 @@ class _SearchPageState extends State<SearchPage> {
                 final link = item.link;
                 final threadIdReg = RegExp(r'/t/(\d+)');
                 final pageReg = RegExp(r'[?&]page=(\d+)');
-                final replyIdReg = RegExp(r'[?&]r=(\d+)');
+                /*final replyIdReg = RegExp(r'[?&]r=(\d+)');*/
                 final threadIdMatch = threadIdReg.firstMatch(link);
                 final pageMatch = pageReg.firstMatch(link);
-                final replyIdMatch = replyIdReg.firstMatch(link);
+                /*final replyIdMatch = replyIdReg.firstMatch(link);*/
 
                 if (threadIdMatch == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -172,9 +172,6 @@ class _SearchPageState extends State<SearchPage> {
                 final threadId = int.parse(threadIdMatch.group(1)!);
                 final startPage =
                     pageMatch != null ? int.parse(pageMatch.group(1)!) : null;
-                final startReplyId = replyIdMatch != null
-                    ? int.parse(replyIdMatch.group(1)!)
-                    : null;
 
                 appState.navigateThreadPage2(
                   context,

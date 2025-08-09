@@ -184,7 +184,7 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                                         child: Container(
                                           color: Theme.of(context)
                                               .canvasColor
-                                              .withOpacity(0.4),
+                                              .withAlpha((255 * 0.4).round()),
                                           padding: EdgeInsets.symmetric(
                                               horizontal: 16, vertical: 8),
                                           child: Text(
@@ -211,7 +211,7 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                                       child: Container(
                                         color: Theme.of(context)
                                             .canvasColor
-                                            .withOpacity(0.4),
+                                            .withAlpha((255 * 0.4).round()),
                                         child: Row(
                                           children: [
                                             if (widget.onEdit != null)

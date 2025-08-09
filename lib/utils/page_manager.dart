@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lightdao/data/xdao/ref.dart';
 import 'package:lightdao/data/xdao/reply.dart';
@@ -199,7 +198,6 @@ abstract class PageManager<T> {
     try {
       final rawItems = await fetchPage(previousPage);
       final items = _processNewItems(rawItems);
-      bool insertExecuted = false;
       
       void doInsert() {
         if (items.isNotEmpty) {
@@ -208,7 +206,6 @@ abstract class PageManager<T> {
           _minLoadedPage = previousPage;
         }
         previousPageStateNotifier.value = (previousPage == 1) ? const PageFullLoaded() : const PageHasMore();
-        insertExecuted = true;
       }
 
       if (_previousPageCallback != null) {
@@ -235,7 +232,6 @@ abstract class PageManager<T> {
     try {
       final rawItems = await fetchPage(nextPage);
       final items = _processNewItems(rawItems);
-      bool insertExecuted = false;
 
       void doInsert() {
         if (items.isNotEmpty) {
@@ -249,7 +245,6 @@ abstract class PageManager<T> {
         } else {
           nextPageStateNotifier.value = const PageHasMore();
         }
-        insertExecuted = true;
       }
 
       if (_nextPageCallback != null) {
