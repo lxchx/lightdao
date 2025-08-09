@@ -178,13 +178,17 @@ class AboutPage extends StatelessWidget {
           if (!initCompleter.isCompleted) {
             initCompleter.complete();
           }
-          return WillPopScope(
-            onWillPop: () async {
+          return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (bool didPop, Object? result) {
+              if (didPop) {
+                return;
+              }
               // 当对话框关闭时取消下载
               if (isDownloading && !cancelToken.isCancelled) {
                 cancelToken.cancel('用户取消下载');
               }
-              return true;
+              Navigator.pop(context);
             },
             child: AlertDialog(
               title: Text(isDownloading
