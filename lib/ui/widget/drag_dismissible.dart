@@ -203,7 +203,10 @@ class _DragDismissibleState extends State<DragDismissible>
         });
 
         _animateController.forward();
-        Navigator.pop(context);
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.pop(context);
+        });
       },
       child: DecoratedBoxTransition(
         decoration: _opacityAnimation,
