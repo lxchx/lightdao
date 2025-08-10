@@ -35,9 +35,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build
-          key: ${{ runner.os }}-flutter-build-${{ hashFiles('**/pubspec.lock') }}
+          key: ${{ runner.os }}-flutter-build-debug-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
-            ${{ runner.os }}-flutter-build-
+            ${{ runner.os }}-flutter-build-debug-
       - run: flutter pub get
       - run: bash ./scripts/first-build.sh --debug
 
@@ -66,9 +66,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build
-          key: ${{ runner.os }}-flutter-build-${{ hashFiles('**/pubspec.lock') }}
+          key: ${{ runner.os }}-flutter-build-apk-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
-            ${{ runner.os }}-flutter-build-
+            ${{ runner.os }}-flutter-build-apk-
   
       - name: Conditional Restore JKS
         if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/heads/ci-test') || github.ref == 'refs/heads/master'
