@@ -51,6 +51,8 @@ Future<void> main() async {
   Hive.registerAdapter(UserHashFilterAdapter());
   Hive.registerAdapter(TrendDataAdapter());
   Hive.registerAdapter(PhraseAdapter());
+  Hive.registerAdapter(FavoredItemTypeAdapter());
+  Hive.registerAdapter(FavoredItemAdapter());
 
   MyAppState myAppState = MyAppState();
   await myAppState.loadSettings();
