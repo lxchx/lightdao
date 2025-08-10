@@ -207,7 +207,9 @@ class _AppPageState extends State<AppPage> {
             AnimatedContainer(
               duration: Duration(milliseconds: 300),
               curve: Curves.easeInOut,
-              width: _isOutSideDrawerExpanded ? 256 : 128,
+              width:
+                  (_isOutSideDrawerExpanded ? 256 : 128) +
+                  MediaQuery.of(context).padding.left,
               child: Theme(
                 data: Theme.of(
                   context,
