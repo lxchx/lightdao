@@ -453,7 +453,7 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                                   if (index < _pageManager.totalItemsCount) {
                                     var mustCollapsed = false;
                                     if (_lastBuildingReplyIndex > 0 &&
-                                        _lastBuildingReplyIndex > index) {
+                                        _lastBuildingReplyIndex >= index) {
                                       mustCollapsed = true;
                                     }
                                     _lastBuildingReplyIndex = index;
