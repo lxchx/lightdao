@@ -1156,59 +1156,100 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                               if (newIndex > oldIndex) {
                                 newIndex -= 1;
                               }
-                              final item = appState.setting.favoredForums
+                              final item = appState.setting.favoredItems
                                   .removeAt(oldIndex);
-                              appState.setting.favoredForums.insert(
+                              appState.setting.favoredItems.insert(
                                 newIndex,
                                 item,
                               );
                             });
                           },
-                          children: appState.setting.favoredForums
-                              .map(
-                                (forum) => ListTile(
-                                  key: ValueKey(forum.id),
-                                  title: HtmlWidget(forum.getShowName()),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.delete),
-                                        onPressed: () => appState.setState(
-                                          (_) => appState.setting.favoredForums
-                                              .removeWhere(
-                                                (f) => f.id == forum.id,
-                                              ),
-                                        ),
-                                      ),
-                                      ReorderableDragStartListener(
-                                        index: appState.setting.favoredForums
-                                            .indexOf(forum),
-                                        child: const Icon(Icons.drag_indicator),
-                                      ),
-                                    ],
+                          children: appState.setting.favoredItems.map((item) {
+                            final String name;
+                            if (item.type == FavoredItemType.forum) {
+                              name =
+                                  appState.forumMap[item.id]?.getShowName() ??
+                                  '未知板块';
+                            } else {
+                              name = appState.setting.cacheTimelines
+                                  .firstWhere(
+                                    (t) => t.id == item.id,
+                                    orElse: () => Timeline(
+                                      id: -1,
+                                      name: '未知时间线',
+                                      displayName: '',
+                                      notice: '',
+                                      maxPage: 0,
+                                    ),
+                                  )
+                                  .getShowName();
+                            }
+                            return ListTile(
+                              key: ValueKey('${item.type}-${item.id}'),
+                              title: HtmlWidget(name),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    onPressed: () => appState.setState(
+                                      (_) => appState.setting.favoredItems
+                                          .removeWhere(
+                                            (i) =>
+                                                i.id == item.id &&
+                                                i.type == item.type,
+                                          ),
+                                    ),
                                   ),
-                                ),
-                              )
-                              .toList(),
+                                  ReorderableDragStartListener(
+                                    index: appState.setting.favoredItems
+                                        .indexOf(item),
+                                    child: const Icon(Icons.drag_indicator),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
                         )
                       else
-                        ...appState.setting.favoredForums.map(
-                          (forum) => ListTile(
+                        ...appState.setting.favoredItems.map((item) {
+                          final String name;
+                          final bool isTimeline;
+                          if (item.type == FavoredItemType.forum) {
+                            name =
+                                appState.forumMap[item.id]?.getShowName() ??
+                                '未知板块';
+                            isTimeline = false;
+                          } else {
+                            name = appState.setting.cacheTimelines
+                                .firstWhere(
+                                  (t) => t.id == item.id,
+                                  orElse: () => Timeline(
+                                    id: -1,
+                                    name: '未知时间线',
+                                    displayName: '',
+                                    notice: '',
+                                    maxPage: 0,
+                                  ),
+                                )
+                                .getShowName();
+                            isTimeline = true;
+                          }
+                          return ListTile(
                             onTap: () => handleSelection(
                               ForumSelection(
-                                id: forum.id,
-                                name: forum.getShowName(),
-                                isTimeline: false,
+                                id: item.id,
+                                name: name,
+                                isTimeline: isTimeline,
                               ),
                             ),
                             onLongPress: () => isReordering.value = true,
-                            title: HtmlWidget(forum.getShowName()),
+                            title: HtmlWidget(name),
                             selected:
-                                !currentSelection.isTimeline &&
-                                currentSelection.id == forum.id,
-                          ),
-                        ),
+                                currentSelection.isTimeline == isTimeline &&
+                                currentSelection.id == item.id,
+                          );
+                        }),
                       if (isReordering.value)
                         ListTile(
                           textColor: Theme.of(context).colorScheme.secondary,
@@ -1240,6 +1281,22 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                               isTimeline: true,
                             ),
                           ),
+                          onLongPress: () {
+                            if (!appState.setting.favoredItems.any(
+                              (item) =>
+                                  item.id == timeline.id &&
+                                  item.type == FavoredItemType.timeline,
+                            )) {
+                              appState.setState(
+                                (_) => appState.setting.favoredItems.add(
+                                  FavoredItem(
+                                    id: timeline.id,
+                                    type: FavoredItemType.timeline,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
                           title: HtmlWidget(timeline.getShowName()),
                           selected:
                               currentSelection.isTimeline &&
@@ -1268,12 +1325,18 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                               ),
                             ),
                             onLongPress: () {
-                              if (!appState.setting.favoredForums.any(
-                                (f) => f.id == forum.id,
+                              if (!appState.setting.favoredItems.any(
+                                (item) =>
+                                    item.id == forum.id &&
+                                    item.type == FavoredItemType.forum,
                               )) {
                                 appState.setState(
-                                  (_) =>
-                                      appState.setting.favoredForums.add(forum),
+                                  (_) => appState.setting.favoredItems.add(
+                                    FavoredItem(
+                                      id: forum.id,
+                                      type: FavoredItemType.forum,
+                                    ),
+                                  ),
                                 );
                               }
                             },

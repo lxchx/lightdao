@@ -46,6 +46,43 @@ class CookieSettingAdapter extends TypeAdapter<CookieSetting> {
           typeId == other.typeId;
 }
 
+class FavoredItemAdapter extends TypeAdapter<FavoredItem> {
+  @override
+  final int typeId = 18;
+
+  @override
+  FavoredItem read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return FavoredItem(
+      id: fields[0] as int,
+      type: fields[1] as FavoredItemType,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, FavoredItem obj) {
+    writer
+      ..writeByte(2)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.type);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FavoredItemAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
 class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
   @override
   final int typeId = 1;
@@ -127,6 +164,9 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
       seenNoticeDate: fields[40] == null ? 0 : fields[40] as int,
       phraseWidth: fields[41] == null ? 175 : fields[41] as int,
       fetchTimeout: fields[42] == null ? 3 : fields[42] as int,
+      favoredItems: fields[43] == null
+          ? []
+          : (fields[43] as List).cast<FavoredItem>(),
       viewPoOnlyHistory: fields[39] as LRUCache<int, ReplyJsonWithPage>?,
     );
   }
@@ -134,7 +174,7 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
   @override
   void write(BinaryWriter writer, LightDaoSetting obj) {
     writer
-      ..writeByte(43)
+      ..writeByte(44)
       ..writeByte(0)
       ..write(obj.cookies)
       ..writeByte(1)
@@ -220,7 +260,9 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
       ..writeByte(41)
       ..write(obj.phraseWidth)
       ..writeByte(42)
-      ..write(obj.fetchTimeout);
+      ..write(obj.fetchTimeout)
+      ..writeByte(43)
+      ..write(obj.favoredItems);
   }
 
   @override
@@ -267,6 +309,45 @@ class ThreadUserDataAdapter extends TypeAdapter<ThreadUserData> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is ThreadUserDataAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class FavoredItemTypeAdapter extends TypeAdapter<FavoredItemType> {
+  @override
+  final int typeId = 17;
+
+  @override
+  FavoredItemType read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return FavoredItemType.forum;
+      case 1:
+        return FavoredItemType.timeline;
+      default:
+        return FavoredItemType.forum;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, FavoredItemType obj) {
+    switch (obj) {
+      case FavoredItemType.forum:
+        writer.writeByte(0);
+        break;
+      case FavoredItemType.timeline:
+        writer.writeByte(1);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FavoredItemTypeAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

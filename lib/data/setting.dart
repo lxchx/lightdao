@@ -45,6 +45,25 @@ class CookieSetting extends HiveObject {
   });
 }
 
+@HiveType(typeId: 17)
+enum FavoredItemType {
+  @HiveField(0)
+  forum,
+  @HiveField(1)
+  timeline,
+}
+
+@HiveType(typeId: 18)
+class FavoredItem extends HiveObject {
+  @HiveField(0)
+  final int id;
+
+  @HiveField(1)
+  final FavoredItemType type;
+
+  FavoredItem({required this.id, required this.type});
+}
+
 @HiveType(typeId: 1)
 class LightDaoSetting extends HiveObject {
   @HiveField(0, defaultValue: [])
@@ -125,6 +144,7 @@ class LightDaoSetting extends HiveObject {
   @HiveField(25, defaultValue: false)
   bool displayExactTime;
 
+  @Deprecated('Use favoredItems instead')
   @HiveField(26, defaultValue: [])
   List<Forum> favoredForums;
 
@@ -179,6 +199,9 @@ class LightDaoSetting extends HiveObject {
   @HiveField(42, defaultValue: 3)
   int fetchTimeout;
 
+  @HiveField(43, defaultValue: [])
+  List<FavoredItem> favoredItems;
+
   LightDaoSetting({
     required this.cookies,
     required this.currentCookie,
@@ -222,11 +245,13 @@ class LightDaoSetting extends HiveObject {
     required this.seenNoticeDate,
     required this.phraseWidth,
     required this.fetchTimeout,
+    required this.favoredItems,
     LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
   }) : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
        viewPoOnlyHistory =
            viewPoOnlyHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
 
+  // required 参数都是用户数据
   LightDaoSetting.withAppDefaults({
     required this.cookies,
     required this.currentCookie,
@@ -239,6 +264,7 @@ class LightDaoSetting extends HiveObject {
     required this.favoredForums,
     required this.threadFilters,
     required this.phrases,
+    required this.favoredItems,
     LRUCache<int, ReplyJsonWithPage>? viewHistory,
     LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
   }) : refCollapsing = 2,
@@ -513,9 +539,20 @@ class MyAppState with ChangeNotifier {
           favoredForums: [],
           threadFilters: [],
           phrases: [],
+          favoredItems: [],
           viewPoOnlyHistory: LRUCache<int, ReplyJsonWithPage>(5000),
         );
     setting.phrases = mergePhraseLists(setting.phrases, xDaoPhrases);
+    // ignore: deprecated_member_use_from_same_package
+    if (setting.favoredItems.isEmpty && setting.favoredForums.isNotEmpty) {
+      // ignore: deprecated_member_use_from_same_package
+      setting.favoredItems = setting.favoredForums
+          .map(
+            (forum) => FavoredItem(id: forum.id, type: FavoredItemType.forum),
+          )
+          .toList();
+      await saveSettings();
+    }
     notifyListeners();
   }
 
@@ -533,7 +570,9 @@ class MyAppState with ChangeNotifier {
       darkModeCustomThemeColor: setting.darkModeCustomThemeColor,
       threadUserData: setting.threadUserData,
       feedUuid: setting.feedUuid,
+      // ignore: deprecated_member_use_from_same_package
       favoredForums: setting.favoredForums,
+      favoredItems: setting.favoredItems,
       threadFilters: setting.threadFilters,
       phrases: setting.phrases,
       viewHistory: setting.viewHistory,
