@@ -14,9 +14,7 @@ class FiltersManagementPage extends StatelessWidget {
     List<ThreadFilter> filters = appState.setting.threadFilters;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('屏蔽管理'),
-      ),
+      appBar: AppBar(title: const Text('屏蔽管理')),
       body: ListView.builder(
         padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
         itemCount: filters.length,
@@ -28,7 +26,8 @@ class FiltersManagementPage extends StatelessWidget {
           String filterTitle;
           if (filter is ForumThreadFilter) {
             filterInfo =
-                appState.forumMap[filter.fid]?.getShowName() ?? '(id: ${filter.fid})';
+                appState.forumMap[filter.fid]?.getShowName() ??
+                '(id: ${filter.fid})';
             filterTitle = "时间线版面";
           } else if (filter is IdThreadFilter) {
             filterInfo = "No.${filter.id}";

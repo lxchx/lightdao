@@ -48,8 +48,10 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
       final frameInfo = await codec.getNextFrame();
       setState(() {
         _bgImage = frameInfo.image;
-        _bgImageSize =
-            Size(_bgImage!.width.toDouble(), _bgImage!.height.toDouble());
+        _bgImageSize = Size(
+          _bgImage!.width.toDouble(),
+          _bgImage!.height.toDouble(),
+        );
       });
     }
   }
@@ -105,7 +107,9 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
 
     final ui.PictureRecorder recorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(
-        recorder, Rect.fromLTWH(0, 0, finalImageWidth, finalImageHeight));
+      recorder,
+      Rect.fromLTWH(0, 0, finalImageWidth, finalImageHeight),
+    );
 
     if (_bgImage != null) {
       paintImage(
@@ -125,11 +129,13 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
       if (_bgImage != null) {
         // 计算背景图在画板中的实际渲染尺寸和位置
         applyBoxFit(
-            BoxFit.contain,
-            Size(_bgImage!.width.toDouble(),
-                _bgImage!.height.toDouble()), // 原始背景图尺寸
-            Size(_currentBoardWidth, _currentBoardHeight) // 画板组件尺寸
-            );
+          BoxFit.contain,
+          Size(
+            _bgImage!.width.toDouble(),
+            _bgImage!.height.toDouble(),
+          ), // 原始背景图尺寸
+          Size(_currentBoardWidth, _currentBoardHeight), // 画板组件尺寸
+        );
 
         // drawingImage（从controller.getImageData()获取）对应整个画板区域（_currentBoardWidth x _currentBoardHeight）
         // 用户是相对于fittedBgInBoard.destination区域进行绘制的
@@ -137,11 +143,19 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
         // 缩放到覆盖原始_bgImage（finalImageWidth x finalImageHeight）
 
         // srcRect是drawingImage中对应可见背景图的部分
-        final Rect srcRect = Rect.fromLTWH(0, 0, drawingImage.width.toDouble(),
-            drawingImage.height.toDouble());
+        final Rect srcRect = Rect.fromLTWH(
+          0,
+          0,
+          drawingImage.width.toDouble(),
+          drawingImage.height.toDouble(),
+        );
         // dstRect是最终图片的完整尺寸（原始背景图尺寸）
-        final Rect dstRect =
-            Rect.fromLTWH(0, 0, finalImageWidth, finalImageHeight);
+        final Rect dstRect = Rect.fromLTWH(
+          0,
+          0,
+          finalImageWidth,
+          finalImageHeight,
+        );
 
         canvas.drawImageRect(drawingImage, srcRect, dstRect, Paint());
       } else {
@@ -150,11 +164,13 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
       }
     }
 
-    final ui.Image finalImage = await recorder
-        .endRecording()
-        .toImage(finalImageWidth.toInt(), finalImageHeight.toInt());
-    final ByteData? pngBytes =
-        await finalImage.toByteData(format: ui.ImageByteFormat.png);
+    final ui.Image finalImage = await recorder.endRecording().toImage(
+      finalImageWidth.toInt(),
+      finalImageHeight.toInt(),
+    );
+    final ByteData? pngBytes = await finalImage.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
 
     drawingImage?.dispose();
 
@@ -176,16 +192,16 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
     final xFile = await _saveImageToFile(directory, 'drawing');
     if (!mounted) return;
     if (xFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('保存失败！')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败！')));
       return;
     }
     await Gal.putImage(xFile.path);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已保存到相册')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已保存到相册')));
     }
   }
 
@@ -261,8 +277,11 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
       final double screenHeightAvailable =
           screenSize.height - appBarHeight - topPadding;
 
-      final FittedSizes fittedSizes = applyBoxFit(BoxFit.contain, _bgImageSize!,
-          Size(screenWidth, screenHeightAvailable));
+      final FittedSizes fittedSizes = applyBoxFit(
+        BoxFit.contain,
+        _bgImageSize!,
+        Size(screenWidth, screenHeightAvailable),
+      );
 
       boardWidth = fittedSizes.destination.width;
       boardHeight = fittedSizes.destination.height;
@@ -331,52 +350,51 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
             showDefaultActions: true,
             showDefaultTools: true,
             defaultToolsBuilder: (Type t, _) =>
-                DrawingBoard.defaultTools(t, _drawingController)
-                  ..insert(
-                    0,
-                    DefToolItem(
-                      icon: Icons.circle_rounded,
-                      activeColor: _drawingController.getColor,
-                      onTap: () async {
-                        Color selectedColor = _drawingController.getColor;
-                        final color = await showDialog<Color>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text('选择颜色'),
-                            content: SingleChildScrollView(
-                              child: ColorPicker(
-                                pickerColor: _drawingController.getColor,
-                                onColorChanged: (color) {
-                                  setState(() {
-                                    selectedColor = color;
-                                  });
-                                },
-                                pickerAreaHeightPercent: 0.8,
-                              ),
+                DrawingBoard.defaultTools(t, _drawingController)..insert(
+                  0,
+                  DefToolItem(
+                    icon: Icons.circle_rounded,
+                    activeColor: _drawingController.getColor,
+                    onTap: () async {
+                      Color selectedColor = _drawingController.getColor;
+                      final color = await showDialog<Color>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text('选择颜色'),
+                          content: SingleChildScrollView(
+                            child: ColorPicker(
+                              pickerColor: _drawingController.getColor,
+                              onColorChanged: (color) {
+                                setState(() {
+                                  selectedColor = color;
+                                });
+                              },
+                              pickerAreaHeightPercent: 0.8,
                             ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: Text('取消'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context, selectedColor);
-                                },
-                                child: Text('确定'),
-                              ),
-                            ],
                           ),
-                        );
-                        if (color != null) {
-                          setState(() {
-                            _drawingController.setStyle(color: color);
-                          });
-                        }
-                      },
-                      isActive: true,
-                    ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text('取消'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context, selectedColor);
+                              },
+                              child: Text('确定'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (color != null) {
+                        setState(() {
+                          _drawingController.setStyle(color: color);
+                        });
+                      }
+                    },
+                    isActive: true,
                   ),
+                ),
           ),
         ),
       ),

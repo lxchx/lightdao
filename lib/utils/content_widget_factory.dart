@@ -60,22 +60,24 @@ class ContentWidgetFactory extends WidgetFactory {
   late BuildOp hidableOp;
   final Function(File image, Object? heroTag)? onImageEdit;
 
-  ContentWidgetFactory(
-      {required this.inRefView,
-      required this.poUserHash,
-      required this.refCache,
-      required this.inPopView,
-      this.refMustCollapsed = false,
-      this.isThreadFirstOrForumPreview = false,
-      this.onImageEdit,
-      this.throttle}) {
+  ContentWidgetFactory({
+    required this.inRefView,
+    required this.poUserHash,
+    required this.refCache,
+    required this.inPopView,
+    this.refMustCollapsed = false,
+    this.isThreadFirstOrForumPreview = false,
+    this.onImageEdit,
+    this.throttle,
+  }) {
     refOp = BuildOp(
       onRenderBlock: (meta, child) {
         return RefView(
           inRefView: inRefView,
           inPopView: inPopView,
           refId: int.tryParse(
-              refPattern.allMatches(meta.element.text).first.group(2) ?? '')!,
+            refPattern.allMatches(meta.element.text).first.group(2) ?? '',
+          )!,
           poUserHash: poUserHash,
           refCache: refCache,
           isThreadFirstOrForumPreview: isThreadFirstOrForumPreview,

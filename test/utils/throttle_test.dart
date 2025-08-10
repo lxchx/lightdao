@@ -47,9 +47,11 @@ void main() {
       // Verify that the intervals between callbacks are at least the specified interval
       for (int i = 1; i < results.length; i++) {
         final intervalBetweenCallbacks = results[i] - results[i - 1];
-        expect(intervalBetweenCallbacks * 1.2,
-            greaterThanOrEqualTo(interval.inMilliseconds),
-            reason: '$i 和 ${i - 1}之间太短了');
+        expect(
+          intervalBetweenCallbacks * 1.2,
+          greaterThanOrEqualTo(interval.inMilliseconds),
+          reason: '$i 和 ${i - 1}之间太短了',
+        );
       }
       expect(results.length, equals(50));
     });

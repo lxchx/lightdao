@@ -82,16 +82,16 @@ class _FadingScrollViewState extends State<FadingScrollView> {
               child: content,
             );
           }
-          
+
           content = ShaderMask(
             shaderCallback: (Rect rect) {
               return LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.white, 
-                  Colors.white, 
-                  Colors.white.withAlpha((255 * 0.1).round())
+                  Colors.white,
+                  Colors.white,
+                  Colors.white.withAlpha((255 * 0.1).round()),
                 ],
                 stops: [0.0, widget.fadeStart, widget.fadeEnd],
               ).createShader(rect);

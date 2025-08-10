@@ -27,9 +27,7 @@ class AboutPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final breakpoint = Breakpoint.fromMediaQuery(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text('关于'),
-      ),
+      appBar: AppBar(title: Text('关于')),
       body: SafeArea(
         child: ListView(
           padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
@@ -49,10 +47,7 @@ class AboutPage extends StatelessWidget {
                       ),
                       SizedBox(height: breakpoint.gutters),
                       // 展示app设计理念
-                      Text(
-                        '美观、现代的X岛第三方客户端',
-                        style: TextStyle(fontSize: 16.0),
-                      ),
+                      Text('美观、现代的X岛第三方客户端', style: TextStyle(fontSize: 16.0)),
                     ],
                   ),
                 ),
@@ -60,24 +55,22 @@ class AboutPage extends StatelessWidget {
             ),
             ListTile(
               title: Text('版本'),
-              subtitle:
-                  Text('${packageInfo.version} (${packageInfo.buildNumber})'),
+              subtitle: Text(
+                '${packageInfo.version} (${packageInfo.buildNumber})',
+              ),
               trailing: TextButton(
                 child: Text('检查更新'),
                 onPressed: () => _checkForUpdates(context),
               ),
               onTap: () => _checkForUpdates(context),
             ),
+            ListTile(title: Text('作者'), subtitle: Text('9ionKfO')),
             ListTile(
-              title: Text('作者'),
-              subtitle: Text('9ionKfO'),
+              title: Text('项目地址'),
+              subtitle: Text('https://github.com/lxchx/lightdao'),
+              onTap: () =>
+                  launchUrl(Uri.parse('https://github.com/lxchx/lightdao')),
             ),
-            ListTile(
-                title: Text('项目地址'),
-                subtitle: Text('https://github.com/lxchx/lightdao'),
-                onTap: () => launchUrl(
-                      Uri.parse('https://github.com/lxchx/lightdao'),
-                    )),
           ],
         ),
       ),
@@ -160,7 +153,9 @@ class AboutPage extends StatelessWidget {
   }
 
   Future<void> _downloadUpdate(
-      BuildContext context, UpdateInfo updateInfo) async {
+    BuildContext context,
+    UpdateInfo updateInfo,
+  ) async {
     String? savePath;
     bool isDownloading = true;
     String? errorMessage;
@@ -191,9 +186,9 @@ class AboutPage extends StatelessWidget {
               Navigator.pop(context);
             },
             child: AlertDialog(
-              title: Text(isDownloading
-                  ? '正在下载更新'
-                  : (downloadComplete ? '下载完成' : '下载失败')),
+              title: Text(
+                isDownloading ? '正在下载更新' : (downloadComplete ? '下载完成' : '下载失败'),
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -207,8 +202,10 @@ class AboutPage extends StatelessWidget {
                     Text('下载完成，可以安装了'),
                   ] else
                     SingleChildScrollView(
-                      child: SelectableText(errorMessage ??
-                          (savePath == null ? '无法获取下载路径' : '下载失败：$savePath')),
+                      child: SelectableText(
+                        errorMessage ??
+                            (savePath == null ? '无法获取下载路径' : '下载失败：$savePath'),
+                      ),
                     ),
                 ],
               ),
@@ -223,9 +220,7 @@ class AboutPage extends StatelessWidget {
                           SnackBar(
                             content: Row(
                               children: [
-                                Expanded(
-                                  child: Text('安装失败: $error'),
-                                ),
+                                Expanded(child: Text('安装失败: $error')),
                                 TextButton(
                                   onPressed: () {
                                     AppInstaller.installApk(savePath!);

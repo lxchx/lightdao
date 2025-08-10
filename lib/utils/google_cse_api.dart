@@ -55,7 +55,7 @@ class GcseSearchResult {
         json['searchInformation']['totalResults'] != null) {
       total =
           int.tryParse(json['searchInformation']['totalResults'].toString()) ??
-              0;
+          0;
     }
 
     // 解析 nextPage 的 startIndex
@@ -88,21 +88,12 @@ Future<GcseSearchResult> googleCseSearch({
   String key = 'AIzaSyD2OeVt3FHS98PqRzynqcKnCRzc47igpbM',
   int? start,
 }) async {
-  final params = {
-    'q': q,
-    'cx': cx,
-    'key': key,
-    'num': '10',
-  };
+  final params = {'q': q, 'cx': cx, 'key': key, 'num': '10'};
   if (start != null) {
     params['start'] = start.toString();
   }
 
-  final uri = Uri.https(
-    'www.googleapis.com',
-    '/customsearch/v1',
-    params,
-  );
+  final uri = Uri.https('www.googleapis.com', '/customsearch/v1', params);
 
   final response = await http.get(uri);
   if (response.statusCode == 200) {
@@ -110,6 +101,7 @@ Future<GcseSearchResult> googleCseSearch({
     return GcseSearchResult.fromJson(jsonMap);
   } else {
     throw Exception(
-        'Google CSE API error: ${response.statusCode} ${response.body}');
+      'Google CSE API error: ${response.statusCode} ${response.body}',
+    );
   }
 }

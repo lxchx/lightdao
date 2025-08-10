@@ -9,4 +9,6 @@ const List<(String, String)> appIcons = [
   ('appicon.icon_6', 'assets/app_icons/6.png'),
 ];
 
-List<String> appIconsNamesList = [...appIcons.mapIndex<String>((i, namePath) => namePath.$1)];
+List<String> appIconsNamesList = [
+  ...appIcons.mapIndex<String>((i, namePath) => namePath.$1),
+];

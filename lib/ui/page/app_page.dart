@@ -28,7 +28,9 @@ class _AppPageState extends State<AppPage> {
 
   // 获取当前页面的 ScaffoldAccessoryBuilder
   ScaffoldAccessoryBuilder? get _currentPageScaffoldAccessoryBuilder {
-    if (_selectedPageIndex < 0 || _selectedPageIndex >= _pageKeys.length) return null;
+    if (_selectedPageIndex < 0 || _selectedPageIndex >= _pageKeys.length) {
+      return null;
+    }
     final key = _pageKeys[_selectedPageIndex];
     if (key == null) return null;
     final state = key.currentState;
@@ -80,19 +82,11 @@ class _AppPageState extends State<AppPage> {
         scaffoldSetState: () => setState(() {}),
       ),
       starPage(context),
-      TrendPage(
-        key: trendPageKey,
-        refCache: trendRefCache,
-      ),
+      TrendPage(key: trendPageKey, refCache: trendRefCache),
       MorePage(),
     ];
 
-    _pageKeys.addAll([
-      forumPageKey, 
-      null,
-      trendPageKey,
-      null,
-    ]);
+    _pageKeys.addAll([forumPageKey, null, trendPageKey, null]);
 
     // 设置标志位，表示初始化已完成。
     _isInitialized = true;
@@ -106,7 +100,8 @@ class _AppPageState extends State<AppPage> {
 
   void _onDestinationSelected(int index) {
     if (_selectedPageIndex == index) {
-      if (!(_currentPageScaffoldAccessoryBuilder?.onReLocated(context) ?? false)) {
+      if (!(_currentPageScaffoldAccessoryBuilder?.onReLocated(context) ??
+          false)) {
         _scaffoldKey.currentState?.openDrawer();
       }
       return;
@@ -123,7 +118,9 @@ class _AppPageState extends State<AppPage> {
   Widget? _buildSmallScreenDrawer() {
     if (!_isInitialized) return null;
 
-    final content = _currentPageScaffoldAccessoryBuilder?.buildDrawerContent(context);
+    final content = _currentPageScaffoldAccessoryBuilder?.buildDrawerContent(
+      context,
+    );
     if (content == null || content.isEmpty) return null;
 
     return Drawer(
@@ -157,7 +154,9 @@ class _AppPageState extends State<AppPage> {
         (!appState.setting.fixedBottomBar && !_isBottomBarVisible)) {
       return null;
     }
-    return _currentPageScaffoldAccessoryBuilder?.buildFloatingActionButton(context);
+    return _currentPageScaffoldAccessoryBuilder?.buildFloatingActionButton(
+      context,
+    );
   }
 
   @override
@@ -241,7 +240,9 @@ class _AppPageState extends State<AppPage> {
                     ),
                     if (_isOutSideDrawerExpanded &&
                         _currentPageScaffoldAccessoryBuilder != null &&
-                        _currentPageScaffoldAccessoryBuilder!.buildDrawerContent(context) != null) ...[
+                        _currentPageScaffoldAccessoryBuilder!
+                                .buildDrawerContent(context) !=
+                            null) ...[
                       const Padding(
                         padding: EdgeInsets.fromLTRB(28, 16, 28, 10),
                         child: Divider(), // 视觉分割线
@@ -257,7 +258,9 @@ class _AppPageState extends State<AppPage> {
                           ),
                           child: Column(
                             children: [
-                              ...(_currentPageScaffoldAccessoryBuilder?.buildDrawerContent(context) ?? []),
+                              ...(_currentPageScaffoldAccessoryBuilder
+                                      ?.buildDrawerContent(context) ??
+                                  []),
                               SizedBox(
                                 height: MediaQuery.of(context).padding.bottom,
                               ),

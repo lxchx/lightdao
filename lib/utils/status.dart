@@ -1,5 +1,1 @@
-enum SimpleStatus {
-  loading,
-  completed,
-  error,
-}
+enum SimpleStatus { loading, completed, error }

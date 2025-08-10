@@ -34,7 +34,7 @@ class DrivenScrollActivity extends ScrollActivity {
     )
       ..addListener(_tick)
       ..animateTo(to, duration: duration, curve: curve)
-       .whenComplete(_end); // won't trigger if we dispose _controller first
+          .whenComplete(_end); // won't trigger if we dispose _controller first
   }
 
   late final Completer<void> _completer;
@@ -58,8 +58,14 @@ class DrivenScrollActivity extends ScrollActivity {
   }
 
   @override
-  void dispatchOverscrollNotification(ScrollMetrics metrics, BuildContext context, double overscroll) {
-    OverscrollNotification(metrics: metrics, context: context, overscroll: overscroll, velocity: velocity).dispatch(context);
+  void dispatchOverscrollNotification(
+      ScrollMetrics metrics, BuildContext context, double overscroll) {
+    OverscrollNotification(
+            metrics: metrics,
+            context: context,
+            overscroll: overscroll,
+            velocity: velocity)
+        .dispatch(context);
   }
 
   @override

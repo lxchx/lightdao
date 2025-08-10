@@ -60,13 +60,15 @@ class RenderTsukuyomiScrollViewViewport extends RenderViewport {
     double correction;
     int count = 0;
     do {
-      correction = _attemptLayout(mainAxisExtent, crossAxisExtent, offset.pixels + centerOffsetAdjustment);
+      correction = _attemptLayout(mainAxisExtent, crossAxisExtent,
+          offset.pixels + centerOffsetAdjustment);
       if (correction != 0.0) {
         offset.correctBy(correction);
       } else {
         // region Tsukuyomi: 修改最大滚动范围的边界值，避免因为中心列表项位置靠后导致列表可滚动范围超出列表实际高度
         final minScrollExtent = _minScrollExtent + mainAxisExtent * anchor;
-        final maxScrollExtent = _maxScrollExtent - mainAxisExtent * (1.0 - anchor);
+        final maxScrollExtent =
+            _maxScrollExtent - mainAxisExtent * (1.0 - anchor);
         if (offset.applyContentDimensions(
           math.min(0.0, minScrollExtent),
           math.max(math.min(0.0, minScrollExtent), maxScrollExtent),

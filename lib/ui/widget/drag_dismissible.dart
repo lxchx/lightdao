@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 
 class ExitSignal {
   bool _isExiting = false;
-  
+
   void trigger() {
     _isExiting = true;
   }
-  
+
   bool get isTriggered => _isExiting;
-  
+
   void reset() {
     _isExiting = false;
   }
@@ -75,11 +75,11 @@ class _DragDismissibleState extends State<DragDismissible>
       // 触发退出动画
       setState(() {
         _isExiting = true;
-        _scaleAnimation = AlwaysStoppedAnimation(1.0);  // 让缩放动画失效
+        _scaleAnimation = AlwaysStoppedAnimation(1.0); // 让缩放动画失效
       });
-      
+
       _animateController.forward();
-      
+
       // 重置信号，避免重复触发
       widget.exitSignal!.reset();
     }
@@ -96,16 +96,12 @@ class _DragDismissibleState extends State<DragDismissible>
     final double end = _dragExtent.sign;
 
     _moveAnimation = _animateController.drive(
-      Tween<Offset>(
-        begin: Offset.zero,
-        end: Offset(0, end),
-      ),
+      Tween<Offset>(begin: Offset.zero, end: Offset(0, end)),
     );
 
-    _scaleAnimation = _animateController.drive(Tween<double>(
-      begin: 1,
-      end: 0.5,
-    ));
+    _scaleAnimation = _animateController.drive(
+      Tween<double>(begin: 1, end: 0.5),
+    );
 
     _opacityAnimation = DecorationTween(
       begin: BoxDecoration(
@@ -113,9 +109,7 @@ class _DragDismissibleState extends State<DragDismissible>
             ? Colors.transparent
             : widget.backgroundColor ?? const Color(0xFF000000),
       ),
-      end: BoxDecoration(
-        color: const Color(0x00000000),
-      ),
+      end: BoxDecoration(color: const Color(0x00000000)),
     ).animate(_animateController);
   }
 
@@ -215,10 +209,7 @@ class _DragDismissibleState extends State<DragDismissible>
         decoration: _opacityAnimation,
         child: SlideTransition(
           position: _moveAnimation,
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: widget.child,
-          ),
+          child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
         ),
       ),
     );
@@ -229,9 +220,15 @@ class _DragDismissibleState extends State<DragDismissible>
       onPointerCancel: _pointerRemoved,
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onVerticalDragStart: (widget.enabled && _pointerCount <= 1) ? _handleDragStart : null,
-        onVerticalDragUpdate: (widget.enabled && _pointerCount <= 1) ? _handleDragUpdate : null,
-        onVerticalDragEnd: (widget.enabled && _pointerCount <= 1) ? _handleDragEnd : null,
+        onVerticalDragStart: (widget.enabled && _pointerCount <= 1)
+            ? _handleDragStart
+            : null,
+        onVerticalDragUpdate: (widget.enabled && _pointerCount <= 1)
+            ? _handleDragUpdate
+            : null,
+        onVerticalDragEnd: (widget.enabled && _pointerCount <= 1)
+            ? _handleDragEnd
+            : null,
         child: content,
       ),
     );

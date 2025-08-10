@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-
 /// 一个抽象的State基类，它为所有子类提供了为父Scaffold构建动态UI组件的能力。
 ///
 /// 任何希望控制其父Scaffold的Drawer或FloatingActionButton的State对象，都应该继承自这个类，
@@ -8,7 +7,8 @@ import 'package:flutter/material.dart';
 ///
 /// <T> 是与此State关联的StatefulWidget的类型。
 /// 如果有State不想继承State<T>而是继承其它State派生类型，应该另外实现一个ScaffoldAccessoryBuilder
-abstract class ScaffoldAccessoryBuilder<T extends StatefulWidget> extends State<T> {
+abstract class ScaffoldAccessoryBuilder<T extends StatefulWidget>
+    extends State<T> {
   /// 构建并返回一个Widget列表，用作抽屉的主要内容。
   /// 如果页面不需要Drawer，则返回null。子类必须重写此方法。
   List<Widget>? buildDrawerContent(BuildContext context);

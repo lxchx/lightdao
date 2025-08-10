@@ -28,11 +28,13 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // 小白条通知栏沉浸
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    systemNavigationBarColor: Colors.transparent,
-    systemNavigationBarDividerColor: Colors.transparent,
-    statusBarColor: Colors.transparent,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      statusBarColor: Colors.transparent,
+    ),
+  );
   Hive.registerAdapter(CookieSettingAdapter());
   Hive.registerAdapter(LightDaoSettingAdapter());
   Hive.registerAdapter(MaterialColorAdapter());
@@ -53,9 +55,7 @@ Future<void> main() async {
   MyAppState myAppState = MyAppState();
   await myAppState.loadSettings();
   VariableAppIcon.androidAppIconIds = appIconsNamesList;
-  runApp(MyApp(
-    myAppState: myAppState,
-  ));
+  runApp(MyApp(myAppState: myAppState));
 }
 
 class MyApp extends StatelessWidget {
@@ -69,33 +69,33 @@ class MyApp extends StatelessWidget {
       child: Builder(
         builder: (context) {
           return DynamicColorBuilder(
-              builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-            final brightness = MediaQuery.of(context).platformBrightness;
-            final isDarkMode = brightness == Brightness.dark;
-            final appState = Provider.of<MyAppState>(context);
-            final fixedLightColorScheme = ColorScheme.fromSeed(
-              seedColor: appState.setting.lightModeThemeColor,
-              brightness: Brightness.light,
-            );
-            final fixedDarkColorScheme = ColorScheme.fromSeed(
-              seedColor: appState.setting.darkModeThemeColor,
-              brightness: Brightness.dark,
-            );
-            // 为什么不直接用lightDynamic和darkDynamic呢？
-            // 因为这两个调色盘不够丰富，Card颜色和背景颜色会混在一起
-            final dynamicLightColorScheme = lightDynamic == null
-                ? null
-                : ColorScheme.fromSeed(
-                    seedColor: lightDynamic.primary,
-                    brightness: Brightness.light,
-                  );
-            final dynamicDarkColorScheme = darkDynamic == null
-                ? null
-                : ColorScheme.fromSeed(
-                    seedColor: darkDynamic.primary,
-                    brightness: Brightness.dark,
-                  );
-            return App(
+            builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+              final brightness = MediaQuery.of(context).platformBrightness;
+              final isDarkMode = brightness == Brightness.dark;
+              final appState = Provider.of<MyAppState>(context);
+              final fixedLightColorScheme = ColorScheme.fromSeed(
+                seedColor: appState.setting.lightModeThemeColor,
+                brightness: Brightness.light,
+              );
+              final fixedDarkColorScheme = ColorScheme.fromSeed(
+                seedColor: appState.setting.darkModeThemeColor,
+                brightness: Brightness.dark,
+              );
+              // 为什么不直接用lightDynamic和darkDynamic呢？
+              // 因为这两个调色盘不够丰富，Card颜色和背景颜色会混在一起
+              final dynamicLightColorScheme = lightDynamic == null
+                  ? null
+                  : ColorScheme.fromSeed(
+                      seedColor: lightDynamic.primary,
+                      brightness: Brightness.light,
+                    );
+              final dynamicDarkColorScheme = darkDynamic == null
+                  ? null
+                  : ColorScheme.fromSeed(
+                      seedColor: darkDynamic.primary,
+                      brightness: Brightness.dark,
+                    );
+              return App(
                 key: Key('LightDaoApp'),
                 appState: appState,
                 lightColorScheme: appState.setting.dynamicThemeColor
@@ -104,8 +104,10 @@ class MyApp extends StatelessWidget {
                 darkColorScheme: appState.setting.dynamicThemeColor
                     ? (dynamicDarkColorScheme ?? fixedDarkColorScheme)
                     : fixedDarkColorScheme,
-                isDarkMode: isDarkMode);
-          });
+                isDarkMode: isDarkMode,
+              );
+            },
+          );
         },
       ),
     );
@@ -128,8 +130,9 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backGroundBlack =
-        appState.setting.useAmoledBlack ? Colors.black : null;
+    final backGroundBlack = appState.setting.useAmoledBlack
+        ? Colors.black
+        : null;
     return GlobalLoaderOverlay(
       child: MaterialApp(
         title: '氢岛',
@@ -163,8 +166,8 @@ class App extends StatelessWidget {
         themeMode: appState.setting.followedSysDarkMode
             ? (isDarkMode ? ThemeMode.dark : ThemeMode.light)
             : (appState.setting.userSettingIsDarkMode
-                ? ThemeMode.dark
-                : ThemeMode.light),
+                  ? ThemeMode.dark
+                  : ThemeMode.light),
         home: MyHomePage(),
       ),
     );
@@ -177,8 +180,9 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
-  static final threadUrlRegex =
-      RegExp(r'(https?:\/\/)?www\.nmbxd1?\.com\/(m\/)?t\/(\d+)');
+  static final threadUrlRegex = RegExp(
+    r'(https?:\/\/)?www\.nmbxd1?\.com\/(m\/)?t\/(\d+)',
+  );
   String lastClipBoardData = '';
   bool isDialogShown = false;
 
@@ -200,14 +204,15 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             SnackBar(
               content: Text('发现新版本: ${updateInfo.latestVersion}, 请到关于页面更新'),
               action: SnackBarAction(
-                  label: '跳转到关于',
-                  onPressed: () => Navigator.push(
-                        context,
-                        appState.createPageRoute(
-                          builder: (context) => AboutPage(
-                              appState: appState, packageInfo: packageInfo),
-                        ),
-                      )),
+                label: '跳转到关于',
+                onPressed: () => Navigator.push(
+                  context,
+                  appState.createPageRoute(
+                    builder: (context) =>
+                        AboutPage(appState: appState, packageInfo: packageInfo),
+                  ),
+                ),
+              ),
             ),
           );
         }
@@ -253,11 +258,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               return AlertDialog(
                 title: Text('检测到串链接'),
                 content: SingleChildScrollView(
-                  child: ListBody(
-                    children: <Widget>[
-                      Text('是否需要跳转到对应串？'),
-                    ],
-                  ),
+                  child: ListBody(children: <Widget>[Text('是否需要跳转到对应串？')]),
                 ),
                 actions: <Widget>[
                   TextButton(
@@ -283,8 +284,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                     child: Text('确认'),
                     onPressed: () async {
                       lastClipBoardData = clipText;
-                      final appState =
-                          Provider.of<MyAppState>(context, listen: false);
+                      final appState = Provider.of<MyAppState>(
+                        context,
+                        listen: false,
+                      );
                       appState.navigateThreadPage2(context, threadId, true);
                       setState(() {
                         isDialogShown = false;

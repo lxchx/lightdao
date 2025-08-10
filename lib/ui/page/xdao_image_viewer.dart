@@ -20,12 +20,13 @@ class XdaoImageViewer extends StatefulWidget {
   final int initIndex;
   final Function(File imageFile, Object? heroTag)? onEdit;
 
-  XdaoImageViewer(
-      {super.key,
-      this.heroTag,
-      required this.imageNames,
-      required this.initIndex,
-      this.onEdit});
+  XdaoImageViewer({
+    super.key,
+    this.heroTag,
+    required this.imageNames,
+    required this.initIndex,
+    this.onEdit,
+  });
 
   @override
   State<XdaoImageViewer> createState() => _XdaoImageViewerState();
@@ -51,8 +52,9 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
     final appState = Provider.of<MyAppState>(context);
     final breakpoint = Breakpoint.fromMediaQuery(context);
     final imageName = widget.imageNames[_currentIndex];
-    final imageProvider =
-        CachedNetworkImageProvider('https://image.nmb.best/image/$imageName');
+    final imageProvider = CachedNetworkImageProvider(
+      'https://image.nmb.best/image/$imageName',
+    );
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: PopScope(
@@ -98,72 +100,77 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
             child: Stack(
               children: [
                 PageView.builder(
-                    physics:
-                        _scaleOnly ? const NeverScrollableScrollPhysics() : null,
-                    onPageChanged: (page) => setState(() {
-                          _currentIndex = page;
-                        }),
-                    itemCount: widget.imageNames.length,
-                    controller: _pageViewController,
-                    itemBuilder: (context, index) {
-                      final imageName = widget.imageNames[index];
-                      final imageProvider = CachedNetworkImageProvider(
-                          'https://image.nmb.best/image/$imageName');
-                      return DragDismissible(
-                        backgroundColor: Theme.of(context).canvasColor,
-                        onDismissed: () => Navigator.of(context).pop(),
-                        exitSignal: _exitSignal,
-                        enabled:
-                            appState.setting.dragToDissmissImage && !_scaleOnly,
-                        child: PhotoView(
-                          imageProvider: imageProvider,
-                          scaleStateChangedCallback: (PhotoViewScaleState state) {
-                            setState(() {
-                              _scaleOnly = state != PhotoViewScaleState.initial;
-                            });
-                          },
-                          loadingBuilder: (context, imageChunkEvent) {
-                            return ConditionalHero(
-                              tag: index == widget.initIndex
-                                  ? widget.heroTag
-                                  : "Image $imageName",
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  SizedBox.expand(
-                                    child: CachedNetworkImage(
-                                      cacheManager: MyImageCacheManager(),
-                                      imageUrl:
-                                          'https://image.nmb.best/thumb/$imageName',
-                                      fit: BoxFit.contain,
-                                    ),
+                  physics: _scaleOnly
+                      ? const NeverScrollableScrollPhysics()
+                      : null,
+                  onPageChanged: (page) => setState(() {
+                    _currentIndex = page;
+                  }),
+                  itemCount: widget.imageNames.length,
+                  controller: _pageViewController,
+                  itemBuilder: (context, index) {
+                    final imageName = widget.imageNames[index];
+                    final imageProvider = CachedNetworkImageProvider(
+                      'https://image.nmb.best/image/$imageName',
+                    );
+                    return DragDismissible(
+                      backgroundColor: Theme.of(context).canvasColor,
+                      onDismissed: () => Navigator.of(context).pop(),
+                      exitSignal: _exitSignal,
+                      enabled:
+                          appState.setting.dragToDissmissImage && !_scaleOnly,
+                      child: PhotoView(
+                        imageProvider: imageProvider,
+                        scaleStateChangedCallback: (PhotoViewScaleState state) {
+                          setState(() {
+                            _scaleOnly = state != PhotoViewScaleState.initial;
+                          });
+                        },
+                        loadingBuilder: (context, imageChunkEvent) {
+                          return ConditionalHero(
+                            tag: index == widget.initIndex
+                                ? widget.heroTag
+                                : "Image $imageName",
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox.expand(
+                                  child: CachedNetworkImage(
+                                    cacheManager: MyImageCacheManager(),
+                                    imageUrl:
+                                        'https://image.nmb.best/thumb/$imageName',
+                                    fit: BoxFit.contain,
                                   ),
-                                  if (imageChunkEvent != null &&
-                                      imageChunkEvent.expectedTotalBytes != null)
-                                    CircularProgressIndicator(
-                                        value: imageChunkEvent
-                                                .cumulativeBytesLoaded /
-                                            imageChunkEvent.expectedTotalBytes!)
-                                  else
-                                    CircularProgressIndicator(),
-                                ],
+                                ),
+                                if (imageChunkEvent != null &&
+                                    imageChunkEvent.expectedTotalBytes != null)
+                                  CircularProgressIndicator(
+                                    value:
+                                        imageChunkEvent.cumulativeBytesLoaded /
+                                        imageChunkEvent.expectedTotalBytes!,
+                                  )
+                                else
+                                  CircularProgressIndicator(),
+                              ],
+                            ),
+                          );
+                        },
+                        minScale: PhotoViewComputedScale.contained * 1,
+                        //maxScale: PhotoViewComputedScale.covered * 2,
+                        heroAttributes: widget.heroTag == null
+                            ? null
+                            : PhotoViewHeroAttributes(
+                                tag: index == widget.initIndex
+                                    ? widget.heroTag!
+                                    : "Image $imageName",
                               ),
-                            );
-                          },
-                          minScale: PhotoViewComputedScale.contained * 1,
-                          //maxScale: PhotoViewComputedScale.covered * 2,
-                          heroAttributes: widget.heroTag == null
-                              ? null
-                              : PhotoViewHeroAttributes(
-                                  tag: index == widget.initIndex
-                                      ? widget.heroTag!
-                                      : "Image $imageName"),
-                          backgroundDecoration: BoxDecoration(
-                            color: Colors.transparent,
-                          ),
+                        backgroundDecoration: BoxDecoration(
+                          color: Colors.transparent,
                         ),
-                      );
-                    }),
+                      ),
+                    );
+                  },
+                ),
                 AnimatedSwitcher(
                   duration: Durations.medium1,
                   switchInCurve: Curves.easeInOut,
@@ -176,7 +183,8 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                               padding: EdgeInsets.all(breakpoint.gutters),
                               child: Row(
                                 mainAxisSize: MainAxisSize.max,
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   if (widget.imageNames.length > 1)
@@ -184,23 +192,27 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                                       borderRadius: BorderRadius.circular(50),
                                       child: BackdropFilter(
                                         filter: ImageFilter.blur(
-                                            sigmaX: 10.0, sigmaY: 10.0),
+                                          sigmaX: 10.0,
+                                          sigmaY: 10.0,
+                                        ),
                                         child: Container(
-                                          color: Theme.of(context)
-                                              .canvasColor
+                                          color: Theme.of(context).canvasColor
                                               .withAlpha((255 * 0.4).round()),
                                           padding: EdgeInsets.symmetric(
-                                              horizontal: 16, vertical: 8),
+                                            horizontal: 16,
+                                            vertical: 8,
+                                          ),
                                           child: Text(
                                             '${_currentIndex + 1} / ${widget.imageNames.length}',
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .labelLarge
                                                 ?.copyWith(
-                                                    fontSize: 24,
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onSurfaceVariant),
+                                                  fontSize: 24,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
                                           ),
                                         ),
                                       ),
@@ -211,10 +223,11 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                                     borderRadius: BorderRadius.circular(50),
                                     child: BackdropFilter(
                                       filter: ImageFilter.blur(
-                                          sigmaX: 10.0, sigmaY: 10.0),
+                                        sigmaX: 10.0,
+                                        sigmaY: 10.0,
+                                      ),
                                       child: Container(
-                                        color: Theme.of(context)
-                                            .canvasColor
+                                        color: Theme.of(context).canvasColor
                                             .withAlpha((255 * 0.4).round()),
                                         child: Row(
                                           children: [
@@ -228,11 +241,12 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                                                       await MyImageCacheManager()
                                                           .getSingleFile(url);
                                                   widget.onEdit!(
-                                                      file,
-                                                      _currentIndex ==
-                                                              widget.initIndex
-                                                          ? widget.heroTag
-                                                          : "Image $imageName");
+                                                    file,
+                                                    _currentIndex ==
+                                                            widget.initIndex
+                                                        ? widget.heroTag
+                                                        : "Image $imageName",
+                                                  );
                                                 },
                                               ),
                                             IconButton(
@@ -252,7 +266,9 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                                             IconButton(
                                               icon: Icon(Icons.save),
                                               onPressed: () => _saveImage(
-                                                  context, imageProvider),
+                                                context,
+                                                imageProvider,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -265,7 +281,7 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
                           ),
                         )
                       : null,
-                )
+                ),
               ],
             ),
           ),
@@ -288,14 +304,14 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
       final xfile = XFile(tempfile.path);
       await Share.shareXFiles([xfile]);
     } else {
-      showSnackBar(
-        SnackBar(content: Text("无法分享该类型的图片")),
-      );
+      showSnackBar(SnackBar(content: Text("无法分享该类型的图片")));
     }
   }
 
   Future<void> _saveImage(
-      BuildContext context, ImageProvider imageProvider) async {
+    BuildContext context,
+    ImageProvider imageProvider,
+  ) async {
     final showSnackBar = ScaffoldMessenger.of(context).showSnackBar;
     try {
       // 请求权限
@@ -329,23 +345,15 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
 
           await Gal.putImage(imgFile.path);
 
-          showSnackBar(
-            SnackBar(content: Text("图片已保存到相册")),
-          );
+          showSnackBar(SnackBar(content: Text("图片已保存到相册")));
         } else {
-          showSnackBar(
-            SnackBar(content: Text("无法保存该类型的图片")),
-          );
+          showSnackBar(SnackBar(content: Text("无法保存该类型的图片")));
         }
       } else {
-        showSnackBar(
-          SnackBar(content: Text("请授予存储权限")),
-        );
+        showSnackBar(SnackBar(content: Text("请授予存储权限")));
       }
     } catch (e) {
-      showSnackBar(
-        SnackBar(content: Text("发生错误: $e")),
-      );
+      showSnackBar(SnackBar(content: Text("发生错误: $e")));
     }
   }
 }

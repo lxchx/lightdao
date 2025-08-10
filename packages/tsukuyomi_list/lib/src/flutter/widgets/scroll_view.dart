@@ -70,16 +70,22 @@ abstract class ScrollView extends StatelessWidget {
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
-  }) : assert(
-         !(controller != null && (primary ?? false)),
-         'Primary ScrollViews obtain their ScrollController via inheritance '
-         'from a PrimaryScrollController widget. You cannot both set primary to '
-         'true and pass an explicit controller.',
-       ),
-       assert(!shrinkWrap || center == null),
-       assert(anchor >= 0.0 && anchor <= 1.0),
-       assert(semanticChildCount == null || semanticChildCount >= 0),
-       physics = physics ?? ((primary ?? false) || (primary == null && controller == null && identical(scrollDirection, Axis.vertical)) ? const AlwaysScrollableScrollPhysics() : null);
+  })  : assert(
+          !(controller != null && (primary ?? false)),
+          'Primary ScrollViews obtain their ScrollController via inheritance '
+          'from a PrimaryScrollController widget. You cannot both set primary to '
+          'true and pass an explicit controller.',
+        ),
+        assert(!shrinkWrap || center == null),
+        assert(anchor >= 0.0 && anchor <= 1.0),
+        assert(semanticChildCount == null || semanticChildCount >= 0),
+        physics = physics ??
+            ((primary ?? false) ||
+                    (primary == null &&
+                        controller == null &&
+                        identical(scrollDirection, Axis.vertical))
+                ? const AlwaysScrollableScrollPhysics()
+                : null);
 
   /// {@template flutter.widgets.scroll_view.scrollDirection}
   /// The [Axis] along which the scroll view's offset increases.
@@ -345,7 +351,8 @@ abstract class ScrollView extends StatelessWidget {
   /// [AxisDirection.left] and the reversed [AxisDirection] is
   /// [AxisDirection.right].
   AxisDirection getDirection(BuildContext context) {
-    return getAxisDirectionFromAxisReverseAndDirectionality(context, scrollDirection, reverse);
+    return getAxisDirectionFromAxisReverseAndDirectionality(
+        context, scrollDirection, reverse);
   }
 
   /// Build the list of widgets to place inside the viewport.
@@ -382,8 +389,9 @@ abstract class ScrollView extends StatelessWidget {
           return debugCheckHasDirectionality(
             context,
             why: 'to determine the cross-axis direction of the scroll view',
-            hint: 'Vertical scroll views create Viewport widgets that try to determine their cross axis direction '
-                  'from the ambient Directionality.',
+            hint:
+                'Vertical scroll views create Viewport widgets that try to determine their cross axis direction '
+                'from the ambient Directionality.',
           );
         case AxisDirection.left:
         case AxisDirection.right:
@@ -414,8 +422,9 @@ abstract class ScrollView extends StatelessWidget {
     final List<Widget> slivers = buildSlivers(context);
     final AxisDirection axisDirection = getDirection(context);
 
-    final bool effectivePrimary = primary
-        ?? controller == null && PrimaryScrollController.shouldInherit(context, scrollDirection);
+    final bool effectivePrimary = primary ??
+        controller == null &&
+            PrimaryScrollController.shouldInherit(context, scrollDirection);
 
     final ScrollController? scrollController = effectivePrimary
         ? PrimaryScrollController.maybeOf(context)
@@ -460,11 +469,17 @@ abstract class ScrollView extends StatelessWidget {
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties.add(EnumProperty<Axis>('scrollDirection', scrollDirection));
-    properties.add(FlagProperty('reverse', value: reverse, ifTrue: 'reversed', showName: true));
-    properties.add(DiagnosticsProperty<ScrollController>('controller', controller, showName: false, defaultValue: null));
-    properties.add(FlagProperty('primary', value: primary, ifTrue: 'using primary controller', showName: true));
-    properties.add(DiagnosticsProperty<ScrollPhysics>('physics', physics, showName: false, defaultValue: null));
-    properties.add(FlagProperty('shrinkWrap', value: shrinkWrap, ifTrue: 'shrink-wrapping', showName: true));
+    properties.add(FlagProperty('reverse',
+        value: reverse, ifTrue: 'reversed', showName: true));
+    properties.add(DiagnosticsProperty<ScrollController>(
+        'controller', controller,
+        showName: false, defaultValue: null));
+    properties.add(FlagProperty('primary',
+        value: primary, ifTrue: 'using primary controller', showName: true));
+    properties.add(DiagnosticsProperty<ScrollPhysics>('physics', physics,
+        showName: false, defaultValue: null));
+    properties.add(FlagProperty('shrinkWrap',
+        value: shrinkWrap, ifTrue: 'shrink-wrapping', showName: true));
   }
 }
 

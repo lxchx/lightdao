@@ -54,7 +54,8 @@ class TsukuyomiScrollView extends CustomScrollView {
   Widget build(BuildContext context) {
     return ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(
-        scrollbars: false, // 禁用滚动条以避免 [RawScrollbar] 在点击跳转时无法正确获取 [Scrollable] 而报错
+        scrollbars:
+            false, // 禁用滚动条以避免 [RawScrollbar] 在点击跳转时无法正确获取 [Scrollable] 而报错
       ),
       child: _convertScrollable(super.build(context)),
     );

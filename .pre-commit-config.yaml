@@ -1,0 +1,9 @@
+repos:
+-   repo: local
+    hooks:
+    -   id: dart-format
+        name: Format Dart Code
+        entry: bash scripts/format-hook.sh
+        language: system
+        types: [dart]
+        verbose: true

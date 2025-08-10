@@ -37,8 +37,13 @@ class PageError extends PageState {
 }
 
 /// 页面加载状态回调
-typedef PageLoadCallback<T> = void Function(int pageIndex, int itemCount,
-    bool isExistingPageUpdate, void Function() doInsert);
+typedef PageLoadCallback<T> =
+    void Function(
+      int pageIndex,
+      int itemCount,
+      bool isExistingPageUpdate,
+      void Function() doInsert,
+    );
 
 /// 页面管理器抽象类
 /// 负责管理多页数据的加载、缓存和状态跟踪
@@ -68,23 +73,28 @@ abstract class PageManager<T> {
 
   bool get isEmpty => _pageItems.isEmpty || totalItemsCount == 0;
 
-  PageManager({
-    required this.initialPage,
-    this.pageMaxSize,
-  })  : _minLoadedPage = initialPage,
-        _maxLoadedPage = initialPage,
-        previousPageStateNotifier = ValueNotifier(initialPage > 1 ? const PageHasMore() : const PageFullLoaded()),
-        nextPageStateNotifier = ValueNotifier(const PageHasMore());
+  PageManager({required this.initialPage, this.pageMaxSize})
+    : _minLoadedPage = initialPage,
+      _maxLoadedPage = initialPage,
+      previousPageStateNotifier = ValueNotifier(
+        initialPage > 1 ? const PageHasMore() : const PageFullLoaded(),
+      ),
+      nextPageStateNotifier = ValueNotifier(const PageHasMore());
 
   PageManager.withInitialItems({
     required this.initialPage,
     required this.pageMaxSize,
     required List<T> initialItems,
-  })  : _minLoadedPage = initialPage,
-        _maxLoadedPage = initialPage,
-        previousPageStateNotifier = ValueNotifier(initialPage > 1 ? const PageHasMore() : const PageFullLoaded()),
-        nextPageStateNotifier = ValueNotifier(pageMaxSize != null && initialItems.length < pageMaxSize ? const PageFullLoaded() : const PageHasMore()) {
-    
+  }) : _minLoadedPage = initialPage,
+       _maxLoadedPage = initialPage,
+       previousPageStateNotifier = ValueNotifier(
+         initialPage > 1 ? const PageHasMore() : const PageFullLoaded(),
+       ),
+       nextPageStateNotifier = ValueNotifier(
+         pageMaxSize != null && initialItems.length < pageMaxSize
+             ? const PageFullLoaded()
+             : const PageHasMore(),
+       ) {
     final items = _processNewItems(initialItems);
     _pageItems[initialPage] = items;
     _onAfterPageLoad(initialPage, items);
@@ -102,7 +112,9 @@ abstract class PageManager<T> {
       final items = _processNewItems(rawItems);
       _pageItems[initialPage] = items;
       _onAfterPageLoad(initialPage, items);
-      nextPageStateNotifier.value = _isLastPage(rawItems) ? const PageFullLoaded() : const PageHasMore();
+      nextPageStateNotifier.value = _isLastPage(rawItems)
+          ? const PageFullLoaded()
+          : const PageHasMore();
     } catch (e) {
       nextPageStateNotifier.value = PageError(e, initialize);
     }
@@ -111,12 +123,12 @@ abstract class PageManager<T> {
   /// 子类需要实现的获取页面数据的方法
   Future<List<T>> fetchPage(int page);
   bool isSameItem(T item1, T item2) => item1 == item2;
-  
+
   @protected
   List<T> _processNewItems(List<T> rawItems) => rawItems;
   @protected
   void _onAfterPageLoad(int page, List<T> processedItems) {}
-  
+
   bool _isLastPage(List<T> fetchedItems) {
     if (pageMaxSize != null) {
       return fetchedItems.length < pageMaxSize!;
@@ -124,8 +136,10 @@ abstract class PageManager<T> {
     return fetchedItems.isEmpty;
   }
 
-  RangeValues get loadedPageRange => RangeValues(_minLoadedPage.toDouble(), _maxLoadedPage.toDouble());
-  int get totalItemsCount => _pageItems.values.fold(0, (sum, items) => sum + items.length);
+  RangeValues get loadedPageRange =>
+      RangeValues(_minLoadedPage.toDouble(), _maxLoadedPage.toDouble());
+  int get totalItemsCount =>
+      _pageItems.values.fold(0, (sum, items) => sum + items.length);
 
   List<T> get allLoadedItems {
     final List<T> allItems = [];
@@ -185,7 +199,10 @@ abstract class PageManager<T> {
   }
 
   Future<void> tryLoadPreviousPage({bool ignoreError = false}) async {
-    if (previousPageStateNotifier.value is PageLoading || previousPageStateNotifier.value is PageFullLoaded) return;
+    if (previousPageStateNotifier.value is PageLoading ||
+        previousPageStateNotifier.value is PageFullLoaded) {
+      return;
+    }
     if (!ignoreError && previousPageStateNotifier.value is PageError) return;
 
     final previousPage = _minLoadedPage - 1;
@@ -198,14 +215,16 @@ abstract class PageManager<T> {
     try {
       final rawItems = await fetchPage(previousPage);
       final items = _processNewItems(rawItems);
-      
+
       void doInsert() {
         if (items.isNotEmpty) {
           _pageItems[previousPage] = items;
           _onAfterPageLoad(previousPage, items);
           _minLoadedPage = previousPage;
         }
-        previousPageStateNotifier.value = (previousPage == 1) ? const PageFullLoaded() : const PageHasMore();
+        previousPageStateNotifier.value = (previousPage == 1)
+            ? const PageFullLoaded()
+            : const PageHasMore();
       }
 
       if (_previousPageCallback != null) {
@@ -214,12 +233,18 @@ abstract class PageManager<T> {
         doInsert();
       }
     } catch (e) {
-      previousPageStateNotifier.value = PageError(e, () => tryLoadPreviousPage(ignoreError: true));
+      previousPageStateNotifier.value = PageError(
+        e,
+        () => tryLoadPreviousPage(ignoreError: true),
+      );
     }
   }
 
   Future<void> tryLoadNextPage({bool ignoreError = false}) async {
-    if (nextPageStateNotifier.value is PageLoading || nextPageStateNotifier.value is PageFullLoaded) return;
+    if (nextPageStateNotifier.value is PageLoading ||
+        nextPageStateNotifier.value is PageFullLoaded) {
+      return;
+    }
     if (!ignoreError && nextPageStateNotifier.value is PageError) return;
 
     final nextPage = _maxLoadedPage + 1;
@@ -253,13 +278,16 @@ abstract class PageManager<T> {
         doInsert();
       }
     } catch (e) {
-      nextPageStateNotifier.value = PageError(e, () => tryLoadNextPage(ignoreError: true));
+      nextPageStateNotifier.value = PageError(
+        e,
+        () => tryLoadNextPage(ignoreError: true),
+      );
     }
   }
 
   Future<int> forceLoadNextPage() async {
     if (nextPageStateNotifier.value is PageLoading) return 0;
-    
+
     // 该功能仅适用于有固定页面大小的场景。
     if (pageMaxSize == null) {
       await tryLoadNextPage();
@@ -292,12 +320,12 @@ abstract class PageManager<T> {
             nextPageStateNotifier.value = const PageHasMore();
           }
         }
+
         if (_nextPageCallback != null) {
           _nextPageCallback!(nextPage, items.length, false, doInsert);
         } else {
           doInsert();
         }
-
       } else {
         final oldItems = lastPageItems ?? [];
         final oldItemsCount = oldItems.length;
@@ -305,7 +333,7 @@ abstract class PageManager<T> {
 
         // 注意：此处不应再次调用 _processNewItems，因为我们需要原始列表进行比较
         // 去重逻辑会在合并后，通过覆盖旧页的方式隐式完成。
-        
+
         List<T> mergedItems;
         if (oldItemsCount > 0) {
           final lastOldItem = oldItems.last;
@@ -316,8 +344,10 @@ abstract class PageManager<T> {
               break;
             }
           }
-          if (lastOldItemIndex != -1 && lastOldItemIndex < rawNewItems.length - 1) {
-            mergedItems = List<T>.from(oldItems)..addAll(rawNewItems.sublist(lastOldItemIndex + 1));
+          if (lastOldItemIndex != -1 &&
+              lastOldItemIndex < rawNewItems.length - 1) {
+            mergedItems = List<T>.from(oldItems)
+              ..addAll(rawNewItems.sublist(lastOldItemIndex + 1));
           } else {
             mergedItems = rawNewItems;
           }
@@ -325,7 +355,7 @@ abstract class PageManager<T> {
           mergedItems = rawNewItems;
         }
         newItemCount = mergedItems.length - oldItemsCount;
-        
+
         doInsert() {
           _pageItems[_maxLoadedPage] = mergedItems;
           _onAfterPageLoad(_maxLoadedPage, mergedItems);
@@ -348,11 +378,22 @@ abstract class PageManager<T> {
     }
     return newItemCount;
   }
-  
-  void registerPreviousPageCallback(PageLoadCallback<T> callback) { _previousPageCallback = callback; }
-  void registerNextPageCallback(PageLoadCallback<T> callback) { _nextPageCallback = callback; }
-  void unregisterPreviousPageCallback() { _previousPageCallback = null; }
-  void unregisterNextPageCallback() { _nextPageCallback = null; }
+
+  void registerPreviousPageCallback(PageLoadCallback<T> callback) {
+    _previousPageCallback = callback;
+  }
+
+  void registerNextPageCallback(PageLoadCallback<T> callback) {
+    _nextPageCallback = callback;
+  }
+
+  void unregisterPreviousPageCallback() {
+    _previousPageCallback = null;
+  }
+
+  void unregisterNextPageCallback() {
+    _nextPageCallback = null;
+  }
 }
 
 mixin DeduplicatingPageManagerMixin<T, Id> on PageManager<T> {
@@ -372,7 +413,8 @@ mixin DeduplicatingPageManagerMixin<T, Id> on PageManager<T> {
         // ID已存在（数据漂移），执行更新。
         if (_itemLocationCache.containsKey(id)) {
           final (oldPage, oldIndexInPage) = _itemLocationCache[id]!;
-          if (_pageItems.containsKey(oldPage) && _pageItems[oldPage]!.length > oldIndexInPage) {
+          if (_pageItems.containsKey(oldPage) &&
+              _pageItems[oldPage]!.length > oldIndexInPage) {
             _pageItems[oldPage]![oldIndexInPage] = newItem;
           }
         }
@@ -396,7 +438,6 @@ mixin DeduplicatingPageManagerMixin<T, Id> on PageManager<T> {
       }
     }
   }
-
 }
 
 /// 串页面管理器
@@ -436,9 +477,7 @@ class ThreadPageManager extends PageManager<ReplyJson> {
     this.refCache,
     this.isPoOnly = false,
     this.timeout = const Duration(seconds: 10),
-  }) : super.withInitialItems(
-          pageMaxSize: 19,
-        ) {
+  }) : super.withInitialItems(pageMaxSize: 19) {
     _threadMaxPage = initialPage;
   }
 
@@ -511,7 +550,8 @@ class CSEPageManager extends PageManager<GcseItem> {
 
 /// 版块页面管理器
 /// 用于处理没有固定最大页数的普通板块。
-class ForumPageManager extends PageManager<ThreadJson> with DeduplicatingPageManagerMixin<ThreadJson, int> {
+class ForumPageManager extends PageManager<ThreadJson>
+    with DeduplicatingPageManagerMixin<ThreadJson, int> {
   final int forumId;
   final String? cookie;
   final Duration timeout;
@@ -528,14 +568,19 @@ class ForumPageManager extends PageManager<ThreadJson> with DeduplicatingPageMan
 
   @override
   Future<List<ThreadJson>> fetchPage(int page) async {
-    final items = await fetchForumThreads(forumId, page, cookie).timeout(timeout);
+    final items = await fetchForumThreads(
+      forumId,
+      page,
+      cookie,
+    ).timeout(timeout);
     return items;
   }
 }
 
 /// 时间线页面管理器
 /// 它会处理时间线的 maxPage 限制。
-class TimelinePageManager extends PageManager<ThreadJson> with DeduplicatingPageManagerMixin<ThreadJson, int> {
+class TimelinePageManager extends PageManager<ThreadJson>
+    with DeduplicatingPageManagerMixin<ThreadJson, int> {
   final int timelineId;
   final String? cookie;
   final int maxPage;
@@ -557,7 +602,11 @@ class TimelinePageManager extends PageManager<ThreadJson> with DeduplicatingPage
   @override
   Future<List<ThreadJson>> fetchPage(int page) async {
     if (page > maxPage) return [];
-    final items = await fetchTimelineThreads(timelineId, page, cookie).timeout(timeout);
+    final items = await fetchTimelineThreads(
+      timelineId,
+      page,
+      cookie,
+    ).timeout(timeout);
     return items;
   }
 }

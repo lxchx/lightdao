@@ -4,11 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lightdao/ui/widget/ref_view.dart';
 
 class PopRefViewPage extends StatelessWidget {
-  const PopRefViewPage({
-    super.key,
-    required this.refId,
-    this.poUserHash,
-  });
+  const PopRefViewPage({super.key, required this.refId, this.poUserHash});
 
   final int refId;
   final String? poUserHash;
@@ -26,9 +22,10 @@ class PopRefViewPage extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
           child: Material(
-              type: MaterialType.transparency,
-              child: ClipRRect(
-                child: LayoutBuilder(builder: (context, constraints) {
+            type: MaterialType.transparency,
+            child: ClipRRect(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
                   return ListView(
                     children: [
                       // 为了在ListView中居中
@@ -47,8 +44,10 @@ class PopRefViewPage extends StatelessWidget {
                       ),
                     ],
                   );
-                }),
-              )),
+                },
+              ),
+            ),
+          ),
         ),
       ),
     );

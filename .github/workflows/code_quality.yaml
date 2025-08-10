@@ -1,0 +1,74 @@
+name: Dart Code Quality
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  check:
+    name: Check Formatting, Analysis, and Ignores
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.4'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        id: format-check
+        run: dart format --output=none --set-exit-if-changed lib test packages/tsukuyomi_list
+        continue-on-error: true
+
+      - name: Show guidance on format failure
+        if: steps.format-check.outcome == 'failure'
+        run: |
+          echo "----------------------------------------------------------------"
+          echo "ERROR: Code formatting issues found."
+          echo "Please run the following command locally to fix them:"
+          echo "  dart format lib test packages/tsukuyomi_list"
+          echo "----------------------------------------------------------------"
+          exit 1
+
+      - name: Run code generator
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Run static analysis
+        id: analyze
+        run: dart analyze lib test packages/tsukuyomi_list
+        continue-on-error: true
+
+      - name: Show guidance on analysis failure
+        if: steps.analyze.outcome == 'failure'
+        run: |
+          echo "----------------------------------------------------------------"
+          echo "ERROR: Static analysis failed. Please check the logs above for details."
+          echo "You can run 'dart analyze lib test packages/tsukuyomi_list' locally to see the issues."
+          echo "----------------------------------------------------------------"
+          exit 1
+
+      - name: Warn on new ignore comments
+        if: github.event_name == 'pull_request'
+        run: |
+          TARGET_BRANCH="origin/${{ github.base_ref }}"
+          git diff --unified=0 $TARGET_BRANCH HEAD | \
+          grep -E '^\+[^+].*(\ \/\/ ignore:|\ \/\/ ignore_for_file:)' | \
+          sed -E 's/^\+//' | \
+          while IFS= read -r line; do
+            FILE_PATH=$(echo "$line" | cut -d' ' -f1 | sed 's/a\///' | sed 's/b\///')
+            LINE_NUMBER=$(grep -nF "$line" "$FILE_PATH" | cut -d: -f1 | head -n 1)
+            MESSAGE="Potential misuse of linter ignore. Please review this change carefully."
+            echo "::warning file=$FILE_PATH,line=$LINE_NUMBER::$MESSAGE"
+          done

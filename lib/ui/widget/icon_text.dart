@@ -12,11 +12,11 @@ class IconText extends StatelessWidget {
 
   /// 图标和文本之间的间距，默认为 4.0。
   final double spacing;
-  
+
   /// 如果为 true，则图标显示在文本的右侧（尾部）。
   /// 默认为 false，即图标在左侧。
   final bool iconAtTail;
-  
+
   /// 应用于 [icon] Widget 的主题。
   ///
   /// - `size`: 默认值为 18.0，与 [Chip] 的 avatar 尺寸一致。
@@ -48,26 +48,15 @@ class IconText extends StatelessWidget {
     final IconThemeData finalIconTheme = defaultIconTheme.merge(iconTheme);
 
     // 将最终的主题应用到 icon Widget 上。
-    final Widget themedIcon = IconTheme(
-      data: finalIconTheme,
-      child: icon,
-    );
+    final Widget themedIcon = IconTheme(data: finalIconTheme, child: icon);
 
     // 根据 iconAtTail 标志位构建子组件列表
     final children = !iconAtTail
-        ? [
-            themedIcon,
-            SizedBox(width: spacing),
-            text,
-          ]
-        : [
-            text,
-            SizedBox(width: spacing),
-            themedIcon,
-          ];
+        ? [themedIcon, SizedBox(width: spacing), text]
+        : [text, SizedBox(width: spacing), themedIcon];
 
     return Row(
-      mainAxisSize: MainAxisSize.min,       // 宽度包裹内容
+      mainAxisSize: MainAxisSize.min, // 宽度包裹内容
       crossAxisAlignment: CrossAxisAlignment.center, // 垂直居中对齐
       children: children,
     );

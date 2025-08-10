@@ -222,9 +222,9 @@ Future<ThreadJson> _getThreadGeneric(
   String baseUrl,
   int threadId,
   int page,
-  String? cookie,
-  {bool forceFromWeb = false}
-) async {
+  String? cookie, {
+  bool forceFromWeb = false,
+}) async {
   final url = Uri.parse(baseUrl).replace(
     queryParameters: {'id': threadId.toString(), 'page': page.toString()},
   );
@@ -268,7 +268,12 @@ Future<ThreadJson> _getThreadGeneric(
   }
 }
 
-Future<ThreadJson> getThread(int threadId, int page, String? cookie, {bool forceFromWeb = false}) async {
+Future<ThreadJson> getThread(
+  int threadId,
+  int page,
+  String? cookie, {
+  bool forceFromWeb = false,
+}) async {
   return _getThreadGeneric(
     'https://api.nmb.best/api/thread',
     threadId,
@@ -281,9 +286,9 @@ Future<ThreadJson> getThread(int threadId, int page, String? cookie, {bool force
 Future<ThreadJson> getThreadPoOnly(
   int threadId,
   int page,
-  String? cookie,
-  {bool forceFromWeb = false}
-) async {
+  String? cookie, {
+  bool forceFromWeb = false,
+}) async {
   return _getThreadGeneric(
     'https://api.nmb.best/api/po',
     threadId,
@@ -629,11 +634,21 @@ Future<void> delFeed(String uuid, int tid) async {
 Future<ReplyJson> getLatestTrend(String? cookie) async {
   const int trendThreadId = 50248044;
 
-  ThreadJson firstPageThread = await getThread(trendThreadId, 1, cookie, forceFromWeb: true);
+  ThreadJson firstPageThread = await getThread(
+    trendThreadId,
+    1,
+    cookie,
+    forceFromWeb: true,
+  );
 
   final int lastPage = (firstPageThread.replyCount / 19).ceil();
 
-  ThreadJson lastPageThread = await getThread(trendThreadId, lastPage, cookie, forceFromWeb: true);
+  ThreadJson lastPageThread = await getThread(
+    trendThreadId,
+    lastPage,
+    cookie,
+    forceFromWeb: true,
+  );
 
   final ReplyJson latestReply = lastPageThread.replies.last;
 

@@ -20,21 +20,20 @@ class SlidingAppBar extends StatefulWidget implements PreferredSizeWidget {
   State<SlidingAppBar> createState() => _SlidingAppBarState();
 }
 
-class _SlidingAppBarState extends State<SlidingAppBar> with SingleTickerProviderStateMixin {
+class _SlidingAppBarState extends State<SlidingAppBar>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration,
-    );
+    _controller = AnimationController(vsync: this, duration: widget.duration);
 
-    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: widget.curve),
-    );
+    _animation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: widget.curve));
 
     if (widget.visible) {
       _controller.value = 1.0; // 完全可见
@@ -66,14 +65,16 @@ class _SlidingAppBarState extends State<SlidingAppBar> with SingleTickerProvider
             widget.child.preferredSize.width,
             widget.child.preferredSize.height * _animation.value,
           ),
-          child: ClipRect( // 使用 ClipRect 来裁剪内容，使其平滑消失/出现
+          child: ClipRect(
+            // 使用 ClipRect 来裁剪内容，使其平滑消失/出现
             child: Align(
               alignment: Alignment.topCenter,
               heightFactor: _animation.value, // 高度因子也使用动画值
               child: SlideTransition(
-                position: Tween<Offset>(begin: Offset(0, -1), end: Offset.zero).animate(
-                  CurvedAnimation(parent: _controller, curve: widget.curve),
-                ),
+                position: Tween<Offset>(begin: Offset(0, -1), end: Offset.zero)
+                    .animate(
+                      CurvedAnimation(parent: _controller, curve: widget.curve),
+                    ),
                 child: widget.child,
               ),
             ),

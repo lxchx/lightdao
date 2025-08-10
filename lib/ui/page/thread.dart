@@ -54,7 +54,12 @@ class ReplyJsonWithPage {
   final int threadId;
 
   ReplyJsonWithPage(
-      this.page, this.pos, this.threadId, this.thread, this.reply);
+    this.page,
+    this.pos,
+    this.threadId,
+    this.thread,
+    this.reply,
+  );
 }
 
 class ReplyJsonWithPageAdapter extends TypeAdapter<ReplyJsonWithPage> {
@@ -83,7 +88,8 @@ class ReplyJsonWithPageAdapter extends TypeAdapter<ReplyJsonWithPage> {
 }
 
 SliverMultiBoxAdaptorElement? findSliverMultiBoxAdaptorElement(
-    Element element) {
+  Element element,
+) {
   if (element is SliverMultiBoxAdaptorElement) {
     return element;
   }
@@ -135,10 +141,12 @@ class _ThreadPageState extends State<ThreadPage> {
     }
 
     appState.setState((_) {
-      if (appState.setting.starHistory
-          .any(((rply) => rply.threadId == widget.thread.id))) {
-        appState.setting.starHistory
-            .removeWhere((rply) => rply.threadId == widget.thread.id);
+      if (appState.setting.starHistory.any(
+        ((rply) => rply.threadId == widget.thread.id),
+      )) {
+        appState.setting.starHistory.removeWhere(
+          (rply) => rply.threadId == widget.thread.id,
+        );
         appState.setting.starHistory.insert(0, history);
       }
       appState.setting.viewHistory.put(widget.thread.id, history);
@@ -161,7 +169,7 @@ class _ThreadPageState extends State<ThreadPage> {
         '${widget.thread.img}${widget.thread.ext}',
         ..._replies
             .where((r) => r.reply.img != '')
-            .map((r) => '${r.reply.img}${r.reply.ext}')
+            .map((r) => '${r.reply.img}${r.reply.ext}'),
       ];
     } else {
       allImageNames = _replies
@@ -172,22 +180,24 @@ class _ThreadPageState extends State<ThreadPage> {
     return Scaffold(
       body: Theme(
         data: Theme.of(context).copyWith(
-            textTheme: Theme.of(context).textTheme.apply(
-                  fontSizeFactor: appState.setting.fontSizeFactor,
-                )),
+          textTheme: Theme.of(
+            context,
+          ).textTheme.apply(fontSizeFactor: appState.setting.fontSizeFactor),
+        ),
         child: NotificationListener<ScrollNotification>(
           onNotification: (ScrollNotification notice) {
             _getCurPageThrottle.run(() async {
-              _sliverMultiBoxAdaptorElement = _sliverMultiBoxAdaptorElement ??
+              _sliverMultiBoxAdaptorElement =
+                  _sliverMultiBoxAdaptorElement ??
                   findSliverMultiBoxAdaptorElement(notice.context! as Element)!;
               final viewportDimension = notice.metrics.viewportDimension;
               int firstIndex = -1;
               int lastIndex = -1;
 
               void onVisitChildren(Element element) {
-                final SliverMultiBoxAdaptorParentData oldParentData = element
-                    .renderObject
-                    ?.parentData as SliverMultiBoxAdaptorParentData;
+                final SliverMultiBoxAdaptorParentData oldParentData =
+                    element.renderObject?.parentData
+                        as SliverMultiBoxAdaptorParentData;
                 double layoutOffset = oldParentData.layoutOffset!;
                 double pixels = notice.metrics.pixels;
                 double all = pixels + viewportDimension;
@@ -230,28 +240,32 @@ class _ThreadPageState extends State<ThreadPage> {
                       ),
                       Text(
                         'X岛・nmbxd.com',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: Theme.of(context).hintColor),
-                      )
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).hintColor,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 actions: [
                   IconButton(
-                      tooltip: '分享',
-                      onPressed: () async => await Share.share(
-                          'https://www.nmbxd1.com/t/${widget.thread.id}'),
-                      icon: Icon(Icons.share)),
+                    tooltip: '分享',
+                    onPressed: () async => await Share.share(
+                      'https://www.nmbxd1.com/t/${widget.thread.id}',
+                    ),
+                    icon: Icon(Icons.share),
+                  ),
                   IconButton(
-                      tooltip: '切换原图模式',
-                      onPressed: () => setState(() {
-                            _isRawPicMode = !_isRawPicMode;
-                          }),
-                      icon: Icon(_isRawPicMode
+                    tooltip: '切换原图模式',
+                    onPressed: () => setState(() {
+                      _isRawPicMode = !_isRawPicMode;
+                    }),
+                    icon: Icon(
+                      _isRawPicMode
                           ? Icons.raw_on
-                          : Icons.photo_size_select_actual)),
+                          : Icons.photo_size_select_actual,
+                    ),
+                  ),
                 ],
               ),
               SliverToBoxAdapter(
@@ -259,31 +273,37 @@ class _ThreadPageState extends State<ThreadPage> {
                   onLongPress: () =>
                       showThreadActionMenu(context, widget.thread, true),
                   child: Material(
-                      type: MaterialType.transparency,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                            vertical: breakpoint.gutters / 2,
-                            horizontal: breakpoint.gutters),
-                        child: FilterableThreadWidget(
-                          reply: widget.thread,
-                          isTimeLineFilter: false,
-                          child: ReplyItem(
-                            isRawPicMode: _isRawPicMode,
-                            isThreadFirstOrForumPreview: true,
-                            contentNeedCollapsed:
-                                _poReplyExpandFlag ? false : true,
-                            threadJson: widget.thread,
-                            refCache: refCache,
-                            contentHeroTag: widget.poContentHeroTag ??
-                                'ThreadCard ${widget.thread.id}',
-                            imageHeroTag: widget.poImgContentHeroTag ??
-                                'Image ${widget.thread.img}${widget.thread.ext}',
-                            imageInitIndex: widget.thread.img != '' ? 0 : null,
-                            imageNames:
-                                widget.thread.img != '' ? allImageNames : null,
-                          ),
+                    type: MaterialType.transparency,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        vertical: breakpoint.gutters / 2,
+                        horizontal: breakpoint.gutters,
+                      ),
+                      child: FilterableThreadWidget(
+                        reply: widget.thread,
+                        isTimeLineFilter: false,
+                        child: ReplyItem(
+                          isRawPicMode: _isRawPicMode,
+                          isThreadFirstOrForumPreview: true,
+                          contentNeedCollapsed: _poReplyExpandFlag
+                              ? false
+                              : true,
+                          threadJson: widget.thread,
+                          refCache: refCache,
+                          contentHeroTag:
+                              widget.poContentHeroTag ??
+                              'ThreadCard ${widget.thread.id}',
+                          imageHeroTag:
+                              widget.poImgContentHeroTag ??
+                              'Image ${widget.thread.img}${widget.thread.ext}',
+                          imageInitIndex: widget.thread.img != '' ? 0 : null,
+                          imageNames: widget.thread.img != ''
+                              ? allImageNames
+                              : null,
                         ),
-                      )),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               SliverToBoxAdapter(
@@ -291,24 +311,24 @@ class _ThreadPageState extends State<ThreadPage> {
                   padding: EdgeInsets.symmetric(
                     vertical: breakpoint.gutters / 2,
                   ),
-                  child: Divider(
-                    height: 2,
-                  ),
+                  child: Divider(height: 2),
                 ),
               ),
               if (_currentMinPage > 1)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding:
-                        EdgeInsets.symmetric(vertical: breakpoint.gutters / 2),
+                    padding: EdgeInsets.symmetric(
+                      vertical: breakpoint.gutters / 2,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ElevatedButton(
-                            onPressed: () {
-                              _loadMoreBeforeReplies();
-                            },
-                            child: Text('加载之前的回复')),
+                          onPressed: () {
+                            _loadMoreBeforeReplies();
+                          },
+                          child: Text('加载之前的回复'),
+                        ),
                       ],
                     ),
                   ),
@@ -319,27 +339,24 @@ class _ThreadPageState extends State<ThreadPage> {
                     padding: EdgeInsets.symmetric(
                       vertical: breakpoint.gutters / 2,
                     ),
-                    child: Divider(
-                      height: 2,
-                    ),
+                    child: Divider(height: 2),
                   ),
                 ),
               if (_isLoadingBefore)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.symmetric(
-                        horizontal: breakpoint.gutters,
-                        vertical: breakpoint.gutters / 2),
+                      horizontal: breakpoint.gutters,
+                      vertical: breakpoint.gutters / 2,
+                    ),
                     child: Skeletonizer(
                       effect: ShimmerEffect(
-                        baseColor: Theme.of(context)
-                            .colorScheme
-                            .onPrimaryContainer
-                            .withAlpha(70),
-                        highlightColor: Theme.of(context)
-                            .colorScheme
-                            .onPrimaryContainer
-                            .withAlpha(50),
+                        baseColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimaryContainer.withAlpha(70),
+                        highlightColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimaryContainer.withAlpha(50),
                       ),
                       enabled: true,
                       child: ReplyItem(
@@ -355,9 +372,7 @@ class _ThreadPageState extends State<ThreadPage> {
                     padding: EdgeInsets.symmetric(
                       vertical: breakpoint.gutters / 2,
                     ),
-                    child: Divider(
-                      height: 2,
-                    ),
+                    child: Divider(height: 2),
                   ),
                 ),
               SliverList(
@@ -377,17 +392,22 @@ class _ThreadPageState extends State<ThreadPage> {
                       children: [
                         InkWell(
                           onLongPress: () => showThreadActionMenu(
-                              context, _replies[index].reply, false),
+                            context,
+                            _replies[index].reply,
+                            false,
+                          ),
                           child: Padding(
                             padding: EdgeInsets.symmetric(
-                                horizontal: breakpoint.gutters,
-                                vertical: breakpoint.gutters / 2),
+                              horizontal: breakpoint.gutters,
+                              vertical: breakpoint.gutters / 2,
+                            ),
                             child: FilterableThreadWidget(
                               reply: _replies[index].reply,
                               isTimeLineFilter: false,
                               child: ReplyItem(
                                 key: Key(
-                                    'ReplyCard ${_replies[index].reply.id}'),
+                                  'ReplyCard ${_replies[index].reply.id}',
+                                ),
                                 isRawPicMode: _isRawPicMode,
                                 collapsedRef: mustCollapsed,
                                 refCache: refCache,
@@ -396,10 +416,12 @@ class _ThreadPageState extends State<ThreadPage> {
                                 threadJson: _replies[index].reply,
                                 imageHeroTag:
                                     'Image ${_replies[index].reply.img}${_replies[index].reply.ext}',
-                                imageInitIndex:
-                                    imageIndex >= 0 ? imageIndex : null,
-                                imageNames:
-                                    imageIndex >= 0 ? allImageNames : null,
+                                imageInitIndex: imageIndex >= 0
+                                    ? imageIndex
+                                    : null,
+                                imageNames: imageIndex >= 0
+                                    ? allImageNames
+                                    : null,
                               ),
                             ),
                           ),
@@ -409,9 +431,7 @@ class _ThreadPageState extends State<ThreadPage> {
                             padding: EdgeInsets.symmetric(
                               vertical: breakpoint.gutters / 2,
                             ),
-                            child: Divider(
-                              height: 2,
-                            ),
+                            child: Divider(height: 2),
                           ),
                       ],
                     );
@@ -423,20 +443,19 @@ class _ThreadPageState extends State<ThreadPage> {
                 SliverToBoxAdapter(
                   child: Skeletonizer(
                     effect: ShimmerEffect(
-                      baseColor: Theme.of(context)
-                          .colorScheme
-                          .onPrimaryContainer
-                          .withAlpha(70),
-                      highlightColor: Theme.of(context)
-                          .colorScheme
-                          .onPrimaryContainer
-                          .withAlpha(50),
+                      baseColor: Theme.of(
+                        context,
+                      ).colorScheme.onPrimaryContainer.withAlpha(70),
+                      highlightColor: Theme.of(
+                        context,
+                      ).colorScheme.onPrimaryContainer.withAlpha(50),
                     ),
                     enabled: true,
                     child: Padding(
                       padding: EdgeInsets.symmetric(
-                          vertical: breakpoint.gutters / 2,
-                          horizontal: breakpoint.gutters),
+                        vertical: breakpoint.gutters / 2,
+                        horizontal: breakpoint.gutters,
+                      ),
                       child: ReplyItem(
                         contentNeedCollapsed: false,
                         threadJson: fakeThread,
@@ -447,8 +466,9 @@ class _ThreadPageState extends State<ThreadPage> {
               else
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding:
-                        EdgeInsets.symmetric(vertical: breakpoint.gutters / 2),
+                    padding: EdgeInsets.symmetric(
+                      vertical: breakpoint.gutters / 2,
+                    ),
                     child: Center(
                       child: TextButton(
                         onPressed: () {
@@ -464,14 +484,18 @@ class _ThreadPageState extends State<ThreadPage> {
                         },
                         child: Text.rich(
                           textAlign: TextAlign.center,
-                          TextSpan(text: '到底了(　ﾟ 3ﾟ)\n', children: [
-                            TextSpan(
-                              text: '\n刷新试试？',
-                              style: TextStyle(
+                          TextSpan(
+                            text: '到底了(　ﾟ 3ﾟ)\n',
+                            children: [
+                              TextSpan(
+                                text: '\n刷新试试？',
+                                style: TextStyle(
                                   decoration: TextDecoration.underline,
-                                  fontSize: 12),
-                            )
-                          ]),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
                           style: TextStyle(color: Theme.of(context).hintColor),
                         ),
                       ),
@@ -485,37 +509,39 @@ class _ThreadPageState extends State<ThreadPage> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       floatingActionButton:
           (!_isBottomVisible && !appState.setting.fixedBottomBar)
-              ? null
-              : FloatingActionButton(
-                  shape: CircleBorder(),
-                  onPressed: () => showReplyBottomSheet(
-                      context,
-                      false,
-                      widget.thread.id,
-                      _currentRepliesCount ~/ 19 + 1,
-                      widget.thread,
-                      _imageFile,
-                      (image) => _imageFile = image,
-                      _replyTitleControler,
-                      _replyAuthorControler,
-                      _replyTextControler, () {
-                    // 如果已经加载到最后一页，重新加载以刷出自己的回复
-                    if (_currentMaxPage >= _currentRepliesCount ~/ 19 + 1 ||
-                        _currentMaxPage == 0) {
-                      setState(() {
-                        if (_currentMaxPage > 2) {
-                          _currentMaxPage -= 2;
-                        } else {
-                          _currentMaxPage = 0;
-                        }
-                        _hasMoreAfter = true;
-                      });
-                      _loadMoreAfterReplies();
-                    }
-                  }),
-                  tooltip: '回复',
-                  child: Icon(Icons.create),
-                ),
+          ? null
+          : FloatingActionButton(
+              shape: CircleBorder(),
+              onPressed: () => showReplyBottomSheet(
+                context,
+                false,
+                widget.thread.id,
+                _currentRepliesCount ~/ 19 + 1,
+                widget.thread,
+                _imageFile,
+                (image) => _imageFile = image,
+                _replyTitleControler,
+                _replyAuthorControler,
+                _replyTextControler,
+                () {
+                  // 如果已经加载到最后一页，重新加载以刷出自己的回复
+                  if (_currentMaxPage >= _currentRepliesCount ~/ 19 + 1 ||
+                      _currentMaxPage == 0) {
+                    setState(() {
+                      if (_currentMaxPage > 2) {
+                        _currentMaxPage -= 2;
+                      } else {
+                        _currentMaxPage = 0;
+                      }
+                      _hasMoreAfter = true;
+                    });
+                    _loadMoreAfterReplies();
+                  }
+                },
+              ),
+              tooltip: '回复',
+              child: Icon(Icons.create),
+            ),
       bottomNavigationBar: SafeArea(
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -533,196 +559,204 @@ class _ThreadPageState extends State<ThreadPage> {
                 ? Row(
                     children: [
                       IconButton(
-                          tooltip: '收藏',
-                          onPressed: () {
-                            if (appState.isStared(widget.thread.id)) {
-                              appState.setState((_) {
-                                appState.setting.starHistory.removeWhere(
-                                    (rply) =>
-                                        rply.thread.id == widget.thread.id);
-                              });
-                            } else {
-                              appState.setState((_) {
-                                final history = _curVisableReplyWithPage ??
-                                    (_replies.isEmpty
-                                        ? ReplyJsonWithPage(
-                                            1,
-                                            0,
-                                            widget.thread.id,
-                                            widget.thread,
-                                            widget.thread)
-                                        : _replies.first);
-                                appState.setting.starHistory.add(history);
-                              });
-                            }
-                          },
-                          icon: Icon(appState.isStared(widget.thread.id)
+                        tooltip: '收藏',
+                        onPressed: () {
+                          if (appState.isStared(widget.thread.id)) {
+                            appState.setState((_) {
+                              appState.setting.starHistory.removeWhere(
+                                (rply) => rply.thread.id == widget.thread.id,
+                              );
+                            });
+                          } else {
+                            appState.setState((_) {
+                              final history =
+                                  _curVisableReplyWithPage ??
+                                  (_replies.isEmpty
+                                      ? ReplyJsonWithPage(
+                                          1,
+                                          0,
+                                          widget.thread.id,
+                                          widget.thread,
+                                          widget.thread,
+                                        )
+                                      : _replies.first);
+                              appState.setting.starHistory.add(history);
+                            });
+                          }
+                        },
+                        icon: Icon(
+                          appState.isStared(widget.thread.id)
                               ? Icons.favorite
-                              : Icons.favorite_border)),
+                              : Icons.favorite_border,
+                        ),
+                      ),
                       IconButton(
-                          tooltip: '跳页',
-                          onPressed: () {
-                            final totalPages = _currentRepliesCount ~/ 19 + 1;
-                            final curPage = _curVisableReplyWithPage?.page ??
-                                (widget.startPage >= 1 ? widget.startPage : 1);
-                            TextEditingController pageController =
-                                TextEditingController(text: curPage.toString());
-                            showDialog(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return AlertDialog(
-                                  title: Text('跳页'),
-                                  content: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SingleChildScrollView(
-                                        scrollDirection: Axis.horizontal,
-                                        child: SizedBox(
-                                          height: 75,
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              IconButton(
-                                                onPressed: curPage > 1
-                                                    ? () {
-                                                        Navigator.of(context)
-                                                            .pop(1);
-                                                      }
-                                                    : null,
-                                                icon: Icon(Icons.first_page),
-                                                tooltip: '首页',
-                                              ),
-                                              IconButton(
-                                                onPressed: curPage > 1
-                                                    ? () {
-                                                        Navigator.of(context)
-                                                            .pop(curPage - 1);
-                                                      }
-                                                    : null,
-                                                icon: Icon(Icons.chevron_left),
-                                                tooltip: '上一页',
-                                              ),
-                                              SizedBox(
-                                                width: 70,
-                                                child: TextField(
-                                                  controller: pageController,
-                                                  keyboardType:
-                                                      TextInputType.number,
-                                                  decoration: InputDecoration(
-                                                    labelText: '页数',
-                                                    border:
-                                                        OutlineInputBorder(),
-                                                  ),
+                        tooltip: '跳页',
+                        onPressed: () {
+                          final totalPages = _currentRepliesCount ~/ 19 + 1;
+                          final curPage =
+                              _curVisableReplyWithPage?.page ??
+                              (widget.startPage >= 1 ? widget.startPage : 1);
+                          TextEditingController pageController =
+                              TextEditingController(text: curPage.toString());
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text('跳页'),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: SizedBox(
+                                        height: 75,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            IconButton(
+                                              onPressed: curPage > 1
+                                                  ? () {
+                                                      Navigator.of(
+                                                        context,
+                                                      ).pop(1);
+                                                    }
+                                                  : null,
+                                              icon: Icon(Icons.first_page),
+                                              tooltip: '首页',
+                                            ),
+                                            IconButton(
+                                              onPressed: curPage > 1
+                                                  ? () {
+                                                      Navigator.of(
+                                                        context,
+                                                      ).pop(curPage - 1);
+                                                    }
+                                                  : null,
+                                              icon: Icon(Icons.chevron_left),
+                                              tooltip: '上一页',
+                                            ),
+                                            SizedBox(
+                                              width: 70,
+                                              child: TextField(
+                                                controller: pageController,
+                                                keyboardType:
+                                                    TextInputType.number,
+                                                decoration: InputDecoration(
+                                                  labelText: '页数',
+                                                  border: OutlineInputBorder(),
                                                 ),
                                               ),
-                                              SizedBox(
-                                                width: 5,
-                                              ),
-                                              Text('/ $totalPages'),
-                                              IconButton(
-                                                onPressed: curPage < totalPages
-                                                    ? () {
-                                                        Navigator.of(context)
-                                                            .pop(curPage + 1);
-                                                      }
-                                                    : null,
-                                                icon: Icon(Icons.chevron_right),
-                                                tooltip: '下一页',
-                                              ),
-                                              IconButton(
-                                                onPressed: curPage < totalPages
-                                                    ? () {
-                                                        Navigator.of(context)
-                                                            .pop(totalPages);
-                                                      }
-                                                    : null,
-                                                icon: Icon(Icons.last_page),
-                                                tooltip: '尾页',
-                                              ),
-                                            ],
-                                          ),
+                                            ),
+                                            SizedBox(width: 5),
+                                            Text('/ $totalPages'),
+                                            IconButton(
+                                              onPressed: curPage < totalPages
+                                                  ? () {
+                                                      Navigator.of(
+                                                        context,
+                                                      ).pop(curPage + 1);
+                                                    }
+                                                  : null,
+                                              icon: Icon(Icons.chevron_right),
+                                              tooltip: '下一页',
+                                            ),
+                                            IconButton(
+                                              onPressed: curPage < totalPages
+                                                  ? () {
+                                                      Navigator.of(
+                                                        context,
+                                                      ).pop(totalPages);
+                                                    }
+                                                  : null,
+                                              icon: Icon(Icons.last_page),
+                                              tooltip: '尾页',
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.of(context).pop();
-                                      },
-                                      child: Text('取消'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        int? page =
-                                            int.tryParse(pageController.text);
-                                        if (page != null &&
-                                            page > 0 &&
-                                            page <= totalPages) {
-                                          Navigator.of(context).pop(page);
-                                        }
-                                      },
-                                      child: Text('确定'),
                                     ),
                                   ],
-                                );
-                              },
-                            ).then((selectedPage) async {
-                              if (selectedPage != null &&
-                                  selectedPage != curPage) {
-                                print('跳到第 $selectedPage 页');
-                                _currentMaxPage = selectedPage - 1;
-                                _currentMinPage = selectedPage;
-                                _replies.clear();
-                                _curVisableReplyWithPage = null;
-                                _hasMoreAfter = true;
-                                _hasMoreBefore =
-                                    selectedPage > 1 ? true : false;
-                                _isLoadingAfter = false;
-                                _isLoadingBefore = false;
-                                _lastBuildingReplyIndex = -1; // 让ref能正确展开
-                                await _loadMoreAfterReplies();
-                                _curVisableReplyWithPage = _replies.first;
-                              }
-                            });
-                          },
-                          icon: Icon(Icons.move_down)),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: Text('取消'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      int? page = int.tryParse(
+                                        pageController.text,
+                                      );
+                                      if (page != null &&
+                                          page > 0 &&
+                                          page <= totalPages) {
+                                        Navigator.of(context).pop(page);
+                                      }
+                                    },
+                                    child: Text('确定'),
+                                  ),
+                                ],
+                              );
+                            },
+                          ).then((selectedPage) async {
+                            if (selectedPage != null &&
+                                selectedPage != curPage) {
+                              print('跳到第 $selectedPage 页');
+                              _currentMaxPage = selectedPage - 1;
+                              _currentMinPage = selectedPage;
+                              _replies.clear();
+                              _curVisableReplyWithPage = null;
+                              _hasMoreAfter = true;
+                              _hasMoreBefore = selectedPage > 1 ? true : false;
+                              _isLoadingAfter = false;
+                              _isLoadingBefore = false;
+                              _lastBuildingReplyIndex = -1; // 让ref能正确展开
+                              await _loadMoreAfterReplies();
+                              _curVisableReplyWithPage = _replies.first;
+                            }
+                          });
+                        },
+                        icon: Icon(Icons.move_down),
+                      ),
                       IconButton(
                         onPressed: () {
                           showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                    title: Text(
-                                        '字体大小缩放(${appState.setting.fontSizeFactor.toStringAsFixed(1)})'),
-                                    content: SizedBox(
-                                      width: 250,
-                                      height: 48,
-                                      child: Column(
-                                        children: [
-                                          Slider(
-                                            min: 0.7,
-                                            max: 1.3,
-                                            value:
-                                                appState.setting.fontSizeFactor,
-                                            divisions: 6,
-                                            onChanged: (double value) {
-                                              appState.setState((state) {
-                                                state.setting.fontSizeFactor =
-                                                    value;
-                                              });
-                                            },
-                                          ),
-                                        ],
-                                      ),
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text(
+                                '字体大小缩放(${appState.setting.fontSizeFactor.toStringAsFixed(1)})',
+                              ),
+                              content: SizedBox(
+                                width: 250,
+                                height: 48,
+                                child: Column(
+                                  children: [
+                                    Slider(
+                                      min: 0.7,
+                                      max: 1.3,
+                                      value: appState.setting.fontSizeFactor,
+                                      divisions: 6,
+                                      onChanged: (double value) {
+                                        appState.setState((state) {
+                                          state.setting.fontSizeFactor = value;
+                                        });
+                                      },
                                     ),
-                                    actions: [
-                                      TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(context).pop(),
-                                          child: Text('确定'))
-                                    ],
-                                  ));
+                                  ],
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  child: Text('确定'),
+                                ),
+                              ],
+                            ),
+                          );
                         },
                         icon: Icon(Icons.format_size),
                       ),
@@ -736,7 +770,10 @@ class _ThreadPageState extends State<ThreadPage> {
   }
 
   Future<dynamic> showThreadActionMenu(
-      BuildContext context, ReplyJson reply, bool isThread) {
+    BuildContext context,
+    ReplyJson reply,
+    bool isThread,
+  ) {
     return showDialog(
       context: context,
       builder: (context) {
@@ -751,42 +788,46 @@ class _ThreadPageState extends State<ThreadPage> {
                   Navigator.of(context).pop();
                   _replyTextControler.text += '>>No.${reply.id}\n';
                   showReplyBottomSheet(
-                      context,
-                      false,
-                      widget.thread.id,
-                      _currentRepliesCount ~/ 19 + 1,
-                      widget.thread,
-                      _imageFile,
-                      (image) => _imageFile = image,
-                      _replyTitleControler,
-                      _replyAuthorControler,
-                      _replyTextControler, () {
-                    // 如果已经加载到最后一页，重新加载以刷出自己的回复
-                    if (_currentMaxPage >= _currentRepliesCount ~/ 19 + 1 ||
-                        _currentMaxPage == 0) {
-                      setState(() {
-                        if (_currentMaxPage > 2) {
-                          _currentMaxPage -= 2;
-                        } else {
-                          _currentMaxPage = 0;
-                        }
-                        _hasMoreAfter = true;
-                      });
-                      _loadMoreAfterReplies();
-                    }
-                  });
+                    context,
+                    false,
+                    widget.thread.id,
+                    _currentRepliesCount ~/ 19 + 1,
+                    widget.thread,
+                    _imageFile,
+                    (image) => _imageFile = image,
+                    _replyTitleControler,
+                    _replyAuthorControler,
+                    _replyTextControler,
+                    () {
+                      // 如果已经加载到最后一页，重新加载以刷出自己的回复
+                      if (_currentMaxPage >= _currentRepliesCount ~/ 19 + 1 ||
+                          _currentMaxPage == 0) {
+                        setState(() {
+                          if (_currentMaxPage > 2) {
+                            _currentMaxPage -= 2;
+                          } else {
+                            _currentMaxPage = 0;
+                          }
+                          _hasMoreAfter = true;
+                        });
+                        _loadMoreAfterReplies();
+                      }
+                    },
+                  );
                 },
               ),
             SimpleDialogOption(
               child: Text('复制内容'),
               onPressed: () {
-                final appState =
-                    Provider.of<MyAppState>(context, listen: false);
-                pageRoute({
-                  required Widget Function(BuildContext) builder,
-                }) {
-                  final setting =
-                      Provider.of<MyAppState>(context, listen: false).setting;
+                final appState = Provider.of<MyAppState>(
+                  context,
+                  listen: false,
+                );
+                pageRoute({required Widget Function(BuildContext) builder}) {
+                  final setting = Provider.of<MyAppState>(
+                    context,
+                    listen: false,
+                  ).setting;
                   if (setting.enableSwipeBack) {
                     return SwipeablePageRoute(builder: builder);
                   } else {
@@ -798,28 +839,28 @@ class _ThreadPageState extends State<ThreadPage> {
                 Navigator.of(context).push(
                   pageRoute(
                     builder: (BuildContext context) => Scaffold(
-                      appBar: AppBar(
-                        title: Text('自由复制'),
-                      ),
+                      appBar: AppBar(title: Text('自由复制')),
                       body: Theme(
                         data: Theme.of(context).copyWith(
-                            textTheme: Theme.of(context).textTheme.apply(
-                                  fontSizeFactor:
-                                      appState.setting.fontSizeFactor,
-                                )),
+                          textTheme: Theme.of(context).textTheme.apply(
+                            fontSizeFactor: appState.setting.fontSizeFactor,
+                          ),
+                        ),
                         child: SelectionArea(
                           child: ListView(
                             children: [
                               Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16),
-                                  child: ReplyItem(
-                                    poUserHash: widget.thread.userHash,
-                                    threadJson: reply,
-                                    contentNeedCollapsed: false,
-                                    noMoreParse: true,
-                                    contentHeroTag: "reply${reply.id}",
-                                  )),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: ReplyItem(
+                                  poUserHash: widget.thread.userHash,
+                                  threadJson: reply,
+                                  contentNeedCollapsed: false,
+                                  noMoreParse: true,
+                                  contentHeroTag: "reply${reply.id}",
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -832,11 +873,13 @@ class _ThreadPageState extends State<ThreadPage> {
             SimpleDialogOption(
               child: Text('屏蔽No.${reply.id}'),
               onPressed: () {
-                if (!appState.setting.threadFilters.any((filter) =>
-                    filter is IdThreadFilter && filter.id == reply.id)) {
+                if (!appState.setting.threadFilters.any(
+                  (filter) => filter is IdThreadFilter && filter.id == reply.id,
+                )) {
                   appState.setState((_) {
-                    appState.setting.threadFilters
-                        .add(IdThreadFilter(id: reply.id));
+                    appState.setting.threadFilters.add(
+                      IdThreadFilter(id: reply.id),
+                    );
                   });
                 }
                 Navigator.of(context).pop();
@@ -845,12 +888,15 @@ class _ThreadPageState extends State<ThreadPage> {
             SimpleDialogOption(
               child: Text('屏蔽饼干${reply.userHash}'),
               onPressed: () {
-                if (!appState.setting.threadFilters.any((filter) =>
-                    filter is UserHashFilter &&
-                    filter.userHash == reply.userHash)) {
+                if (!appState.setting.threadFilters.any(
+                  (filter) =>
+                      filter is UserHashFilter &&
+                      filter.userHash == reply.userHash,
+                )) {
                   appState.setState((_) {
-                    appState.setting.threadFilters
-                        .add(UserHashFilter(userHash: reply.userHash));
+                    appState.setting.threadFilters.add(
+                      UserHashFilter(userHash: reply.userHash),
+                    );
                   });
                 }
                 Navigator.of(context).pop();
@@ -879,21 +925,48 @@ class _ThreadPageState extends State<ThreadPage> {
     var historyIndex = -1;
     if (widget.withWholePage) {
       if (widget.startReplyId > 0) {
-        historyIndex = widget.thread.replies
-            .indexWhere((data) => data.id == widget.startReplyId);
+        historyIndex = widget.thread.replies.indexWhere(
+          (data) => data.id == widget.startReplyId,
+        );
         if (historyIndex == -1) {
-          _replies.addAll(widget.thread.replies.mapIndex((i, reply) =>
-              ReplyJsonWithPage(
-                  startPage, i, widget.thread.id, widget.thread, reply)));
-        } else {
-          _replies.addAll(widget.thread.replies.sublist(historyIndex).mapIndex(
+          _replies.addAll(
+            widget.thread.replies.mapIndex(
               (i, reply) => ReplyJsonWithPage(
-                  startPage, i, widget.thread.id, widget.thread, reply)));
+                startPage,
+                i,
+                widget.thread.id,
+                widget.thread,
+                reply,
+              ),
+            ),
+          );
+        } else {
+          _replies.addAll(
+            widget.thread.replies
+                .sublist(historyIndex)
+                .mapIndex(
+                  (i, reply) => ReplyJsonWithPage(
+                    startPage,
+                    i,
+                    widget.thread.id,
+                    widget.thread,
+                    reply,
+                  ),
+                ),
+          );
         }
       } else {
-        _replies.addAll(widget.thread.replies.mapIndex((index, reply) =>
-            ReplyJsonWithPage(_currentMinPage, index, widget.thread.id,
-                widget.thread, reply)));
+        _replies.addAll(
+          widget.thread.replies.mapIndex(
+            (index, reply) => ReplyJsonWithPage(
+              _currentMinPage,
+              index,
+              widget.thread.id,
+              widget.thread,
+              reply,
+            ),
+          ),
+        );
       }
     }
 
@@ -949,9 +1022,14 @@ class _ThreadPageState extends State<ThreadPage> {
     final appState = Provider.of<MyAppState>(context, listen: false);
     try {
       final newThreadData = await getThread(
-          widget.thread.id, _currentMinPage, appState.getCurrentCookie());
-      _currentRepliesCount =
-          max(_currentRepliesCount, newThreadData.replyCount);
+        widget.thread.id,
+        _currentMinPage,
+        appState.getCurrentCookie(),
+      );
+      _currentRepliesCount = max(
+        _currentRepliesCount,
+        newThreadData.replyCount,
+      );
       setState(() {
         if (newThreadData.replies.isEmpty ||
             (newThreadData.replies.length == 1 &&
@@ -967,25 +1045,29 @@ class _ThreadPageState extends State<ThreadPage> {
         }
         _replies.removeWhere((item) => item.page == _currentMinPage);
         _replies.insertAll(
-            0,
-            newThreadData.replies.mapIndex((index, reply) => ReplyJsonWithPage(
-                _currentMinPage,
-                index,
-                widget.thread.id,
-                widget.thread,
-                reply)));
+          0,
+          newThreadData.replies.mapIndex(
+            (index, reply) => ReplyJsonWithPage(
+              _currentMinPage,
+              index,
+              widget.thread.id,
+              widget.thread,
+              reply,
+            ),
+          ),
+        );
       });
     } on XDaoApiMsgException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.msg),
-        ));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.msg)));
       }
     } on XDaoApiNotSuccussException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.msg),
-        ));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.msg)));
       }
     } catch (e) {
       if (!mounted) return;
@@ -1009,9 +1091,14 @@ class _ThreadPageState extends State<ThreadPage> {
     final appState = Provider.of<MyAppState>(context, listen: false);
     try {
       final newThreadData = await getThread(
-          widget.thread.id, startPage, appState.getCurrentCookie());
-      _currentRepliesCount =
-          max(_currentRepliesCount, newThreadData.replyCount);
+        widget.thread.id,
+        startPage,
+        appState.getCurrentCookie(),
+      );
+      _currentRepliesCount = max(
+        _currentRepliesCount,
+        newThreadData.replyCount,
+      );
       setState(() {
         if (newThreadData.replies.isEmpty ||
             (newThreadData.replies.length == 1 &&
@@ -1022,33 +1109,59 @@ class _ThreadPageState extends State<ThreadPage> {
           refCache.put(rply.id, Future.value(RefHtml.fromReplyJson(rply)));
         }
         if (widget.startReplyId > 0) {
-          final historyIndex = newThreadData.replies
-              .indexWhere((data) => data.id == widget.startReplyId);
+          final historyIndex = newThreadData.replies.indexWhere(
+            (data) => data.id == widget.startReplyId,
+          );
           if (historyIndex == -1) {
-            _replies.addAll(newThreadData.replies.mapIndex((i, reply) =>
-                ReplyJsonWithPage(
-                    startPage, i, widget.thread.id, widget.thread, reply)));
+            _replies.addAll(
+              newThreadData.replies.mapIndex(
+                (i, reply) => ReplyJsonWithPage(
+                  startPage,
+                  i,
+                  widget.thread.id,
+                  widget.thread,
+                  reply,
+                ),
+              ),
+            );
           } else {
-            _replies.addAll(newThreadData.replies
-                .sublist(historyIndex)
-                .mapIndex((i, reply) => ReplyJsonWithPage(
-                    startPage, i, widget.thread.id, widget.thread, reply)));
+            _replies.addAll(
+              newThreadData.replies
+                  .sublist(historyIndex)
+                  .mapIndex(
+                    (i, reply) => ReplyJsonWithPage(
+                      startPage,
+                      i,
+                      widget.thread.id,
+                      widget.thread,
+                      reply,
+                    ),
+                  ),
+            );
             if (historyIndex >= 1) {
               _currentMinPage = startPage + 1; // before可加载
               _hasMoreBefore = true;
             }
           }
         } else {
-          _replies.addAll(newThreadData.replies.mapIndex((i, reply) =>
-              ReplyJsonWithPage(
-                  startPage, i, widget.thread.id, widget.thread, reply)));
+          _replies.addAll(
+            newThreadData.replies.mapIndex(
+              (i, reply) => ReplyJsonWithPage(
+                startPage,
+                i,
+                widget.thread.id,
+                widget.thread,
+                reply,
+              ),
+            ),
+          );
         }
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString()),
-        ));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     } finally {
       if (mounted) {
@@ -1080,7 +1193,10 @@ class _ThreadPageState extends State<ThreadPage> {
     final appState = Provider.of<MyAppState>(context, listen: false);
     try {
       final newThreadData = await getThread(
-          widget.thread.id, _currentMaxPage, appState.getCurrentCookie());
+        widget.thread.id,
+        _currentMaxPage,
+        appState.getCurrentCookie(),
+      );
       setState(() {
         if (newThreadData.replies.isEmpty ||
             (newThreadData.replies.length == 1 &&
@@ -1088,21 +1204,31 @@ class _ThreadPageState extends State<ThreadPage> {
           _hasMoreAfter = false;
           return;
         }
-        _currentRepliesCount =
-            max(_currentRepliesCount, newThreadData.replyCount);
+        _currentRepliesCount = max(
+          _currentRepliesCount,
+          newThreadData.replyCount,
+        );
         _replies.removeWhere((item) => item.page == _currentMaxPage);
         for (var rply in newThreadData.replies) {
           refCache.put(rply.id, Future.value(RefHtml.fromReplyJson(rply)));
         }
-        _replies.addAll(newThreadData.replies.mapIndex((i, reply) =>
-            ReplyJsonWithPage(
-                _currentMaxPage, i, widget.thread.id, widget.thread, reply)));
+        _replies.addAll(
+          newThreadData.replies.mapIndex(
+            (i, reply) => ReplyJsonWithPage(
+              _currentMaxPage,
+              i,
+              widget.thread.id,
+              widget.thread,
+              reply,
+            ),
+          ),
+        );
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString()),
-        ));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
         setState(() {
           _hasMoreAfter = false;
         });

@@ -100,18 +100,19 @@ class ThreadJson extends ReplyJson {
 }
 
 final fakeThread = ThreadJson(
-    admin: false,
-    id: 11111111,
-    fid: 1,
-    replyCount: 0,
-    img: '',
-    ext: '',
-    now: '2022-06-18(六)05:10:29',
-    userHash: 'maybeYou',
-    name: '无名氏',
-    title: '无标题',
-    content:
-        'aaaaaaaaaaaaaaaaaaaaaaaaaaaa<br>bbbbbbbbbbbbbbbbbbbbbb<br>cccccvvvvvvvvvvvvcccccc',
-    sage: false,
-    hide: false,
-    replies: []);
+  admin: false,
+  id: 11111111,
+  fid: 1,
+  replyCount: 0,
+  img: '',
+  ext: '',
+  now: '2022-06-18(六)05:10:29',
+  userHash: 'maybeYou',
+  name: '无名氏',
+  title: '无标题',
+  content:
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaa<br>bbbbbbbbbbbbbbbbbbbbbb<br>cccccvvvvvvvvvvvvcccccc',
+  sage: false,
+  hide: false,
+  replies: [],
+);

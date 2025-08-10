@@ -38,10 +38,11 @@ class CookieSetting extends HiveObject {
     }
   }
 
-  CookieSetting(
-      {required this.cookieHash,
-      required this.name,
-      required this.displayName});
+  CookieSetting({
+    required this.cookieHash,
+    required this.name,
+    required this.displayName,
+  });
 }
 
 @HiveType(typeId: 1)
@@ -222,9 +223,9 @@ class LightDaoSetting extends HiveObject {
     required this.phraseWidth,
     required this.fetchTimeout,
     LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
-  })  : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
-        viewPoOnlyHistory =
-            viewPoOnlyHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
+  }) : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
+       viewPoOnlyHistory =
+           viewPoOnlyHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
 
   LightDaoSetting.withAppDefaults({
     required this.cookies,
@@ -240,38 +241,39 @@ class LightDaoSetting extends HiveObject {
     required this.phrases,
     LRUCache<int, ReplyJsonWithPage>? viewHistory,
     LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
-  })  : refCollapsing = 2,
-        refPoping = 3,
-        followedSysDarkMode = true,
-        userSettingIsDarkMode = false,
-        isCardView = true,
-        collapsedLen = 100,
-        lightModeThemeColor = Color.fromARGB(255, 241, 98, 100),
-        darkModeThemeColor = Color.fromARGB(255, 241, 98, 100),
-        dynamicThemeColor = false,
-        selectIcon = 0,
-        useAmoledBlack = false,
-        fontSizeFactor = 1.0,
-        dividerBetweenReply = false,
-        cacheTimelines = [],
-        cacheForumLists = [],
-        fixedBottomBar = false,
-        displayExactTime = false,
-        latestTrend = null,
-        dragToDissmissImage = true,
-        dontShowFilttedForumInTimeLine = true,
-        enableSwipeBack = false,
-        initForumOrTimelineId = 1,
-        initIsTimeline = true,
-        initForumOrTimelineName = '综合线',
-        predictiveBack = false,
-        columnWidth = 445,
-        isMultiColumn = true,
-        phraseWidth = 175,
-        fetchTimeout = 3,
-        seenNoticeDate = 0,
-        viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
-        viewPoOnlyHistory = viewPoOnlyHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
+  }) : refCollapsing = 2,
+       refPoping = 3,
+       followedSysDarkMode = true,
+       userSettingIsDarkMode = false,
+       isCardView = true,
+       collapsedLen = 100,
+       lightModeThemeColor = Color.fromARGB(255, 241, 98, 100),
+       darkModeThemeColor = Color.fromARGB(255, 241, 98, 100),
+       dynamicThemeColor = false,
+       selectIcon = 0,
+       useAmoledBlack = false,
+       fontSizeFactor = 1.0,
+       dividerBetweenReply = false,
+       cacheTimelines = [],
+       cacheForumLists = [],
+       fixedBottomBar = false,
+       displayExactTime = false,
+       latestTrend = null,
+       dragToDissmissImage = true,
+       dontShowFilttedForumInTimeLine = true,
+       enableSwipeBack = false,
+       initForumOrTimelineId = 1,
+       initIsTimeline = true,
+       initForumOrTimelineName = '综合线',
+       predictiveBack = false,
+       columnWidth = 445,
+       isMultiColumn = true,
+       phraseWidth = 175,
+       fetchTimeout = 3,
+       seenNoticeDate = 0,
+       viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
+       viewPoOnlyHistory =
+           viewPoOnlyHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
 }
 
 class MaterialColorAdapter extends TypeAdapter<MaterialColor> {
@@ -281,8 +283,10 @@ class MaterialColorAdapter extends TypeAdapter<MaterialColor> {
   @override
   MaterialColor read(BinaryReader reader) {
     final value = reader.readInt();
-    return Colors.primaries.firstWhere((color) => color.toARGB32() == value,
-        orElse: () => Colors.green);
+    return Colors.primaries.firstWhere(
+      (color) => color.toARGB32() == value,
+      orElse: () => Colors.green,
+    );
   }
 
   @override
@@ -314,15 +318,9 @@ class ThreadUserData {
   @HiveField(1)
   final String replyCookieName;
 
-  ThreadUserData({
-    required this.tid,
-    required this.replyCookieName,
-  });
+  ThreadUserData({required this.tid, required this.replyCookieName});
 
-  ThreadUserData copyWith({
-    int? tid,
-    String? replyCookieName,
-  }) {
+  ThreadUserData copyWith({int? tid, String? replyCookieName}) {
     return ThreadUserData(
       tid: tid ?? this.tid,
       replyCookieName: replyCookieName ?? this.replyCookieName,
@@ -355,7 +353,7 @@ class MyAppState with ChangeNotifier {
   void updateForumMap(List<ForumList> forumLists) {
     forumMap = {
       for (var forum in forumLists.expand((forumList) => forumList.forums))
-        forum.id: forum
+        forum.id: forum,
     };
     notifyListeners();
   }
@@ -379,71 +377,81 @@ class MyAppState with ChangeNotifier {
   }
 
   void tryFetchTimelines(
-      GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey) {
+    GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey,
+  ) {
     if (setting.cacheTimelines.isEmpty &&
         fetchTimelinesStatus != SimpleStatus.loading) {
       fetchTimelinesStatus = SimpleStatus.loading;
       fetchTimelines()
           .timeout(Duration(seconds: setting.fetchTimeout))
-          .then((timelines) => setState((_) async {
-                fetchTimelinesStatus = SimpleStatus.completed;
-                setting.cacheTimelines.addAll(timelines);
-                notifyListeners();
-                await saveSettings();
-              }))
+          .then(
+            (timelines) => setState((_) async {
+              fetchTimelinesStatus = SimpleStatus.completed;
+              setting.cacheTimelines.addAll(timelines);
+              notifyListeners();
+              await saveSettings();
+            }),
+          )
           .catchError((err) {
-        fetchTimelinesStatus = SimpleStatus.error;
-        notifyListeners();
-        if (!scaffoldMessengerKey.currentContext!.mounted) return;
-        scaffoldMessengerKey.currentState?.showSnackBar(
-          SnackBar(
-              content: Text('拉取时间线错误： ${err.toString()}'),
-              action: SnackBarAction(
-                label: '重试',
-                onPressed: () => tryFetchTimelines(scaffoldMessengerKey),
-              )),
-        );
-      });
+            fetchTimelinesStatus = SimpleStatus.error;
+            notifyListeners();
+            if (!scaffoldMessengerKey.currentContext!.mounted) return;
+            scaffoldMessengerKey.currentState?.showSnackBar(
+              SnackBar(
+                content: Text('拉取时间线错误： ${err.toString()}'),
+                action: SnackBarAction(
+                  label: '重试',
+                  onPressed: () => tryFetchTimelines(scaffoldMessengerKey),
+                ),
+              ),
+            );
+          });
     }
   }
 
   void tryFetchForumLists(
-      GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey) {
+    GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey,
+  ) {
     if (setting.cacheForumLists.isEmpty &&
         fetchForumsStatus != SimpleStatus.loading) {
       fetchForumsStatus = SimpleStatus.loading;
       fetchForumList()
           .timeout(Duration(seconds: setting.fetchTimeout))
-          .then((forumlists) => setState((_) async {
-                fetchForumsStatus = SimpleStatus.completed;
-                setting.cacheForumLists.addAll(forumlists);
-                forumMap = {
-                  for (var forum
-                      in forumlists.expand((forumList) => forumList.forums))
-                    forum.id: forum
-                };
-                notifyListeners();
-                await saveSettings();
-              }))
+          .then(
+            (forumlists) => setState((_) async {
+              fetchForumsStatus = SimpleStatus.completed;
+              setting.cacheForumLists.addAll(forumlists);
+              forumMap = {
+                for (var forum in forumlists.expand(
+                  (forumList) => forumList.forums,
+                ))
+                  forum.id: forum,
+              };
+              notifyListeners();
+              await saveSettings();
+            }),
+          )
           .catchError((err) {
-        fetchForumsStatus = SimpleStatus.completed;
-        notifyListeners();
-        if (!scaffoldMessengerKey.currentContext!.mounted) return;
-        scaffoldMessengerKey.currentState?.showSnackBar(
-          SnackBar(
-              content: Text('拉取板块错误： ${err.toString()}'),
-              action: SnackBarAction(
-                label: '重试',
-                onPressed: () => tryFetchForumLists(scaffoldMessengerKey),
-              )),
-        );
-      });
+            fetchForumsStatus = SimpleStatus.completed;
+            notifyListeners();
+            if (!scaffoldMessengerKey.currentContext!.mounted) return;
+            scaffoldMessengerKey.currentState?.showSnackBar(
+              SnackBar(
+                content: Text('拉取板块错误： ${err.toString()}'),
+                action: SnackBarAction(
+                  label: '重试',
+                  onPressed: () => tryFetchForumLists(scaffoldMessengerKey),
+                ),
+              ),
+            );
+          });
     } else if (forumMap.isEmpty &&
         fetchForumsStatus == SimpleStatus.completed) {
       forumMap = {
-        for (var forum
-            in setting.cacheForumLists.expand((forumList) => forumList.forums))
-          forum.id: forum
+        for (var forum in setting.cacheForumLists.expand(
+          (forumList) => forumList.forums,
+        ))
+          forum.id: forum,
       };
       notifyListeners();
     }
@@ -490,7 +498,8 @@ class MyAppState with ChangeNotifier {
 
   Future<void> loadSettings() async {
     final tmpsetting = await _store.get(0);
-    setting = tmpsetting ??
+    setting =
+        tmpsetting ??
         LightDaoSetting.withAppDefaults(
           cookies: [],
           currentCookie: -1,
@@ -535,11 +544,14 @@ class MyAppState with ChangeNotifier {
   }
 
   Future<void> navigateThreadPage2(
-      BuildContext context, int threadId, bool popIfFinish,
-      {ThreadJson? thread,
-      bool? fullThread,
-      int? startPage,
-      int? startReplyId}) async {
+    BuildContext context,
+    int threadId,
+    bool popIfFinish, {
+    ThreadJson? thread,
+    bool? fullThread,
+    int? startPage,
+    int? startReplyId,
+  }) async {
     final threadHistory = setting.viewHistory.get(threadId);
     final loaderOverlay = context.loaderOverlay;
     bool isPop = false;
@@ -582,41 +594,43 @@ class MyAppState with ChangeNotifier {
     } else {
       loaderOverlay.show();
       final thread = getThread(threadId, startPage ?? 1, getCurrentCookie());
-      thread.then((thread) {
-        if (popIfFinish) {
-          if (!context.mounted) return;
-          Navigator.pop(context);
-          isPop = true;
-        }
-        if (!context.mounted) return;
-        loaderOverlay.hide();
-        if (!context.mounted) return;
-        Navigator.push(
-          context,
-          createPageRoute(
-            builder: (context) => ThreadPage2(
-              headerThread: thread,
-              startPage: startPage ?? 1,
-              startReplyId: startReplyId,
-              isCompletePage: true,
-            ),
-          ),
-        );
-      }).catchError((error) {
-        try {
-          if (popIfFinish && !isPop) {
+      thread
+          .then((thread) {
+            if (popIfFinish) {
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              isPop = true;
+            }
             if (!context.mounted) return;
-            Navigator.pop(context);
-          }
-        } catch (e) {
-          // 忽略 pop 失败
-        }
-        loaderOverlay.hide();
-        if (!context.mounted) return;
-        scaffoldMessengerKey.currentState?.showSnackBar(SnackBar(
-          content: Text(error.toString()),
-        ));
-      });
+            loaderOverlay.hide();
+            if (!context.mounted) return;
+            Navigator.push(
+              context,
+              createPageRoute(
+                builder: (context) => ThreadPage2(
+                  headerThread: thread,
+                  startPage: startPage ?? 1,
+                  startReplyId: startReplyId,
+                  isCompletePage: true,
+                ),
+              ),
+            );
+          })
+          .catchError((error) {
+            try {
+              if (popIfFinish && !isPop) {
+                if (!context.mounted) return;
+                Navigator.pop(context);
+              }
+            } catch (e) {
+              // 忽略 pop 失败
+            }
+            loaderOverlay.hide();
+            if (!context.mounted) return;
+            scaffoldMessengerKey.currentState?.showSnackBar(
+              SnackBar(content: Text(error.toString())),
+            );
+          });
     }
   }
 }

@@ -68,7 +68,7 @@ class FeedInfo {
       po: json['po'],
     );
   }
-    factory FeedInfo.fromReplyJson(ReplyJson reply) {
+  factory FeedInfo.fromReplyJson(ReplyJson reply) {
     return FeedInfo(
       id: reply.id.toString(),
       userId: '',

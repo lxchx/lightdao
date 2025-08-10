@@ -67,8 +67,9 @@ class RefHtml extends RefJson {
         doc.querySelector('.h-threads-tips')?.text.contains('SAGE') ?? false;
 
     // 判断是否为 Admin
-    final adminElement =
-        doc.querySelector('.h-threads-info-uid font[color="red"]');
+    final adminElement = doc.querySelector(
+      '.h-threads-info-uid font[color="red"]',
+    );
     final admin = adminElement != null;
 
     // 提取图片链接

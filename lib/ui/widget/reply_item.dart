@@ -19,13 +19,15 @@ import 'previewable_image.dart';
 
 class ReplyItem extends StatelessWidget {
   static final RegExp refHtmlPattern = RegExp(
-      '(<font color=\\"#789922\\">&gt;&gt;(No.)?(\\d+)<\\/font>)(<br\\s*\\/?>)?(\\\\r|\\\\n)?');
+    '(<font color=\\"#789922\\">&gt;&gt;(No.)?(\\d+)<\\/font>)(<br\\s*\\/?>)?(\\\\r|\\\\n)?',
+  );
 
   // 匹配http url，但不能是<a href=“或者>打头的，否则会破坏原有的html跳转标签
   // 可以保证用户输入的'<'会被转义成‘&lt;’，所以没有误解析用户输入的风险
   // '&' 会被转义成 '&amp;'，需要特别处理
   static final RegExp httpUrlPattern = RegExp(
-      r'(?<!<a href=")(?<!>)https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b((?:[-a-zA-Z0-9()@:%_\+.~#?//=]|&amp;)*)');
+    r'(?<!<a href=")(?<!>)https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b((?:[-a-zA-Z0-9()@:%_\+.~#?//=]|&amp;)*)',
+  );
 
   final ReplyJson threadJson;
   final Object? contentHeroTag;
@@ -66,39 +68,44 @@ class ReplyItem extends StatelessWidget {
     this.topRightWidget,
   }) {
     assert(
-        // 如果imageInitIndex有效（非null且>=0），则imageNames必须有效（非null且非空）
-        (imageInitIndex == null || (imageInitIndex != null && imageInitIndex! < 0)) ||
-        (imageNames != null && imageNames!.isNotEmpty),
-        'imageInitIndex有效时，imageNames必须非空');
+      // 如果imageInitIndex有效（非null且>=0），则imageNames必须有效（非null且非空）
+      (imageInitIndex == null ||
+              (imageInitIndex != null && imageInitIndex! < 0)) ||
+          (imageNames != null && imageNames!.isNotEmpty),
+      'imageInitIndex有效时，imageNames必须非空',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<MyAppState>(context);
     final bool isPo = poUserHash == threadJson.userHash;
-    final contentWithOutRefNextLine = threadJson.content
-        .replaceAllMapped(refHtmlPattern, (match) => match.group(1) ?? '');
+    final contentWithOutRefNextLine = threadJson.content.replaceAllMapped(
+      refHtmlPattern,
+      (match) => match.group(1) ?? '',
+    );
     final contentWithHidableElement = contentWithOutRefNextLine
         .replaceAll('[h]', '<hidable>')
         .replaceAll('[/h]', '</hidable>')
         .replaceAllMapped(
-            httpUrlPattern,
-            (match) =>
-                '<a href="${match.group(0)!}" target="_blank">${match.group(0)!}</a>');
+          httpUrlPattern,
+          (match) =>
+              '<a href="${match.group(0)!}" target="_blank">${match.group(0)!}</a>',
+        );
     return LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ConditionalHero(
-            tag: contentHeroTag,
-            child: Material(
-              type: MaterialType.transparency,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
+      builder: (BuildContext context, BoxConstraints constraints) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ConditionalHero(
+              tag: contentHeroTag,
+              child: Material(
+                type: MaterialType.transparency,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,50 +173,50 @@ class ReplyItem extends StatelessWidget {
                                           ),
                                     )
                                   : null),
-                        )
-                    ],
-                  ),
-                  if (threadJson.sage)
-                    Text(
-                      '已SAGE',
-                      style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                        ),
+                      ],
+                    ),
+                    if (threadJson.sage)
+                      Text(
+                        '已SAGE',
+                        style: Theme.of(context).textTheme.titleSmall!.copyWith(
                           fontWeight: FontWeight.bold,
-                          fontSize: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall!
-                                  .fontSize! *
+                          fontSize:
+                              Theme.of(
+                                context,
+                              ).textTheme.titleSmall!.fontSize! *
                               1.1,
-                          color: Theme.of(context).colorScheme.error),
-                    ),
-                  if (threadJson.title != '无标题' &&
-                      threadJson.userHash != "Tips")
-                    Text(
-                      threadJson.title,
-                      style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                          fontSize: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall!
-                                  .fontSize! *
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    if (threadJson.title != '无标题' &&
+                        threadJson.userHash != "Tips")
+                      Text(
+                        threadJson.title,
+                        style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                          fontSize:
+                              Theme.of(
+                                context,
+                              ).textTheme.titleSmall!.fontSize! *
                               1.1,
-                          color: Theme.of(context).colorScheme.primary),
-                    ),
-                  if (threadJson.name != '无名氏')
-                    Text(
-                      threadJson.name,
-                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                          color: Theme.of(context).colorScheme.secondary),
-                    ),
-                  if (inCardView)
-                    SizedBox(
-                      height: 5,
-                    ),
-                  if (!noMoreParse)
-                    LineLimitedHtmlWidget(
-                      content: contentWithHidableElement,
-                      maxLength: contentNeedCollapsed
-                          ? appState.setting.collapsedLen
-                          : null,
-                      contentBuilder: () => ContentWidgetFactory(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    if (threadJson.name != '无名氏')
+                      Text(
+                        threadJson.name,
+                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                      ),
+                    if (inCardView) SizedBox(height: 5),
+                    if (!noMoreParse)
+                      LineLimitedHtmlWidget(
+                        content: contentWithHidableElement,
+                        maxLength: contentNeedCollapsed
+                            ? appState.setting.collapsedLen
+                            : null,
+                        contentBuilder: () => ContentWidgetFactory(
                           refMustCollapsed: collapsedRef,
                           inRefView: 0,
                           poUserHash: poUserHash,
@@ -218,23 +225,24 @@ class ReplyItem extends StatelessWidget {
                           isThreadFirstOrForumPreview:
                               isThreadFirstOrForumPreview,
                           onImageEdit: onImageEdit,
-                          throttle: throttle),
-                    )
-                  else
-                    HtmlWidget(
-                      contentNeedCollapsed
-                          ? threadJson.content.length <=
-                                  appState.setting.collapsedLen
-                              ? threadJson.content
-                              : '${threadJson.content.substring(0, appState.setting.collapsedLen)}<br>...'
-                          : threadJson.content,
-                    )
-                ],
+                          throttle: throttle,
+                        ),
+                      )
+                    else
+                      HtmlWidget(
+                        contentNeedCollapsed
+                            ? threadJson.content.length <=
+                                      appState.setting.collapsedLen
+                                  ? threadJson.content
+                                  : '${threadJson.content.substring(0, appState.setting.collapsedLen)}<br>...'
+                            : threadJson.content,
+                      ),
+                  ],
+                ),
               ),
             ),
-          ),
-          if (threadJson.img != '' && !noMoreParse)
-            Padding(
+            if (threadJson.img != '' && !noMoreParse)
+              Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: LongPressPreviewImage(
                   img: threadJson.img,
@@ -245,10 +253,12 @@ class ReplyItem extends StatelessWidget {
                   imageNames: imageNames,
                   cacheImageSize: cacheImageSize,
                   onEdit: onImageEdit,
-                )),
-        ],
-      );
-    });
+                ),
+              ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -328,9 +338,7 @@ class _FilterableThreadWidgetState extends State<FilterableThreadWidget> {
                 Expanded(
                   child: Text(
                     "因 $reason 屏蔽\n点击临时展开，长按取消屏蔽",
-                    style: TextStyle(
-                      color: Theme.of(context).hintColor,
-                    ),
+                    style: TextStyle(color: Theme.of(context).hintColor),
                     softWrap: true,
                   ),
                 ),

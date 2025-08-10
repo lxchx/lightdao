@@ -30,6 +30,4 @@ class MyThreadCacheManager extends CacheManager with ImageCacheManager {
 }
 
 typedef ImageSize = Size;
-final memoryImageInfoCache = LRUCache<String, ImageSize>(
-  1000,
-);
+final memoryImageInfoCache = LRUCache<String, ImageSize>(1000);

@@ -3,11 +3,7 @@ class NoticeInfo {
   final int date;
   final bool enable;
 
-  NoticeInfo({
-    required this.content,
-    required this.date,
-    required this.enable,
-  });
+  NoticeInfo({required this.content, required this.date, required this.enable});
 
   factory NoticeInfo.fromJson(Map<String, dynamic> json) {
     return NoticeInfo(

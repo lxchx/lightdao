@@ -1,4 +1,3 @@
-
 import 'package:hive/hive.dart';
 
 part 'phrase.g.dart';
@@ -17,7 +16,10 @@ class Phrase {
   const Phrase(this.key, this.value, {this.canEdit = false});
 }
 
-List<Phrase> mergePhraseLists(List<Phrase> basePhrases, List<Phrase> additionalPhrases) {
+List<Phrase> mergePhraseLists(
+  List<Phrase> basePhrases,
+  List<Phrase> additionalPhrases,
+) {
   Set<String> baseKeys = basePhrases.map((phrase) => phrase.key).toSet();
 
   List<Phrase> mergedList = List.from(basePhrases);
@@ -140,8 +142,7 @@ const List<Phrase> xDaoPhrases = [
   Phrase('( ´_ゝ`)旦', '( ´_ゝ`)旦'),
   Phrase('(<ゝω・) ☆', '(<ゝω・) ☆'),
   Phrase('(`ε´ (つ*⊂)', '(`ε´ (つ*⊂)'),
-  Phrase(
-      "=͟͟͞͞( 'ヮ' 三 'ヮ' =͟͟͞͞)", "=͟͟͞͞( 'ヮ' 三 'ヮ' =͟͟͞͞)"),
+  Phrase("=͟͟͞͞( 'ヮ' 三 'ヮ' =͟͟͞͞)", "=͟͟͞͞( 'ヮ' 三 'ヮ' =͟͟͞͞)"),
   Phrase('↙(`ヮ´ )↗ 开摆！', '↙(`ヮ´ )↗ 开摆！'),
   Phrase('(っ˘Д˘)ノ<', '(っ˘Д˘)ノ<'),
   Phrase('(ﾉ#)`д´)σ', '(ﾉ#)`д´)σ'),

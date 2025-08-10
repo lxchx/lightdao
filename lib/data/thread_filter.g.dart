@@ -16,9 +16,7 @@ class ForumThreadFilterAdapter extends TypeAdapter<ForumThreadFilter> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return ForumThreadFilter(
-      fid: fields[0] as int,
-    );
+    return ForumThreadFilter(fid: fields[0] as int);
   }
 
   @override
@@ -50,9 +48,7 @@ class IdThreadFilterAdapter extends TypeAdapter<IdThreadFilter> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return IdThreadFilter(
-      id: fields[0] as int,
-    );
+    return IdThreadFilter(id: fields[0] as int);
   }
 
   @override
@@ -84,9 +80,7 @@ class UserHashFilterAdapter extends TypeAdapter<UserHashFilter> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return UserHashFilter(
-      userHash: fields[0] as String,
-    );
+    return UserHashFilter(userHash: fields[0] as String);
   }
 
   @override

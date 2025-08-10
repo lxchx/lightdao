@@ -29,7 +29,10 @@ class _SearchPageState extends State<SearchPage> {
     super.initState();
     final appState = Provider.of<MyAppState>(context, listen: false);
     _controller = TextEditingController(text: widget.query);
-    _pageManager = CSEPageManager(query: widget.query, timeout: Duration(seconds: appState.setting.fetchTimeout));
+    _pageManager = CSEPageManager(
+      query: widget.query,
+      timeout: Duration(seconds: appState.setting.fetchTimeout),
+    );
     Future.microtask(() async {
       await _pageManager.initialize();
       if (!mounted) return;
@@ -59,7 +62,10 @@ class _SearchPageState extends State<SearchPage> {
     final appState = Provider.of<MyAppState>(context, listen: false);
     setState(() {
       // 重建分页管理器
-      _pageManager = CSEPageManager(query: value, timeout: Duration(seconds: appState.setting.fetchTimeout));
+      _pageManager = CSEPageManager(
+        query: value,
+        timeout: Duration(seconds: appState.setting.fetchTimeout),
+      );
     });
     await _pageManager.initialize();
     if (!mounted) return;
@@ -96,95 +102,102 @@ class _SearchPageState extends State<SearchPage> {
           valueListenable: _pageManager.nextPageStateNotifier,
           builder: (context, _, __) {
             final itemCount = _pageManager.totalItemsCount;
-            if (itemCount == 0 && _pageManager.nextPageStateNotifier.value is! PageLoading) {
-              return const Center(
-                child: Text('没有结果噢(´・ω・`)'),
-              );
+            if (itemCount == 0 &&
+                _pageManager.nextPageStateNotifier.value is! PageLoading) {
+              return const Center(child: Text('没有结果噢(´・ω・`)'));
             }
             return TsukuyomiList.builder(
               controller: _scrollController,
               cacheExtent: MediaQuery.of(context).size.height * 1.5,
               itemCount: itemCount + 1,
               itemBuilder: (context, index) {
-            if (index == itemCount) {
-              return ValueListenableBuilder<PageState>(
-                valueListenable: _pageManager.nextPageStateNotifier,
-                builder: (context, state, _) {
-                  return switch (state) {
-                    PageLoading() => Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: breakpoint.gutters,
-                          vertical: breakpoint.gutters / 2,
+                if (index == itemCount) {
+                  return ValueListenableBuilder<PageState>(
+                    valueListenable: _pageManager.nextPageStateNotifier,
+                    builder: (context, state, _) {
+                      return switch (state) {
+                        PageLoading() => Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: breakpoint.gutters,
+                            vertical: breakpoint.gutters / 2,
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
                         ),
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                    PageFullLoaded() => Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: breakpoint.gutters,
-                        vertical: breakpoint.gutters / 2,
-                      ),
-                      child: const Center(child: Text('到底了(　ﾟ 3ﾟ)')),
-                    ),
-                    PageError(error: final err, retry: final retry) => ListTile(
-                        textColor: Theme.of(context).colorScheme.error,
-                        title: Text(err is TimeoutException ? '加载超时' : '加载失败: $err'),
-                        onTap: () => setState(() => retry()),
-                        trailing: TextButton.icon(
-                          onPressed: () => setState(() => retry()),
-                          label: Text('重试'),
-                          icon: Icon(Icons.refresh),
+                        PageFullLoaded() => Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: breakpoint.gutters,
+                            vertical: breakpoint.gutters / 2,
+                          ),
+                          child: const Center(child: Text('到底了(　ﾟ 3ﾟ)')),
                         ),
-                      ),
-                    PageHasMore() => const SizedBox.shrink(),
-                  };
-                },
-              );
-            }
-            final (item, _, _) = _pageManager.getItemByIndex(index)!;
-            return ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                      horizontal: breakpoint.gutters),
-              trailing: item.imageUrl != null
-                  ? CachedNetworkImage(
-                      cacheManager: MyImageCacheManager(),
-                      imageUrl: item.imageUrl!,
-                      width: 64,
-                      height: 64,
-                      fit: BoxFit.cover)
-                  : null,
-              title: Text(item.title),
-              subtitle: HtmlWidget(item.htmlSnippet),
-              onTap: () {
-                final link = item.link;
-                final threadIdReg = RegExp(r'/t/(\d+)');
-                final pageReg = RegExp(r'[?&]page=(\d+)');
-                /*final replyIdReg = RegExp(r'[?&]r=(\d+)');*/
-                final threadIdMatch = threadIdReg.firstMatch(link);
-                final pageMatch = pageReg.firstMatch(link);
-                /*final replyIdMatch = replyIdReg.firstMatch(link);*/
-
-                if (threadIdMatch == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('无法识别串号')),
+                        PageError(error: final err, retry: final retry) =>
+                          ListTile(
+                            textColor: Theme.of(context).colorScheme.error,
+                            title: Text(
+                              err is TimeoutException ? '加载超时' : '加载失败: $err',
+                            ),
+                            onTap: () => setState(() => retry()),
+                            trailing: TextButton.icon(
+                              onPressed: () => setState(() => retry()),
+                              label: Text('重试'),
+                              icon: Icon(Icons.refresh),
+                            ),
+                          ),
+                        PageHasMore() => const SizedBox.shrink(),
+                      };
+                    },
                   );
-                  return;
                 }
-                final threadId = int.parse(threadIdMatch.group(1)!);
-                final startPage =
-                    pageMatch != null ? int.parse(pageMatch.group(1)!) : null;
+                final (item, _, _) = _pageManager.getItemByIndex(index)!;
+                return ListTile(
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: breakpoint.gutters,
+                  ),
+                  trailing: item.imageUrl != null
+                      ? CachedNetworkImage(
+                          cacheManager: MyImageCacheManager(),
+                          imageUrl: item.imageUrl!,
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                  title: Text(item.title),
+                  subtitle: HtmlWidget(item.htmlSnippet),
+                  onTap: () {
+                    final link = item.link;
+                    final threadIdReg = RegExp(r'/t/(\d+)');
+                    final pageReg = RegExp(r'[?&]page=(\d+)');
+                    /*final replyIdReg = RegExp(r'[?&]r=(\d+)');*/
+                    final threadIdMatch = threadIdReg.firstMatch(link);
+                    final pageMatch = pageReg.firstMatch(link);
+                    /*final replyIdMatch = replyIdReg.firstMatch(link);*/
 
-                appState.navigateThreadPage2(
-                  context,
-                  threadId,
-                  false,
-                  startPage: startPage,
-                  // 搜索出来的 startReplyId 效果不是很好，暂时不用
-                  // startReplyId: startReplyId,
+                    if (threadIdMatch == null) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('无法识别串号')));
+                      return;
+                    }
+                    final threadId = int.parse(threadIdMatch.group(1)!);
+                    final startPage = pageMatch != null
+                        ? int.parse(pageMatch.group(1)!)
+                        : null;
+
+                    appState.navigateThreadPage2(
+                      context,
+                      threadId,
+                      false,
+                      startPage: startPage,
+                      // 搜索出来的 startReplyId 效果不是很好，暂时不用
+                      // startReplyId: startReplyId,
+                    );
+                  },
                 );
               },
             );
-          },
-        );
           },
         ),
       ),

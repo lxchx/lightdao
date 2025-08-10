@@ -57,8 +57,9 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return LightDaoSetting(
-      cookies:
-          fields[0] == null ? [] : (fields[0] as List).cast<CookieSetting>(),
+      cookies: fields[0] == null
+          ? []
+          : (fields[0] as List).cast<CookieSetting>(),
       currentCookie: fields[1] == null ? -1 : fields[1] as int,
       refCollapsing: fields[2] == null ? 3 : fields[2] as int,
       refPoping: fields[3] == null ? 3 : fields[3] as int,
@@ -94,26 +95,32 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
       useAmoledBlack: fields[19] == null ? false : fields[19] as bool,
       fontSizeFactor: fields[20] == null ? 1.0 : fields[20] as double,
       dividerBetweenReply: fields[21] == null ? false : fields[21] as bool,
-      cacheTimelines:
-          fields[22] == null ? [] : (fields[22] as List).cast<Timeline>(),
-      cacheForumLists:
-          fields[23] == null ? [] : (fields[23] as List).cast<ForumList>(),
+      cacheTimelines: fields[22] == null
+          ? []
+          : (fields[22] as List).cast<Timeline>(),
+      cacheForumLists: fields[23] == null
+          ? []
+          : (fields[23] as List).cast<ForumList>(),
       fixedBottomBar: fields[24] == null ? false : fields[24] as bool,
       displayExactTime: fields[25] == null ? false : fields[25] as bool,
-      favoredForums:
-          fields[26] == null ? [] : (fields[26] as List).cast<Forum>(),
-      threadFilters:
-          fields[27] == null ? [] : (fields[27] as List).cast<ThreadFilter>(),
+      favoredForums: fields[26] == null
+          ? []
+          : (fields[26] as List).cast<Forum>(),
+      threadFilters: fields[27] == null
+          ? []
+          : (fields[27] as List).cast<ThreadFilter>(),
       latestTrend: fields[28] as TrendData?,
       dragToDissmissImage: fields[29] == null ? true : fields[29] as bool,
-      dontShowFilttedForumInTimeLine:
-          fields[30] == null ? true : fields[30] as bool,
+      dontShowFilttedForumInTimeLine: fields[30] == null
+          ? true
+          : fields[30] as bool,
       phrases: fields[31] == null ? [] : (fields[31] as List).cast<Phrase>(),
       enableSwipeBack: fields[32] == null ? false : fields[32] as bool,
       initForumOrTimelineId: fields[33] == null ? 1 : fields[33] as int,
       initIsTimeline: fields[34] == null ? true : fields[34] as bool,
-      initForumOrTimelineName:
-          fields[35] == null ? '综合线' : fields[35] as String,
+      initForumOrTimelineName: fields[35] == null
+          ? '综合线'
+          : fields[35] as String,
       predictiveBack: fields[36] == null ? false : fields[36] as bool,
       columnWidth: fields[37] == null ? 445 : fields[37] as double,
       isMultiColumn: fields[38] == null ? true : fields[38] as bool,

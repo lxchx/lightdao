@@ -337,7 +337,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                             },
                           ),
                         ),
-                        SizedBox(width: 5), 
+                        SizedBox(width: 5),
                         Text('/ $maxPage'),
                         IconButton(
                           icon: Icon(Icons.navigate_next),
@@ -634,11 +634,11 @@ class _ThreadPage2State extends State<ThreadPage2> {
                                 ),
                                 child: Theme(
                                   data: Theme.of(context).copyWith(
-                                    textTheme:
-                                        Theme.of(context).textTheme.apply(
-                                      fontSizeFactor:
-                                          appState.setting.fontSizeFactor,
-                                    ),
+                                    textTheme: Theme.of(context).textTheme
+                                        .apply(
+                                          fontSizeFactor:
+                                              appState.setting.fontSizeFactor,
+                                        ),
                                   ),
                                   child: ReplyItem(
                                     poUserHash: _poReply.userHash,

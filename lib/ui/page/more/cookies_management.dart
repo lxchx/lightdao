@@ -15,99 +15,103 @@ class CookieManagementPage extends StatelessWidget {
     final appState = Provider.of<MyAppState>(context);
     final breakpoint = Breakpoint.fromMediaQuery(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text('饼干管理'),
-      ),
+      appBar: AppBar(title: Text('饼干管理')),
       body: ListView(
         padding: EdgeInsets.all(breakpoint.gutters),
         children: [
-          ...appState.setting.cookies.mapIndex((index, c) => Card(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12.0),
-                  onTap: () {
-                    appState.setState((state) {
-                      state.setting.currentCookie = index;
-                    });
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(15.0),
-                    child: Row(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(right: 16),
-                          child: Icon(
-                            index != appState.setting.currentCookie
-                                ? Icons.cookie_outlined
-                                : Icons.cookie_rounded,
-                            color: index != appState.setting.currentCookie
-                                ? null
-                                : Theme.of(context).colorScheme.primary,
-                          ),
+          ...appState.setting.cookies.mapIndex(
+            (index, c) => Card(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12.0),
+                onTap: () {
+                  appState.setState((state) {
+                    state.setting.currentCookie = index;
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(15.0),
+                  child: Row(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: Icon(
+                          index != appState.setting.currentCookie
+                              ? Icons.cookie_outlined
+                              : Icons.cookie_rounded,
+                          color: index != appState.setting.currentCookie
+                              ? null
+                              : Theme.of(context).colorScheme.primary,
                         ),
-                        Expanded(
-                            child: SingleChildScrollView(
+                      ),
+                      Expanded(
+                        child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Text(
                             c.getShowName(),
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
-                        )),
-                        IconButton(
-                          icon: Icon(Icons.edit),
-                          onPressed: () async {
-                            TextEditingController displayNameController =
-                                TextEditingController(
-                                    text: appState
-                                        .setting.cookies[index].displayName);
-                            String? result = await showDialog<String>(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return AlertDialog(
-                                  title: Text('饼干备注'),
-                                  content: TextField(
-                                    controller: displayNameController,
-                                    decoration:
-                                        InputDecoration(hintText: "请输入备注"),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.edit),
+                        onPressed: () async {
+                          TextEditingController displayNameController =
+                              TextEditingController(
+                                text:
+                                    appState.setting.cookies[index].displayName,
+                              );
+                          String? result = await showDialog<String>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text('饼干备注'),
+                                content: TextField(
+                                  controller: displayNameController,
+                                  decoration: InputDecoration(
+                                    hintText: "请输入备注",
                                   ),
-                                  actions: <Widget>[
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.of(context)
-                                            .pop(displayNameController.text);
-                                      },
-                                      child: Text('确定'),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-                            if (result != null) {
-                              appState.setState((_) {
-                                appState.setting.cookies[index].displayName =
-                                    displayNameController.text;
-                              });
-                            }
-                          },
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.delete),
-                          onPressed: () {
-                            appState.setState((state) {
-                              if (state.setting.currentCookie == index) {
-                                state.setting.currentCookie = 0;
-                              }
-                              state.setting.cookies.remove(c);
-                              if (state.setting.cookies.isEmpty) {
-                                state.setting.currentCookie = -1;
-                              }
+                                ),
+                                actions: <Widget>[
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(
+                                        context,
+                                      ).pop(displayNameController.text);
+                                    },
+                                    child: Text('确定'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                          if (result != null) {
+                            appState.setState((_) {
+                              appState.setting.cookies[index].displayName =
+                                  displayNameController.text;
                             });
-                          },
-                        ),
-                      ],
-                    ),
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.delete),
+                        onPressed: () {
+                          appState.setState((state) {
+                            if (state.setting.currentCookie == index) {
+                              state.setting.currentCookie = 0;
+                            }
+                            state.setting.cookies.remove(c);
+                            if (state.setting.cookies.isEmpty) {
+                              state.setting.currentCookie = -1;
+                            }
+                          });
+                        },
+                      ),
+                    ],
                   ),
                 ),
-              )),
+              ),
+            ),
+          ),
           SizedBox(height: 16.0),
           ElevatedButton.icon(
             icon: Icon(Icons.add),
@@ -119,19 +123,24 @@ class CookieManagementPage extends StatelessWidget {
               final (name, hash) = cookieResult;
               if (!appState.setting.cookies.any((c) => c.cookieHash == hash)) {
                 appState.setState((_) {
-                  appState.setting.cookies.add(CookieSetting(
-                      cookieHash: hash, name: name, displayName: ''));
+                  appState.setting.cookies.add(
+                    CookieSetting(
+                      cookieHash: hash,
+                      name: name,
+                      displayName: '',
+                    ),
+                  );
                   if (appState.setting.cookies.length == 1) {
                     appState.setting.currentCookie = 0;
                   }
                 });
-                scaffoldMessenger.showSnackBar(SnackBar(
-                  content: Text("添加成功，编辑添加备注"),
-                ));
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(content: Text("添加成功，编辑添加备注")),
+                );
               } else {
-                scaffoldMessenger.showSnackBar(SnackBar(
-                  content: Text("饼干已存在"),
-                ));
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(content: Text("饼干已存在")),
+                );
               }
             },
           ),
@@ -142,9 +151,7 @@ class CookieManagementPage extends StatelessWidget {
 }
 
 // name, cookieHash
-Future<(String, String)?> showAddCookieDialog(
-  BuildContext context,
-) {
+Future<(String, String)?> showAddCookieDialog(BuildContext context) {
   return showDialog<(String, String)>(
     context: context,
     builder: (context) => SimpleDialog(
@@ -153,39 +160,47 @@ Future<(String, String)?> showAddCookieDialog(
         SimpleDialogOption(
           child: Text('扫描二维码'),
           onPressed: () {
-            Navigator.push(context, MaterialPageRoute(
-              builder: (context) => Scaffold(
-                appBar: AppBar(title: Text('扫描二维码')),
-                body: MobileScanner(
-                  controller: MobileScannerController(
-                    detectionSpeed: DetectionSpeed.normal,
-                    facing: CameraFacing.back,
-                  ),
-                  onDetect: (capture) {
-                    final List<Barcode> barcodes = capture.barcodes;
-                    if (barcodes.isNotEmpty) {
-                      final String? code = barcodes.first.rawValue;
-                      if (code != null) {
-                        try {
-                          final Map<String, dynamic> jsonMap = jsonDecode(code);
-                          if (jsonMap.containsKey('cookie') && jsonMap.containsKey('name')) {
-                            Navigator.of(context).pop((jsonMap['name'], jsonMap['cookie']));
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text("无效的二维码格式"),
-                            ));
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => Scaffold(
+                  appBar: AppBar(title: Text('扫描二维码')),
+                  body: MobileScanner(
+                    controller: MobileScannerController(
+                      detectionSpeed: DetectionSpeed.normal,
+                      facing: CameraFacing.back,
+                    ),
+                    onDetect: (capture) {
+                      final List<Barcode> barcodes = capture.barcodes;
+                      if (barcodes.isNotEmpty) {
+                        final String? code = barcodes.first.rawValue;
+                        if (code != null) {
+                          try {
+                            final Map<String, dynamic> jsonMap = jsonDecode(
+                              code,
+                            );
+                            if (jsonMap.containsKey('cookie') &&
+                                jsonMap.containsKey('name')) {
+                              Navigator.of(
+                                context,
+                              ).pop((jsonMap['name'], jsonMap['cookie']));
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("无效的二维码格式")),
+                              );
+                            }
+                          } catch (e) {
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text("二维码解析错误")));
                           }
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text("二维码解析错误"),
-                          ));
                         }
                       }
-                    }
-                  },
+                    },
+                  ),
                 ),
               ),
-            ));
+            );
           },
         ),
         SimpleDialogOption(
@@ -196,18 +211,16 @@ Future<(String, String)?> showAddCookieDialog(
             final result = await pickAndDecodeQRCode();
             if (result == null) {
               navigator.pop();
-              scaffoldMessenger.showSnackBar(SnackBar(
-                content: Text("识别失败"),
-              ));
+              scaffoldMessenger.showSnackBar(SnackBar(content: Text("识别失败")));
             }
             final Map<String, dynamic> jsonMap = jsonDecode(result ?? '');
             if (jsonMap.containsKey('cookie') && jsonMap.containsKey('name')) {
               navigator.pop((jsonMap['name'], jsonMap['cookie']));
             } else {
               navigator.pop();
-              scaffoldMessenger.showSnackBar(SnackBar(
-                content: Text("无效的二维码格式"),
-              ));
+              scaffoldMessenger.showSnackBar(
+                SnackBar(content: Text("无效的二维码格式")),
+              );
             }
           },
         ),
@@ -220,7 +233,10 @@ Future<(String, String)?> showAddCookieDialog(
             final TextEditingController cookieController =
                 TextEditingController();
             await showCookieEditDialog(
-                context, nameController, cookieController);
+              context,
+              nameController,
+              cookieController,
+            );
             if (nameController.text.isNotEmpty &&
                 cookieController.text.isNotEmpty) {
               navigator.pop((nameController.text, cookieController.text));
@@ -233,9 +249,10 @@ Future<(String, String)?> showAddCookieDialog(
 }
 
 Future<dynamic> showCookieEditDialog(
-    BuildContext context,
-    TextEditingController nameController,
-    TextEditingController cookieController) {
+  BuildContext context,
+  TextEditingController nameController,
+  TextEditingController cookieController,
+) {
   return showDialog(
     context: context,
     builder: (BuildContext context) {
@@ -278,7 +295,8 @@ Future<String?> pickAndDecodeQRCode() async {
   final pickedFile = await picker.pickImage(source: ImageSource.gallery);
   if (pickedFile == null) {
     return null;
-  }  try {
+  }
+  try {
     final result = await FlutterQrReader.imgScan(pickedFile.path);
     return result;
   } catch (e) {
@@ -288,7 +306,9 @@ Future<String?> pickAndDecodeQRCode() async {
 
 extension ReplaceWhere<E> on List<E> {
   void replaceWhere(
-      bool Function(E element) test, E Function(E element) replacement) {
+    bool Function(E element) test,
+    E Function(E element) replacement,
+  ) {
     for (int i = 0; i < length; i++) {
       if (test(this[i])) {
         this[i] = replacement(this[i]);

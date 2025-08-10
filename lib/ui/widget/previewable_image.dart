@@ -19,15 +19,16 @@ class LongPressPreviewImage extends StatefulWidget {
   final bool cacheImageSize;
   final Function(File imageFile, Object? heroTag)? onEdit;
 
-  LongPressPreviewImage(
-      {required this.img,
-      required this.ext,
-      this.imageHeroTag,
-      this.isRawPicMode = false,
-      this.imageNames,
-      this.initIndex,
-      this.cacheImageSize = false,
-      this.onEdit});
+  LongPressPreviewImage({
+    required this.img,
+    required this.ext,
+    this.imageHeroTag,
+    this.isRawPicMode = false,
+    this.imageNames,
+    this.initIndex,
+    this.cacheImageSize = false,
+    this.onEdit,
+  });
 
   @override
   State<LongPressPreviewImage> createState() => _LongPressPreviewImageState();
@@ -121,56 +122,64 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
   }
 
   OverlayEntry _createOverlayEntry(
-      BuildContext context, Offset initOffset, Size initSize) {
+    BuildContext context,
+    Offset initOffset,
+    Size initSize,
+  ) {
     return OverlayEntry(
       builder: (context) {
-        return Stack(children: [
-          AnimatedPositioned(
-            curve: Curves.easeOutExpo,
-            duration: Durations.medium1,
-            top: !_isPreview ? initOffset.dy : 0,
-            left: !_isPreview ? initOffset.dx : 0,
-            width: !_isPreview
-                ? initSize.width
-                : MediaQuery.of(context).size.width,
-            height: !_isPreview
-                ? initSize.height
-                : MediaQuery.of(context).size.height,
-            child: Material(
-              color: Colors.transparent,
-              child: FadeTransition(
-                opacity: _animation,
-                child: AnimatedPadding(
-                  duration: Durations.medium1,
-                  curve: Curves.easeOutExpo,
-                  padding: _isPreview ? EdgeInsets.all(50) : EdgeInsets.all(0),
-                  child: CachedNetworkImage(
-                    cacheManager: MyImageCacheManager(),
-                    imageUrl:
-                        'https://image.nmb.best/image/${widget.img}${widget.ext}',
-                    progressIndicatorBuilder:
-                        (context, url, downloadProgress) => Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox.expand(
-                          child: CachedNetworkImage(
-                            cacheManager: MyImageCacheManager(),
-                            imageUrl:
-                                'https://image.nmb.best/thumb/${widget.img}${widget.ext}',
-                            fit: BoxFit.contain,
+        return Stack(
+          children: [
+            AnimatedPositioned(
+              curve: Curves.easeOutExpo,
+              duration: Durations.medium1,
+              top: !_isPreview ? initOffset.dy : 0,
+              left: !_isPreview ? initOffset.dx : 0,
+              width: !_isPreview
+                  ? initSize.width
+                  : MediaQuery.of(context).size.width,
+              height: !_isPreview
+                  ? initSize.height
+                  : MediaQuery.of(context).size.height,
+              child: Material(
+                color: Colors.transparent,
+                child: FadeTransition(
+                  opacity: _animation,
+                  child: AnimatedPadding(
+                    duration: Durations.medium1,
+                    curve: Curves.easeOutExpo,
+                    padding: _isPreview
+                        ? EdgeInsets.all(50)
+                        : EdgeInsets.all(0),
+                    child: CachedNetworkImage(
+                      cacheManager: MyImageCacheManager(),
+                      imageUrl:
+                          'https://image.nmb.best/image/${widget.img}${widget.ext}',
+                      progressIndicatorBuilder:
+                          (context, url, downloadProgress) => Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              SizedBox.expand(
+                                child: CachedNetworkImage(
+                                  cacheManager: MyImageCacheManager(),
+                                  imageUrl:
+                                      'https://image.nmb.best/thumb/${widget.img}${widget.ext}',
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              CircularProgressIndicator(
+                                value: downloadProgress.progress,
+                              ),
+                            ],
                           ),
-                        ),
-                        CircularProgressIndicator(
-                            value: downloadProgress.progress),
-                      ],
+                      fit: BoxFit.contain,
                     ),
-                    fit: BoxFit.contain,
                   ),
                 ),
               ),
             ),
-          ),
-        ]);
+          ],
+        );
       },
     );
   }
@@ -188,11 +197,11 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
               opaque: false,
               pageBuilder: (context, animation, secondaryAnimation) =>
                   XdaoImageViewer(
-                initIndex: widget.initIndex!,
-                imageNames: widget.imageNames!,
-                heroTag: widget.imageHeroTag,
-                onEdit: widget.onEdit,
-              ),
+                    initIndex: widget.initIndex!,
+                    imageNames: widget.imageNames!,
+                    heroTag: widget.imageHeroTag,
+                    onEdit: widget.onEdit,
+                  ),
             ),
           );
         } else {
@@ -202,11 +211,11 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
               opaque: false,
               pageBuilder: (context, animation, secondaryAnimation) =>
                   XdaoImageViewer(
-                initIndex: 0,
-                imageNames: ['${widget.img}${widget.ext}'],
-                heroTag: widget.imageHeroTag,
-                onEdit: widget.onEdit,
-              ),
+                    initIndex: 0,
+                    imageNames: ['${widget.img}${widget.ext}'],
+                    heroTag: widget.imageHeroTag,
+                    onEdit: widget.onEdit,
+                  ),
             ),
           );
         }
@@ -218,9 +227,12 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
           onImageLoaded: widget.cacheImageSize
               ? (imageInfo, synchronousCall) {
                   memoryImageInfoCache.put(
-                      '${widget.img}${widget.ext}',
-                      Size(imageInfo.image.width.toDouble(),
-                          imageInfo.image.height.toDouble()));
+                    '${widget.img}${widget.ext}',
+                    Size(
+                      imageInfo.image.width.toDouble(),
+                      imageInfo.image.height.toDouble(),
+                    ),
+                  );
                 }
               : null,
           imageUrl: widget.isRawPicMode
@@ -228,15 +240,18 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
               : 'https://image.nmb.best/thumb/${widget.img}${widget.ext}',
           progressIndicatorBuilder: (context, url, downloadProgress) =>
               SizedBox(
-                  width: cacheWidth,
-                  height: cacheHeight,
-                  child: cacheWidth == null
-                      ? CircularProgressIndicator(
-                          value: downloadProgress.progress)
-                      : Center(
-                          child: CircularProgressIndicator(
-                              value: downloadProgress.progress),
-                        )),
+                width: cacheWidth,
+                height: cacheHeight,
+                child: cacheWidth == null
+                    ? CircularProgressIndicator(
+                        value: downloadProgress.progress,
+                      )
+                    : Center(
+                        child: CircularProgressIndicator(
+                          value: downloadProgress.progress,
+                        ),
+                      ),
+              ),
         ),
       ),
     );

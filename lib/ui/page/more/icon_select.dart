@@ -12,46 +12,47 @@ class IconSelectionPage extends StatelessWidget {
     final selectedIconIndex = appState.setting.selectIcon;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('选择应用图标'),
-      ),
-      body: LayoutBuilder(builder: (context, constraints) {
-        double parentWidth = constraints.maxWidth; // 根据宽度计算crossAxisCount
-        int crossAxisCount = parentWidth ~/ 150 + 1;
-        return GridView.builder(
-          padding: const EdgeInsets.all(16.0),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 16.0,
-            mainAxisSpacing: 16.0,
-          ),
-          itemCount: appIcons.length,
-          itemBuilder: (context, index) {
-            return GestureDetector(
-              onTap: () async {
-                appState.setState((_) {
-                  appState.setting.selectIcon = index;
-                });
-                await VariableAppIcon.changeAppIcon(
-                    androidIconId: appIcons[index].$1);
-              },
-              child: GridTile(
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: selectedIconIndex == index
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.transparent,
-                      width: 3.0,
+      appBar: AppBar(title: Text('选择应用图标')),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          double parentWidth = constraints.maxWidth; // 根据宽度计算crossAxisCount
+          int crossAxisCount = parentWidth ~/ 150 + 1;
+          return GridView.builder(
+            padding: const EdgeInsets.all(16.0),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 16.0,
+              mainAxisSpacing: 16.0,
+            ),
+            itemCount: appIcons.length,
+            itemBuilder: (context, index) {
+              return GestureDetector(
+                onTap: () async {
+                  appState.setState((_) {
+                    appState.setting.selectIcon = index;
+                  });
+                  await VariableAppIcon.changeAppIcon(
+                    androidIconId: appIcons[index].$1,
+                  );
+                },
+                child: GridTile(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: selectedIconIndex == index
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.transparent,
+                        width: 3.0,
+                      ),
                     ),
+                    child: Image.asset(appIcons[index].$2),
                   ),
-                  child: Image.asset(appIcons[index].$2),
                 ),
-              ),
-            );
-          },
-        );
-      }),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

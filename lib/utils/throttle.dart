@@ -64,9 +64,10 @@ class IntervalRunnerDebug<T> {
         key,
         () {
           print(
-              '${DateTime.now()} Queue中排到了 $key， 此时Queue的长度：${_callbackQueue.length}');
+            '${DateTime.now()} Queue中排到了 $key， 此时Queue的长度：${_callbackQueue.length}',
+          );
           completer.complete(callback);
-        }
+        },
       ));
       print('${DateTime.now()} key: $key _queueLock 1END');
     });
@@ -77,17 +78,22 @@ class IntervalRunnerDebug<T> {
 
       if (_lastRunTime != null && _lastRunTime!.add(interval).isAfter(now)) {
         delay = _lastRunTime!.add(interval).difference(now);
-        print('${DateTime.now()} now: $now, _lastRunTime: $_lastRunTime, key: $key 需要等$delay时间到${_lastRunTime!.add(interval)}');
+        print(
+          '${DateTime.now()} now: $now, _lastRunTime: $_lastRunTime, key: $key 需要等$delay时间到${_lastRunTime!.add(interval)}',
+        );
         await Future.delayed(delay);
       } else {
-        print('${DateTime.now()} now: $now, _lastRunTime: $_lastRunTime, key: $key 不需要等');
+        print(
+          '${DateTime.now()} now: $now, _lastRunTime: $_lastRunTime, key: $key 不需要等',
+        );
       }
       await _queueLock.synchronized(() {
         print('${DateTime.now()} key: $key _queueLock 2BEGIN');
         final (curKey, curCallback) = _callbackQueue.removeFirst();
         _lastRunTime = DateTime.now();
         print(
-            '${DateTime.now()} 在key为$key的run中排到的是$curKey, 此时Queue的长度：${_callbackQueue.length}');
+          '${DateTime.now()} 在key为$key的run中排到的是$curKey, 此时Queue的长度：${_callbackQueue.length}',
+        );
         curCallback();
         print('${DateTime.now()} key: $key _queueLock 2END');
       });

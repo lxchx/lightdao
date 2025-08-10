@@ -44,10 +44,12 @@ class UpdateChecker {
 
     // 解析更新日志和下载链接
     final updateLog = data['body'] as String;
-    final downloadUrl = (data['assets'] as List).firstWhere(
-      (asset) => asset['name'] == 'app-release.apk',
-      orElse: () => throw Exception('No APK found in release assets'),
-    )['browser_download_url'] as String;
+    final downloadUrl =
+        (data['assets'] as List).firstWhere(
+              (asset) => asset['name'] == 'app-release.apk',
+              orElse: () => throw Exception('No APK found in release assets'),
+            )['browser_download_url']
+            as String;
 
     // 比较版本号
     final hasUpdate = _compareVersions(latestVersion, currentVersion);
@@ -81,7 +83,8 @@ class UpdateChecker {
   }) async {
     final dio = Dio();
     // 尝试获取下载目录
-    final dir = await getDownloadsDirectory() ??
+    final dir =
+        await getDownloadsDirectory() ??
         await getExternalStorageDirectory() ??
         await getApplicationDocumentsDirectory();
 

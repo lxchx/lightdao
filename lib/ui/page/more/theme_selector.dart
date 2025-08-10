@@ -21,8 +21,11 @@ class _ThemeSelectorPageState extends State<ThemeSelectorPage>
   @override
   void initState() {
     super.initState();
-    _tabController =
-        TabController(length: 2, vsync: this, initialIndex: widget.initIndex);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initIndex,
+    );
   }
 
   @override
@@ -40,22 +43,15 @@ class _ThemeSelectorPageState extends State<ThemeSelectorPage>
           controller: _tabController,
           tabs: [
             Tab(text: '浅色', icon: Icon(Icons.light_mode)),
-            Tab(
-              text: '暗色',
-              icon: Icon(Icons.dark_mode),
-            ),
+            Tab(text: '暗色', icon: Icon(Icons.dark_mode)),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          ThemeListView(
-            isDarkModeSeleted: false,
-          ),
-          ThemeListView(
-            isDarkModeSeleted: true,
-          ),
+          ThemeListView(isDarkModeSeleted: false),
+          ThemeListView(isDarkModeSeleted: true),
         ],
       ),
     );
@@ -74,55 +70,57 @@ class ThemeListView extends StatelessWidget {
     return ListView(
       children: [
         DynamicColorBuilder(
-            builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-          final brightness = MediaQuery.of(context).platformBrightness;
-          final isSysDarkMode = brightness == Brightness.dark;
-          final isUserDarkMode = appState.setting.userSettingIsDarkMode;
-          final followSysDarkMode = appState.setting.followedSysDarkMode;
-          final isAppDarkMode =
-              followSysDarkMode ? isSysDarkMode : isUserDarkMode;
-          final colorScheme = isAppDarkMode ? darkDynamic : lightDynamic;
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Card(
-              color: appState.setting.dynamicThemeColor
-                  ? colorScheme?.primary
-                  : colorScheme?.secondaryContainer,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12.0),
-                onTap: () {
-                  if (lightDynamic == null && darkDynamic == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text("本设备不支持动态取色！"),
-                    ));
-                    return;
-                  }
-                  if (!appState.setting.dynamicThemeColor) {
-                    appState.setState((state) async {
-                      state.setting.dynamicThemeColor = true;
-                    });
-                  }
-                },
-                child: SizedBox(
-                  height: 50,
-                  child: Center(
-                    child: Text(
-                      '动态取色',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: appState.setting.dynamicThemeColor
-                                ? colorScheme?.onPrimary
-                                : colorScheme?.onSecondaryContainer,
-                            fontWeight: appState.setting.dynamicThemeColor
-                                ? FontWeight.bold
-                                : null,
-                          ),
+          builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+            final brightness = MediaQuery.of(context).platformBrightness;
+            final isSysDarkMode = brightness == Brightness.dark;
+            final isUserDarkMode = appState.setting.userSettingIsDarkMode;
+            final followSysDarkMode = appState.setting.followedSysDarkMode;
+            final isAppDarkMode = followSysDarkMode
+                ? isSysDarkMode
+                : isUserDarkMode;
+            final colorScheme = isAppDarkMode ? darkDynamic : lightDynamic;
+            return Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Card(
+                color: appState.setting.dynamicThemeColor
+                    ? colorScheme?.primary
+                    : colorScheme?.secondaryContainer,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12.0),
+                  onTap: () {
+                    if (lightDynamic == null && darkDynamic == null) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text("本设备不支持动态取色！")));
+                      return;
+                    }
+                    if (!appState.setting.dynamicThemeColor) {
+                      appState.setState((state) async {
+                        state.setting.dynamicThemeColor = true;
+                      });
+                    }
+                  },
+                  child: SizedBox(
+                    height: 50,
+                    child: Center(
+                      child: Text(
+                        '动态取色',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: appState.setting.dynamicThemeColor
+                              ? colorScheme?.onPrimary
+                              : colorScheme?.onSecondaryContainer,
+                          fontWeight: appState.setting.dynamicThemeColor
+                              ? FontWeight.bold
+                              : null,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          },
+        ),
         ColorSelectListTile(
           isDarkModeSeleted: isDarkModeSeleted,
           name: 'Tips粉',
@@ -157,34 +155,29 @@ class ThemeListView extends StatelessWidget {
                   title: const Text('选择颜色'),
                   content: SingleChildScrollView(
                     child: StatefulBuilder(
-                        builder: (context, setState) => ColorPicker(
-                              color: customColor,
-                              onColorChanged: (Color color) {
-                                setState(() {
-                                  customColor = color;
-                                  appState.setState((_) {
-                                    if (isDarkModeSeleted) {
-                                      appState.setting
-                                          .darkModeCustomThemeColor = color;
-                                      appState.setting.darkModeThemeColor =
-                                          color;
-                                    } else {
-                                      appState.setting
-                                          .lightModeCustomThemeColor = color;
-                                      appState.setting.lightModeThemeColor =
-                                          color;
-                                    }
-                                  });
-                                });
-                              },
-                              borderRadius: 22,
-                              heading: Text(
-                                '颜色',
-                              ),
-                              subheading: Text(
-                                '色调',
-                              ),
-                            )),
+                      builder: (context, setState) => ColorPicker(
+                        color: customColor,
+                        onColorChanged: (Color color) {
+                          setState(() {
+                            customColor = color;
+                            appState.setState((_) {
+                              if (isDarkModeSeleted) {
+                                appState.setting.darkModeCustomThemeColor =
+                                    color;
+                                appState.setting.darkModeThemeColor = color;
+                              } else {
+                                appState.setting.lightModeCustomThemeColor =
+                                    color;
+                                appState.setting.lightModeThemeColor = color;
+                              }
+                            });
+                          });
+                        },
+                        borderRadius: 22,
+                        heading: Text('颜色'),
+                        subheading: Text('色调'),
+                      ),
+                    ),
                   ),
                   actions: <Widget>[
                     TextButton(
@@ -224,7 +217,8 @@ class ColorSelectListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<MyAppState>(context);
-    final selected = !appState.setting.dynamicThemeColor &&
+    final selected =
+        !appState.setting.dynamicThemeColor &&
         (isDarkModeSeleted && appState.setting.darkModeThemeColor == color ||
             !isDarkModeSeleted &&
                 appState.setting.lightModeThemeColor == color);

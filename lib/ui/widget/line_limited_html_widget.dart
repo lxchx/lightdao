@@ -21,8 +21,9 @@ class LineLimitedHtmlWidget extends StatefulWidget {
 }
 
 class _LineLimitedHtmlWidgetState extends State<LineLimitedHtmlWidget> {
-  static final threadUrlRegex =
-      RegExp(r'(https?://)?www\.nmbxd1?\.com\/(m\/)?t\/(\d+)');
+  static final threadUrlRegex = RegExp(
+    r'(https?://)?www\.nmbxd1?\.com\/(m\/)?t\/(\d+)',
+  );
   bool _isExpanded = false;
 
   @override
@@ -49,32 +50,38 @@ class _LineLimitedHtmlWidgetState extends State<LineLimitedHtmlWidget> {
                 Colors.black,
                 _isExpanded || !needCollapsed
                     ? Colors.black
-                    : Colors.transparent
+                    : Colors.transparent,
               ],
             ).createShader(Rect.fromLTRB(0, 0, rect.width, rect.height));
           },
           blendMode: BlendMode.dstIn,
-          child: LayoutBuilder(builder: (context, covariant) {
-            return SizedBox(
-              width: covariant.maxWidth,
-              child: HtmlWidget(
-                displayContent,
-                onTapUrl: (url) async {
-                  final threadIdMatch = threadUrlRegex.firstMatch(url);
-                  if (threadIdMatch != null) {
-                    final threadId = int.tryParse(threadIdMatch.group(3) ?? '');
-                    final appState =
-                        Provider.of<MyAppState>(context, listen: false);
-                    if (threadId == null) return false;
-                    appState.navigateThreadPage2(context, threadId, false);
-                    return true;
-                  }
-                  return false;
-                },
-                factoryBuilder: widget.contentBuilder,
-              ),
-            );
-          }),
+          child: LayoutBuilder(
+            builder: (context, covariant) {
+              return SizedBox(
+                width: covariant.maxWidth,
+                child: HtmlWidget(
+                  displayContent,
+                  onTapUrl: (url) async {
+                    final threadIdMatch = threadUrlRegex.firstMatch(url);
+                    if (threadIdMatch != null) {
+                      final threadId = int.tryParse(
+                        threadIdMatch.group(3) ?? '',
+                      );
+                      final appState = Provider.of<MyAppState>(
+                        context,
+                        listen: false,
+                      );
+                      if (threadId == null) return false;
+                      appState.navigateThreadPage2(context, threadId, false);
+                      return true;
+                    }
+                    return false;
+                  },
+                  factoryBuilder: widget.contentBuilder,
+                ),
+              );
+            },
+          ),
         ),
         if (widget.maxLength != null &&
             widget.content.length > widget.maxLength!)

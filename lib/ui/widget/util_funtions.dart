@@ -44,8 +44,8 @@ void showReplyBottomSheet(
   var showPhrasePicker = false;
   var showTitleAndAuthor =
       titleControler.text.isNotEmpty || nameControler.text.isNotEmpty
-          ? true
-          : false;
+      ? true
+      : false;
   var rememberThisCookie = false;
   var rememberedCookieName = '';
   var isFullscreen = false;
@@ -564,7 +564,7 @@ void showReplyBottomSheet(
                           setState(() {});
                         },
                         minLines: 2,
-                        maxLines: 100,  // 随便填个比maxHeight多的数，不填布局会有问题
+                        maxLines: 100, // 随便填个比maxHeight多的数，不填布局会有问题
                         decoration: InputDecoration(
                           labelText: isPostThread ? '正文' : '回复',
                           border: OutlineInputBorder(),
@@ -1064,7 +1064,9 @@ void showReplyBottomSheet(
 
                                       if (!navigator.mounted) return;
                                       navigator.pop();
-                                      if (context.mounted) context.loaderOverlay.hide();
+                                      if (context.mounted) {
+                                        context.loaderOverlay.hide();
+                                      }
                                       nameControler.clear();
                                       titleControler.clear();
                                       contentControler.clear();
@@ -1096,7 +1098,9 @@ void showReplyBottomSheet(
 
                                       if (!navigator.mounted) return;
                                       navigator.pop();
-                                      if (context.mounted) context.loaderOverlay.hide();
+                                      if (context.mounted) {
+                                        context.loaderOverlay.hide();
+                                      }
                                       nameControler.clear();
                                       titleControler.clear();
                                       contentControler.clear();
