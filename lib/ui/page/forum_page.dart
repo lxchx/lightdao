@@ -131,10 +131,12 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
   }
 
   void _onPageStateChanged() {
-    if (mounted) setState(() {});
-    if (widget.scaffoldSetState != null) {
-      widget.scaffoldSetState!();
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+      if (widget.scaffoldSetState != null) {
+        widget.scaffoldSetState!();
+      }
+    });
   }
 
   @override
