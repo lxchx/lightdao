@@ -19,16 +19,25 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
       - uses: actions/setup-java@v2
         with:
           distribution: 'zulu'
           java-version: 17
-      - uses: subosito/flutter-action@v1
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.32.4'
+          cache: true
+
+      - name: Cache Flutter build
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: ${{ runner.os }}-flutter-build-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-build-
       - run: flutter pub get
       - run: bash ./scripts/first-build.sh --debug
 
@@ -37,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: 'recursive'
   
@@ -48,9 +57,18 @@ jobs:
           java-version: 17
   
       - name: Set up Flutter
-        uses: subosito/flutter-action@v1
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.32.4'
+          cache: true
+
+      - name: Cache Flutter build
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: ${{ runner.os }}-flutter-build-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-build-
   
       - name: Conditional Restore JKS
         if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/heads/ci-test') || github.ref == 'refs/heads/master'
@@ -92,6 +110,19 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to fetch all history for tags
+
+      - name: Get tag message
+        id: tag_message
+        run: |
+          TAG_MESSAGE=$(git tag -l --format='%(contents)' ${{ github.ref_name }})
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          echo "$TAG_MESSAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Download APK from build
         uses: actions/download-artifact@v4
         with:
@@ -108,6 +139,7 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: ${{ github.ref }}
+          body: ${{ steps.tag_message.outputs.message }}
 
       - name: Upload Release APK
         id: upload_release_asset
