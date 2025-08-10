@@ -66,6 +66,7 @@ dependencies:
   path: ^1.8.0
   flutter_drawing_board: ^0.9.8
   flutter_colorpicker: ^1.1.0
+  flutter_hooks: ^0.20.5
 
 dev_dependencies:
   flutter_test:

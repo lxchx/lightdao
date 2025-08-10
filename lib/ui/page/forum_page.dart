@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:breakpoint/breakpoint.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/ui/page/search.dart';
 import 'package:lightdao/ui/widget/fading_scroll_view.dart';
@@ -1135,32 +1136,95 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ExpansionTile(
-                initiallyExpanded: true,
-                title: const Text('常用板块'),
-                subtitle: const Text('长按进行添加或移除'),
-                children: appState.setting.favoredForums
-                    .map(
-                      (forum) => ListTile(
-                        onTap: () => handleSelection(
-                          ForumSelection(
-                            id: forum.id,
-                            name: forum.getShowName(),
-                            isTimeline: false,
+              HookBuilder(
+                builder: (context) {
+                  final isReordering = useState(false);
+
+                  return ExpansionTile(
+                    initiallyExpanded: true,
+                    title: const Text('常用板块'),
+                    subtitle: Text(
+                      isReordering.value ? '可拖动滑柄排序' : '长按板块来添加或删除',
+                    ),
+                    children: <Widget>[
+                      if (isReordering.value)
+                        ReorderableListView(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          onReorder: (oldIndex, newIndex) {
+                            appState.setState((_) {
+                              if (newIndex > oldIndex) {
+                                newIndex -= 1;
+                              }
+                              final item = appState.setting.favoredForums
+                                  .removeAt(oldIndex);
+                              appState.setting.favoredForums.insert(
+                                newIndex,
+                                item,
+                              );
+                            });
+                          },
+                          children: appState.setting.favoredForums
+                              .map(
+                                (forum) => ListTile(
+                                  key: ValueKey(forum.id),
+                                  title: HtmlWidget(forum.getShowName()),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.delete),
+                                        onPressed: () => appState.setState(
+                                          (_) => appState.setting.favoredForums
+                                              .removeWhere(
+                                                (f) => f.id == forum.id,
+                                              ),
+                                        ),
+                                      ),
+                                      ReorderableDragStartListener(
+                                        index: appState.setting.favoredForums
+                                            .indexOf(forum),
+                                        child: const Icon(Icons.drag_indicator),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        )
+                      else
+                        ...appState.setting.favoredForums.map(
+                          (forum) => ListTile(
+                            onTap: () => handleSelection(
+                              ForumSelection(
+                                id: forum.id,
+                                name: forum.getShowName(),
+                                isTimeline: false,
+                              ),
+                            ),
+                            onLongPress: () => isReordering.value = true,
+                            title: HtmlWidget(forum.getShowName()),
+                            selected:
+                                !currentSelection.isTimeline &&
+                                currentSelection.id == forum.id,
                           ),
                         ),
-                        onLongPress: () => appState.setState(
-                          (_) => appState.setting.favoredForums.removeWhere(
-                            (f) => f.id == forum.id,
+                      if (isReordering.value)
+                        ListTile(
+                          textColor: Theme.of(context).colorScheme.secondary,
+                          title: Center(
+                            child: Text(
+                              '完成',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
+                          onTap: () {
+                            isReordering.value = !isReordering.value;
+                          },
                         ),
-                        title: HtmlWidget(forum.getShowName()),
-                        selected:
-                            !currentSelection.isTimeline &&
-                            currentSelection.id == forum.id,
-                      ),
-                    )
-                    .toList(),
+                    ],
+                  );
+                },
               ),
               if (appState.fetchTimelinesStatus == SimpleStatus.completed)
                 ExpansionTile(
