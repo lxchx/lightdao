@@ -63,12 +63,24 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           TARGET_BRANCH="origin/${{ github.base_ref }}"
-          git diff --unified=0 $TARGET_BRANCH HEAD | \
-          grep -E '^\+[^+].*(\ \/\/ ignore:|\ \/\/ ignore_for_file:)' | \
-          sed -E 's/^\+//' | \
-          while IFS= read -r line; do
-            FILE_PATH=$(echo "$line" | cut -d' ' -f1 | sed 's/a\///' | sed 's/b\///')
-            LINE_NUMBER=$(grep -nF "$line" "$FILE_PATH" | cut -d: -f1 | head -n 1)
-            MESSAGE="Potential misuse of linter ignore. Please review this change carefully."
-            echo "::warning file=$FILE_PATH,line=$LINE_NUMBER::$MESSAGE"
+          git diff --name-only --diff-filter=AM $TARGET_BRANCH HEAD |
+          while read -r filepath; do
+            git diff --unified=0 $TARGET_BRANCH HEAD -- "$filepath" |
+            awk -v file="$filepath" ' 
+              BEGIN { line_num = 0 }
+              /^@@/ {
+                split($3, parts, ",");
+                line_num = substr(parts[1], 2);
+                next;
+              }
+              /^\+/ {
+                if ($0 ~ /(\/\/ ignore:|\/\/ ignore_for_file:)/) {
+                  message = "Potential misuse of linter ignore in " file " on line " line_num ". Please review carefully."
+                  print "::warning file=" file ",line=" line_num "::" message
+                }
+                line_num++;
+              }
+              /^ / { line_num++ }
+            '
           done
+        shell: bash
