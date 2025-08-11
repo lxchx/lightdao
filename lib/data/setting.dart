@@ -361,9 +361,14 @@ class MyAppState with ChangeNotifier {
   SimpleStatus fetchTimelinesStatus = SimpleStatus.completed;
   SimpleStatus fetchForumsStatus = SimpleStatus.completed;
 
-  void setState(void Function(MyAppState state) fun) async {
+  void setState(
+    void Function(MyAppState state) fun, {
+    bool markRebuild = true,
+  }) async {
     fun(this);
-    notifyListeners();
+    if (markRebuild) {
+      notifyListeners();
+    }
     await saveSettings();
   }
 

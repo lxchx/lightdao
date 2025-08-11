@@ -90,7 +90,6 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
   bool _isPoOnlyMode = false;
   bool _showBar = true;
-  final _saveHistoryThrottle = Throttle(interval: Duration(seconds: 1));
   bool _isRawPicMode = false;
 
   final _refCache = LRUCache<int, Future<RefHtml>>(100);
@@ -101,6 +100,9 @@ class _ThreadPage2State extends State<ThreadPage2> {
   final _replyTitleControler = TextEditingController();
   final _replyAuthorControler = TextEditingController();
 
+  late final MyAppState _appState;
+  int? _lastKnownReplyIndex;
+
   ThreadPageManager get _curPageManager {
     return _isPoOnlyMode ? _poPageManager! : _pageManager;
   }
@@ -108,7 +110,8 @@ class _ThreadPage2State extends State<ThreadPage2> {
   int? get _anchorReplyIndex {
     if (_curPageManager.totalItemsCount == 0) return null;
 
-    final anchorIndex = _scrollController.anchorIndex;
+    final anchorIndex = _lastKnownReplyIndex;
+    if (anchorIndex == null) return null;
     // 处理特殊情况：顶部和底部
     if (anchorIndex == 0) return 0;
     if (anchorIndex == _curPageManager.totalItemsCount + 1) {
@@ -126,25 +129,22 @@ class _ThreadPage2State extends State<ThreadPage2> {
   ThreadJson get _poReply => _curPageManager.header ?? widget.headerThread;
 
   String _getForumName() {
-    final appState = Provider.of<MyAppState>(context, listen: false);
     if (_poReply.fid >= 0) {
-      return appState.forumMap[_poReply.fid]?.getShowName() ?? '未知';
+      return _appState.forumMap[_poReply.fid]?.getShowName() ?? '未知';
     } else {
       // 始终使用_pageManager，避免切换到_poPageManager还要加载
       return _pageManager.fid != null
-          ? appState.forumMap[_pageManager.fid]?.getShowName() ?? '未知'
+          ? _appState.forumMap[_pageManager.fid]?.getShowName() ?? '未知'
           : '加载中';
     }
   }
 
   void _showFontSizeDialog(BuildContext context) {
-    final appState = Provider.of<MyAppState>(context, listen: false);
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          '字体大小缩放(${appState.setting.fontSizeFactor.toStringAsFixed(1)})',
+          '字体大小缩放(${_appState.setting.fontSizeFactor.toStringAsFixed(1)})',
         ),
         content: SizedBox(
           width: 250,
@@ -154,10 +154,10 @@ class _ThreadPage2State extends State<ThreadPage2> {
               Slider(
                 min: 0.7,
                 max: 1.3,
-                value: appState.setting.fontSizeFactor,
+                value: _appState.setting.fontSizeFactor,
                 divisions: 6,
                 onChanged: (double value) {
-                  appState.setState((state) {
+                  _appState.setState((state) {
                     state.setting.fontSizeFactor = value;
                   });
                 },
@@ -238,17 +238,16 @@ class _ThreadPage2State extends State<ThreadPage2> {
   }
 
   void _toggleFavorite(BuildContext context) {
-    final appState = Provider.of<MyAppState>(context, listen: false);
     final threadId = _poReply.id;
 
-    if (appState.isStared(threadId)) {
-      appState.setState((_) {
-        appState.setting.starHistory.removeWhere(
+    if (_appState.isStared(threadId)) {
+      _appState.setState((_) {
+        _appState.setting.starHistory.removeWhere(
           (reply) => reply.thread.id == threadId,
         );
       });
     } else {
-      appState.setState((_) {
+      _appState.setState((_) {
         final history = ReplyJsonWithPage(
           _anchorPage,
           _curPageManager.getItemByIndex(_anchorReplyIndex!)!.$3,
@@ -257,7 +256,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
           _curPageManager.getItemByIndex(_anchorReplyIndex!)!.$1,
         );
 
-        appState.setting.starHistory.add(history);
+        _appState.setting.starHistory.add(history);
       });
     }
   }
@@ -464,11 +463,10 @@ class _ThreadPage2State extends State<ThreadPage2> {
     } else {
       // 页面未加载，直接换一个新的PageManager
       _scrollController.jumpToIndex(0); // 先跳转到首个回复
-      final appState = Provider.of<MyAppState>(context, listen: false);
       _pageManager = ThreadPageManager(
         threadId: widget.headerThread.id,
         initialPage: page,
-        cookie: appState.getCurrentCookie(),
+        cookie: _appState.getCurrentCookie(),
         refCache: _refCache,
       );
       _pageManager.registerPreviousPageCallback((
@@ -492,13 +490,12 @@ class _ThreadPage2State extends State<ThreadPage2> {
   }
 
   _saveHistory() {
-    if (_pageManager.isEmpty ||
+    if (_curPageManager.isEmpty ||
         _anchorReplyIndex == null ||
         (_anchorReplyIndex != null &&
             _anchorReplyIndex! > _curPageManager.totalItemsCount)) {
       return;
     }
-    final appState = Provider.of<MyAppState>(context, listen: false);
     final history = _anchorReplyIndex != null
         ? ReplyJsonWithPage(
             _anchorPage,
@@ -512,21 +509,21 @@ class _ThreadPage2State extends State<ThreadPage2> {
       return;
     }
 
-    appState.setState((_) {
+    _appState.setState((_) {
       if (_isPoOnlyMode) {
-        appState.setting.viewPoOnlyHistory.put(_poReply.id, history);
+        _appState.setting.viewPoOnlyHistory.put(_poReply.id, history);
       } else {
-        if (appState.setting.starHistory.any(
+        if (_appState.setting.starHistory.any(
           ((rply) => rply.threadId == _poReply.id),
         )) {
-          appState.setting.starHistory.removeWhere(
+          _appState.setting.starHistory.removeWhere(
             (rply) => rply.threadId == _poReply.id,
           );
-          appState.setting.starHistory.insert(0, history);
+          _appState.setting.starHistory.insert(0, history);
         }
-        appState.setting.viewHistory.put(_poReply.id, history);
+        _appState.setting.viewHistory.put(_poReply.id, history);
       }
-    });
+    }, markRebuild: false);
   }
 
   Future<dynamic> _showThreadActionMenu(
@@ -537,8 +534,6 @@ class _ThreadPage2State extends State<ThreadPage2> {
     return showDialog(
       context: context,
       builder: (context) {
-        final appState = Provider.of<MyAppState>(context, listen: false);
-
         // 创建引用选项
         Widget buildQuoteOption() {
           return SimpleDialogOption(
@@ -622,7 +617,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                       body: Theme(
                         data: Theme.of(context).copyWith(
                           textTheme: Theme.of(context).textTheme.apply(
-                            fontSizeFactor: appState.setting.fontSizeFactor,
+                            fontSizeFactor: _appState.setting.fontSizeFactor,
                           ),
                         ),
                         child: SelectionArea(
@@ -637,7 +632,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                                     textTheme: Theme.of(context).textTheme
                                         .apply(
                                           fontSizeFactor:
-                                              appState.setting.fontSizeFactor,
+                                              _appState.setting.fontSizeFactor,
                                         ),
                                   ),
                                   child: ReplyItem(
@@ -667,13 +662,13 @@ class _ThreadPage2State extends State<ThreadPage2> {
             child: Text('屏蔽No.${reply.id}'),
             onPressed: () {
               // 检查并添加ID过滤器
-              bool isIdFiltered = appState.setting.threadFilters.any(
+              bool isIdFiltered = _appState.setting.threadFilters.any(
                 (filter) => filter is IdThreadFilter && filter.id == reply.id,
               );
 
               if (!isIdFiltered) {
-                appState.setState((_) {
-                  appState.setting.threadFilters.add(
+                _appState.setState((_) {
+                  _appState.setting.threadFilters.add(
                     IdThreadFilter(id: reply.id),
                   );
                 });
@@ -689,15 +684,15 @@ class _ThreadPage2State extends State<ThreadPage2> {
             child: Text('屏蔽饼干${reply.userHash}'),
             onPressed: () {
               // 检查并添加饼干过滤器
-              bool isUserHashFiltered = appState.setting.threadFilters.any(
+              bool isUserHashFiltered = _appState.setting.threadFilters.any(
                 (filter) =>
                     filter is UserHashFilter &&
                     filter.userHash == reply.userHash,
               );
 
               if (!isUserHashFiltered) {
-                appState.setState((_) {
-                  appState.setting.threadFilters.add(
+                _appState.setState((_) {
+                  _appState.setting.threadFilters.add(
                     UserHashFilter(userHash: reply.userHash),
                   );
                 });
@@ -723,12 +718,12 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
   @override
   void initState() {
-    final appState = Provider.of<MyAppState>(context, listen: false);
+    _appState = Provider.of<MyAppState>(context, listen: false);
     if (widget.isCompletePage) {
       _pageManager = ThreadPageManager.withInitialItems(
         threadId: widget.headerThread.id,
         initialPage: widget.startPage,
-        cookie: appState.getCurrentCookie(),
+        cookie: _appState.getCurrentCookie(),
         initialItems: widget.headerThread.replies,
         refCache: _refCache,
       );
@@ -736,7 +731,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
       _pageManager = ThreadPageManager(
         threadId: widget.headerThread.id,
         initialPage: widget.startPage,
-        cookie: appState.getCurrentCookie(),
+        cookie: _appState.getCurrentCookie(),
         refCache: _refCache,
       );
     }
@@ -768,7 +763,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
       }
     });
     _scrollController.addListener(() {
-      _saveHistoryThrottle.run(() async => _saveHistory());
+      _lastKnownReplyIndex = _scrollController.anchorIndex;
     });
 
     Future.microtask(() async {
@@ -805,6 +800,16 @@ class _ThreadPage2State extends State<ThreadPage2> {
       });
     });
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    _saveHistory();
+    _scrollController.dispose();
+    _replyTextControler.dispose();
+    _replyTitleControler.dispose();
+    _replyAuthorControler.dispose();
+    super.dispose();
   }
 
   @override
@@ -899,13 +904,13 @@ class _ThreadPage2State extends State<ThreadPage2> {
                     break;
                   case 'po_mode':
                     if (_poPageManager == null) {
-                      final threadHistory = appState.setting.viewPoOnlyHistory
+                      final threadHistory = _appState.setting.viewPoOnlyHistory
                           .get(_poReply.id);
 
                       _poPageManager = ThreadPageManager(
                         threadId: _poReply.id,
                         initialPage: threadHistory?.page ?? 1,
-                        cookie: appState.getCurrentCookie(),
+                        cookie: _appState.getCurrentCookie(),
                         refCache: _refCache,
                         isPoOnly: true,
                       );
