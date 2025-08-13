@@ -53,6 +53,7 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
   final ScrollController _scrollController = ScrollController();
   bool _isInitialized = false;
   int _lastBuildingReplyIndex = -1;
+  late ForumSelection _currentSelection;
 
   XFile? _postImageFile;
   final _postTextControler = TextEditingController();
@@ -70,6 +71,7 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isInitialized) {
+      _currentSelection = widget.forumSelectionNotifier.value;
       _initializePageManager();
       _isInitialized = true;
     }
@@ -85,6 +87,12 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
   }
 
   void _onForumSelectionChanged() {
+    final newSelection = widget.forumSelectionNotifier.value;
+    if (newSelection.id == _currentSelection.id &&
+        newSelection.isTimeline == _currentSelection.isTimeline) {
+      return;
+    }
+    _currentSelection = newSelection;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _scrollController.jumpTo(0);
       if (mounted) _initializePageManager();
@@ -1125,6 +1133,11 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
     final appState = Provider.of<MyAppState>(context, listen: false);
 
     void handleSelection(ForumSelection selection) {
+      final currentSelection = widget.forumSelectionNotifier.value;
+      if (selection.id == currentSelection.id &&
+          selection.isTimeline == currentSelection.isTimeline) {
+        return;
+      }
       widget.forumSelectionNotifier.value = selection;
       if (Breakpoint.fromMediaQuery(context).window < WindowSize.medium) {
         Navigator.of(context).pop();
