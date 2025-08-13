@@ -28,13 +28,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // 小白条通知栏沉浸
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarDividerColor: Colors.transparent,
-      statusBarColor: Colors.transparent,
-    ),
-  );
   Hive.registerAdapter(CookieSettingAdapter());
   Hive.registerAdapter(LightDaoSettingAdapter());
   Hive.registerAdapter(MaterialColorAdapter());
@@ -135,42 +128,53 @@ class App extends StatelessWidget {
     final backGroundBlack = appState.setting.useAmoledBlack
         ? Colors.black
         : null;
-    return GlobalLoaderOverlay(
-      child: MaterialApp(
-        title: '氢岛',
-        scaffoldMessengerKey: scaffoldMessengerKey,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: lightColorScheme,
-          pageTransitionsTheme: appState.setting.predictiveBack
-              ? const PageTransitionsTheme(
-                  builders: {
-                    TargetPlatform.android:
-                        PredictiveBackPageTransitionsBuilder(),
-                  },
-                )
-              : null,
+    final Brightness iconBrightness = isDarkMode
+        ? Brightness.light
+        : Brightness.dark;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: iconBrightness,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: iconBrightness,
+      ),
+      child: GlobalLoaderOverlay(
+        child: MaterialApp(
+          title: '氢岛',
+          scaffoldMessengerKey: scaffoldMessengerKey,
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: lightColorScheme,
+            pageTransitionsTheme: appState.setting.predictiveBack
+                ? const PageTransitionsTheme(
+                    builders: {
+                      TargetPlatform.android:
+                          PredictiveBackPageTransitionsBuilder(),
+                    },
+                  )
+                : null,
+          ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: darkColorScheme,
+            scaffoldBackgroundColor: backGroundBlack,
+            pageTransitionsTheme: appState.setting.predictiveBack
+                ? const PageTransitionsTheme(
+                    builders: {
+                      TargetPlatform.android:
+                          PredictiveBackPageTransitionsBuilder(),
+                    },
+                  )
+                : null,
+            appBarTheme: AppBarTheme(backgroundColor: backGroundBlack),
+          ),
+          themeMode: appState.setting.followedSysDarkMode
+              ? (isDarkMode ? ThemeMode.dark : ThemeMode.light)
+              : (appState.setting.userSettingIsDarkMode
+                    ? ThemeMode.dark
+                    : ThemeMode.light),
+          home: MyHomePage(),
         ),
-        darkTheme: ThemeData(
-          useMaterial3: true,
-          colorScheme: darkColorScheme,
-          scaffoldBackgroundColor: backGroundBlack,
-          pageTransitionsTheme: appState.setting.predictiveBack
-              ? const PageTransitionsTheme(
-                  builders: {
-                    TargetPlatform.android:
-                        PredictiveBackPageTransitionsBuilder(),
-                  },
-                )
-              : null,
-          appBarTheme: AppBarTheme(backgroundColor: backGroundBlack),
-        ),
-        themeMode: appState.setting.followedSysDarkMode
-            ? (isDarkMode ? ThemeMode.dark : ThemeMode.light)
-            : (appState.setting.userSettingIsDarkMode
-                  ? ThemeMode.dark
-                  : ThemeMode.light),
-        home: MyHomePage(),
       ),
     );
   }

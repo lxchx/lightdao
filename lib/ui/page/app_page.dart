@@ -323,27 +323,25 @@ class _AppPageState extends State<AppPage> {
       // 小屏幕的底部导航栏
       bottomNavigationBar: breakpoint.window >= WindowSize.small
           ? null
-          : SafeArea(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutExpo,
-                height: _isBottomBarVisible || appState.setting.fixedBottomBar
-                    ? 67
-                    : 0,
-                child: ClipRRect(
-                  child: NavigationBar(
-                    onDestinationSelected: _onDestinationSelected,
-                    selectedIndex: _selectedPageIndex,
-                    destinations: destinations
-                        .map(
-                          (e) => NavigationDestination(
-                            icon: e.icon,
-                            selectedIcon: e.selectedIcon,
-                            label: e.label,
-                          ),
-                        )
-                        .toList(),
-                  ),
+          : AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutExpo,
+              height: _isBottomBarVisible || appState.setting.fixedBottomBar
+                  ? 67 + MediaQuery.of(context).padding.bottom
+                  : 0,
+              child: ClipRRect(
+                child: NavigationBar(
+                  onDestinationSelected: _onDestinationSelected,
+                  selectedIndex: _selectedPageIndex,
+                  destinations: destinations
+                      .map(
+                        (e) => NavigationDestination(
+                          icon: e.icon,
+                          selectedIcon: e.selectedIcon,
+                          label: e.label,
+                        ),
+                      )
+                      .toList(),
                 ),
               ),
             ),

@@ -1282,41 +1282,41 @@ class _ThreadPage2State extends State<ThreadPage2> {
           );
         },
       ),
-      bottomNavigationBar: SafeArea(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutExpo,
-          height: _showBar || appState.setting.fixedBottomBar ? 67 : 0,
-          child: BottomAppBar(
-            shape: CircularNotchedRectangle(),
-            child: _showBar || appState.setting.fixedBottomBar
-                ? Row(
-                    children: [
-                      IconButton(
-                        tooltip: '收藏',
-                        onPressed: () => _toggleFavorite(context),
-                        icon: Icon(
-                          appState.isStared(_poReply.id)
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                        ),
+      bottomNavigationBar: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutExpo,
+        height: _showBar || appState.setting.fixedBottomBar
+            ? kToolbarHeight + MediaQuery.of(context).padding.bottom
+            : 0,
+        child: BottomAppBar(
+          shape: CircularNotchedRectangle(),
+          child: _showBar || appState.setting.fixedBottomBar
+              ? Row(
+                  children: [
+                    IconButton(
+                      tooltip: '收藏',
+                      onPressed: () => _toggleFavorite(context),
+                      icon: Icon(
+                        appState.isStared(_poReply.id)
+                            ? Icons.favorite
+                            : Icons.favorite_border,
                       ),
-                      IconButton(
-                        tooltip: '页跳转',
-                        onPressed: () {
-                          _showPageJumpDialog(context);
-                        },
-                        icon: Icon(Icons.move_down),
-                      ),
-                      IconButton(
-                        tooltip: '字体大小调整',
-                        onPressed: () => _showFontSizeDialog(context),
-                        icon: Icon(Icons.format_size),
-                      ),
-                    ],
-                  )
-                : SizedBox.shrink(),
-          ),
+                    ),
+                    IconButton(
+                      tooltip: '页跳转',
+                      onPressed: () {
+                        _showPageJumpDialog(context);
+                      },
+                      icon: Icon(Icons.move_down),
+                    ),
+                    IconButton(
+                      tooltip: '字体大小调整',
+                      onPressed: () => _showFontSizeDialog(context),
+                      icon: Icon(Icons.format_size),
+                    ),
+                  ],
+                )
+              : SizedBox.shrink(),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
