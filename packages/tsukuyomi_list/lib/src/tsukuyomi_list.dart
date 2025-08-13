@@ -136,7 +136,10 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
   @override
   void dispose() {
     widget.controller?._detach(this);
-    _scrollController.dispose();
+    // Only dispose the controller if it was created by this widget.
+    if (widget.controller == null) {
+      _scrollController.dispose();
+    }
     super.dispose();
   }
 
