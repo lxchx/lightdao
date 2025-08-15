@@ -32,8 +32,8 @@ android {
         applicationId = "com.lxchx.lightdao"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 45
-        versionName = "1.4.2"
+        versionCode = 46
+        versionName = "1.4.3"
     }
 
     signingConfigs {
