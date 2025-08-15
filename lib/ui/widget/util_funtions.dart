@@ -191,14 +191,19 @@ void showReplyBottomSheet(
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerRight,
-                    child: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          isFullscreen = !isFullscreen;
-                        });
-                      },
-                      icon: Icon(
-                        isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                    child: Padding(
+                      padding: EdgeInsets.only(right: breakpoint.gutters / 2),
+                      child: IconButton(
+                        onPressed: () {
+                          setState(() {
+                            isFullscreen = !isFullscreen;
+                          });
+                        },
+                        icon: Icon(
+                          isFullscreen
+                              ? Icons.fullscreen_exit
+                              : Icons.fullscreen,
+                        ),
                       ),
                     ),
                   ),
@@ -539,6 +544,7 @@ void showReplyBottomSheet(
                           setState(() {});
                         },
                         expands: true,
+                        maxLines: null,
                         textAlignVertical: TextAlignVertical.top,
                         decoration: InputDecoration(
                           labelText: isPostThread ? '正文' : '回复',
@@ -1166,6 +1172,9 @@ void showReplyBottomSheet(
                             buildTextField(),
                             buildBottomControls(),
                             buildPhrasePicker(),
+                            SizedBox(
+                              height: MediaQuery.of(context).padding.bottom,
+                            ),
                           ],
                         ),
                       ),
