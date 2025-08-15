@@ -115,13 +115,8 @@ jobs:
         with:
           fetch-depth: 0 # Required to fetch all history for tags
 
-      - name: Get tag message
-        id: tag_message
-        run: |
-          TAG_MESSAGE=$(git tag -l --format='%(contents)' ${{ github.ref_name }})
-          echo "message<<EOF" >> $GITHUB_OUTPUT
-          echo "$TAG_MESSAGE" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Get release body from tag
+        run: git tag -l --format='%(contents)' ${{ github.ref_name }} > RELEASE_BODY.md
 
       - name: Download APK from build
         uses: actions/download-artifact@v4
@@ -133,17 +128,17 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1.1.4
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
           release_name: ${{ github.ref }}
-          body: ${{ steps.tag_message.outputs.message }}
+          body_path: RELEASE_BODY.md
 
       - name: Upload Release APK
         id: upload_release_asset
-        uses: actions/upload-release-asset@v1.0.1
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
