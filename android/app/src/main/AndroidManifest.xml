@@ -147,10 +147,10 @@
             <!-- 调试时需要取消注释，编译时需要注释，不然会多一个图标 -->
 
             <!-- START: build-first-time-comment -->
-            <intent-filter>
+            <!--<intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
+            </intent-filter>-->
             <!-- END: build-first-time-comment -->
 
         </activity>
