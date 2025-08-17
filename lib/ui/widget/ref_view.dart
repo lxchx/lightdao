@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:breakpoint/breakpoint.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:lightdao/data/xdao/thread.dart';
 import 'package:lightdao/ui/page/pop_ref_view_page.dart';
 import 'package:lightdao/ui/widget/line_limited_html_widget.dart';
@@ -427,9 +428,9 @@ class _RefViewState extends State<RefView> with SingleTickerProviderStateMixin {
                                       ),
                                     if (snapshot.data!.title != '无标题' &&
                                         snapshot.data!.userHash != "Tips")
-                                      Text(
+                                      HtmlWidget(
                                         snapshot.data!.title,
-                                        style: Theme.of(context)
+                                        textStyle: Theme.of(context)
                                             .textTheme
                                             .titleSmall!
                                             .copyWith(
@@ -445,9 +446,9 @@ class _RefViewState extends State<RefView> with SingleTickerProviderStateMixin {
                                             ),
                                       ),
                                     if (snapshot.data!.name != '无名氏')
-                                      Text(
+                                      HtmlWidget(
                                         snapshot.data!.name,
-                                        style: Theme.of(context)
+                                        textStyle: Theme.of(context)
                                             .textTheme
                                             .bodyMedium!
                                             .copyWith(

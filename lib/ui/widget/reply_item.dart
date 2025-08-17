@@ -191,23 +191,25 @@ class ReplyItem extends StatelessWidget {
                       ),
                     if (threadJson.title != '无标题' &&
                         threadJson.userHash != "Tips")
-                      Text(
+                      HtmlWidget(
                         threadJson.title,
-                        style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                          fontSize:
-                              Theme.of(
-                                context,
-                              ).textTheme.titleSmall!.fontSize! *
-                              1.1,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                        textStyle: Theme.of(context).textTheme.titleSmall!
+                            .copyWith(
+                              fontSize:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.titleSmall!.fontSize! *
+                                  1.1,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                       ),
                     if (threadJson.name != '无名氏')
-                      Text(
+                      HtmlWidget(
                         threadJson.name,
-                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                          color: Theme.of(context).colorScheme.secondary,
-                        ),
+                        textStyle: Theme.of(context).textTheme.bodyMedium!
+                            .copyWith(
+                              color: Theme.of(context).colorScheme.secondary,
+                            ),
                       ),
                     if (inCardView) SizedBox(height: 5),
                     if (!noMoreParse)
