@@ -1286,7 +1286,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutExpo,
         height: _showBar || appState.setting.fixedBottomBar
-            ? kToolbarHeight + MediaQuery.of(context).padding.bottom
+            ? kToolbarHeight + 10 + MediaQuery.of(context).padding.bottom
             : 0,
         child: BottomAppBar(
           shape: CircularNotchedRectangle(),
