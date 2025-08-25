@@ -400,7 +400,9 @@ class ThreadPageManager extends PageManager<ReplyJson> {
     }
     if (refCache != null) {
       for (final reply in pageThread.replies) {
-        refCache!.put(reply.id, Future.value(RefHtml.fromReplyJson(reply)));
+        if (reply.userHash != 'Tips') {
+          refCache!.put(reply.id, Future.value(RefHtml.fromReplyJson(reply)));
+        }
       }
     }
 

@@ -1044,7 +1044,9 @@ class _ThreadPageState extends State<ThreadPage> {
           _hasMoreBefore = false;
         }
         for (var rply in newThreadData.replies) {
-          refCache.put(rply.id, Future.value(RefHtml.fromReplyJson(rply)));
+          if (rply.userHash != 'Tips') {
+            refCache.put(rply.id, Future.value(RefHtml.fromReplyJson(rply)));
+          }
         }
         _replies.removeWhere((item) => item.page == _currentMinPage);
         _replies.insertAll(
@@ -1109,7 +1111,9 @@ class _ThreadPageState extends State<ThreadPage> {
           return;
         }
         for (var rply in newThreadData.replies) {
-          refCache.put(rply.id, Future.value(RefHtml.fromReplyJson(rply)));
+          if (rply.userHash != 'Tips') {
+            refCache.put(rply.id, Future.value(RefHtml.fromReplyJson(rply)));
+          }
         }
         if (widget.startReplyId > 0) {
           final historyIndex = newThreadData.replies.indexWhere(
@@ -1213,7 +1217,9 @@ class _ThreadPageState extends State<ThreadPage> {
         );
         _replies.removeWhere((item) => item.page == _currentMaxPage);
         for (var rply in newThreadData.replies) {
-          refCache.put(rply.id, Future.value(RefHtml.fromReplyJson(rply)));
+          if (rply.userHash != 'Tips') {
+            refCache.put(rply.id, Future.value(RefHtml.fromReplyJson(rply)));
+          }
         }
         _replies.addAll(
           newThreadData.replies.mapIndex(
