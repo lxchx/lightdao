@@ -870,38 +870,41 @@ class _ThreadPageState extends State<ThreadPage> {
                 );
               },
             ),
-            SimpleDialogOption(
-              child: Text('屏蔽No.${reply.id}'),
-              onPressed: () {
-                if (!appState.setting.threadFilters.any(
-                  (filter) => filter is IdThreadFilter && filter.id == reply.id,
-                )) {
-                  appState.setState((_) {
-                    appState.setting.threadFilters.add(
-                      IdThreadFilter(id: reply.id),
-                    );
-                  });
-                }
-                Navigator.of(context).pop();
-              },
-            ),
-            SimpleDialogOption(
-              child: Text('屏蔽饼干${reply.userHash}'),
-              onPressed: () {
-                if (!appState.setting.threadFilters.any(
-                  (filter) =>
-                      filter is UserHashFilter &&
-                      filter.userHash == reply.userHash,
-                )) {
-                  appState.setState((_) {
-                    appState.setting.threadFilters.add(
-                      UserHashFilter(userHash: reply.userHash),
-                    );
-                  });
-                }
-                Navigator.of(context).pop();
-              },
-            ),
+            if (reply.userHash != 'Tips')
+              SimpleDialogOption(
+                child: Text('屏蔽No.${reply.id}'),
+                onPressed: () {
+                  if (!appState.setting.threadFilters.any(
+                    (filter) =>
+                        filter is IdThreadFilter && filter.id == reply.id,
+                  )) {
+                    appState.setState((_) {
+                      appState.setting.threadFilters.add(
+                        IdThreadFilter(id: reply.id),
+                      );
+                    });
+                  }
+                  Navigator.of(context).pop();
+                },
+              ),
+            if (reply.userHash != 'Tips')
+              SimpleDialogOption(
+                child: Text('屏蔽饼干${reply.userHash}'),
+                onPressed: () {
+                  if (!appState.setting.threadFilters.any(
+                    (filter) =>
+                        filter is UserHashFilter &&
+                        filter.userHash == reply.userHash,
+                  )) {
+                    appState.setState((_) {
+                      appState.setting.threadFilters.add(
+                        UserHashFilter(userHash: reply.userHash),
+                      );
+                    });
+                  }
+                  Navigator.of(context).pop();
+                },
+              ),
           ],
         );
       },

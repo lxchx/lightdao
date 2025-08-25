@@ -708,8 +708,8 @@ class _ThreadPage2State extends State<ThreadPage2> {
           children: [
             if (reply.userHash != 'Tips') buildQuoteOption(),
             buildCopyContentOption(),
-            buildBlockIdOption(),
-            buildBlockUserHashOption(),
+            if (reply.userHash != 'Tips') buildBlockIdOption(),
+            if (reply.userHash != 'Tips') buildBlockUserHashOption(),
           ],
         );
       },

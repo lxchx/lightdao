@@ -495,58 +495,62 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                                       builder: (BuildContext context) => SimpleDialog(
                                         title: const Text('屏蔽操作'),
                                         children: [
-                                          SimpleDialogOption(
-                                            child: Text('屏蔽串No.${post.id}'),
-                                            onPressed: () {
-                                              if (!appState
-                                                  .setting
-                                                  .threadFilters
-                                                  .any(
-                                                    (f) =>
-                                                        f is IdThreadFilter &&
-                                                        f.id == post.id,
-                                                  )) {
-                                                appState.setState(
-                                                  (_) => appState
-                                                      .setting
-                                                      .threadFilters
-                                                      .add(
-                                                        IdThreadFilter(
-                                                          id: post.id,
+                                          if (post.userHash != 'Tips')
+                                            SimpleDialogOption(
+                                              child: Text('屏蔽串No.${post.id}'),
+                                              onPressed: () {
+                                                if (!appState
+                                                    .setting
+                                                    .threadFilters
+                                                    .any(
+                                                      (f) =>
+                                                          f is IdThreadFilter &&
+                                                          f.id == post.id,
+                                                    )) {
+                                                  appState.setState(
+                                                    (_) => appState
+                                                        .setting
+                                                        .threadFilters
+                                                        .add(
+                                                          IdThreadFilter(
+                                                            id: post.id,
+                                                          ),
                                                         ),
-                                                      ),
-                                                );
-                                              }
-                                              Navigator.of(context).pop();
-                                            },
-                                          ),
-                                          SimpleDialogOption(
-                                            child: Text('屏蔽饼干${post.userHash}'),
-                                            onPressed: () {
-                                              if (!appState
-                                                  .setting
-                                                  .threadFilters
-                                                  .any(
-                                                    (f) =>
-                                                        f is UserHashFilter &&
-                                                        f.userHash ==
-                                                            post.userHash,
-                                                  )) {
-                                                appState.setState(
-                                                  (_) => appState
-                                                      .setting
-                                                      .threadFilters
-                                                      .add(
-                                                        UserHashFilter(
-                                                          userHash:
+                                                  );
+                                                }
+                                                Navigator.of(context).pop();
+                                              },
+                                            ),
+                                          if (post.userHash != 'Tips')
+                                            SimpleDialogOption(
+                                              child: Text(
+                                                '屏蔽饼干${post.userHash}',
+                                              ),
+                                              onPressed: () {
+                                                if (!appState
+                                                    .setting
+                                                    .threadFilters
+                                                    .any(
+                                                      (f) =>
+                                                          f is UserHashFilter &&
+                                                          f.userHash ==
                                                               post.userHash,
+                                                    )) {
+                                                  appState.setState(
+                                                    (_) => appState
+                                                        .setting
+                                                        .threadFilters
+                                                        .add(
+                                                          UserHashFilter(
+                                                            userHash:
+                                                                post.userHash,
+                                                          ),
                                                         ),
-                                                      ),
-                                                );
-                                              }
-                                              Navigator.of(context).pop();
-                                            },
-                                          ),
+                                                  );
+                                                }
+                                                Navigator.of(context).pop();
+                                              },
+                                            ),
                                           if (currentSelection.isTimeline)
                                             SimpleDialogOption(
                                               child: Text(
