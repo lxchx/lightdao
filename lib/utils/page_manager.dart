@@ -122,7 +122,6 @@ abstract class PageManager<T> {
 
   /// 子类需要实现的获取页面数据的方法
   Future<List<T>> fetchPage(int page);
-  bool isSameItem(T item1, T item2) => item1 == item2;
 
   @protected
   List<T> _processNewItems(List<T> rawItems) => rawItems;
@@ -285,100 +284,6 @@ abstract class PageManager<T> {
     }
   }
 
-  Future<int> forceLoadNextPage() async {
-    if (nextPageStateNotifier.value is PageLoading) return 0;
-
-    // 该功能仅适用于有固定页面大小的场景。
-    if (pageMaxSize == null) {
-      await tryLoadNextPage();
-      return 0; // 无法计算新增数量，返回0。
-    }
-
-    nextPageStateNotifier.value = const PageLoading();
-    int newItemCount = 0;
-
-    try {
-      final lastPageItems = _pageItems[_maxLoadedPage];
-      final isLastPageFull = (lastPageItems?.length ?? 0) >= pageMaxSize!;
-
-      if (isLastPageFull) {
-        final nextPage = _maxLoadedPage + 1;
-        final rawItems = await fetchPage(nextPage);
-        final items = _processNewItems(rawItems);
-        newItemCount = items.length;
-
-        doInsert() {
-          if (items.isNotEmpty) {
-            _pageItems[nextPage] = items;
-            _onAfterPageLoad(nextPage, items);
-            _maxLoadedPage = nextPage;
-          }
-          if (_isLastPage(rawItems)) {
-            nextPageStateNotifier.value = const PageFullLoaded();
-            _knownMaxPage = items.isEmpty ? nextPage - 1 : nextPage;
-          } else {
-            nextPageStateNotifier.value = const PageHasMore();
-          }
-        }
-
-        if (_nextPageCallback != null) {
-          _nextPageCallback!(nextPage, items.length, false, doInsert);
-        } else {
-          doInsert();
-        }
-      } else {
-        final oldItems = lastPageItems ?? [];
-        final oldItemsCount = oldItems.length;
-        final rawNewItems = await fetchPage(_maxLoadedPage);
-
-        // 注意：此处不应再次调用 _processNewItems，因为我们需要原始列表进行比较
-        // 去重逻辑会在合并后，通过覆盖旧页的方式隐式完成。
-
-        List<T> mergedItems;
-        if (oldItemsCount > 0) {
-          final lastOldItem = oldItems.last;
-          int lastOldItemIndex = -1;
-          for (int i = 0; i < rawNewItems.length; i++) {
-            if (isSameItem(rawNewItems[i], lastOldItem)) {
-              lastOldItemIndex = i;
-              break;
-            }
-          }
-          if (lastOldItemIndex != -1 &&
-              lastOldItemIndex < rawNewItems.length - 1) {
-            mergedItems = List<T>.from(oldItems)
-              ..addAll(rawNewItems.sublist(lastOldItemIndex + 1));
-          } else {
-            mergedItems = rawNewItems;
-          }
-        } else {
-          mergedItems = rawNewItems;
-        }
-        newItemCount = mergedItems.length - oldItemsCount;
-
-        doInsert() {
-          _pageItems[_maxLoadedPage] = mergedItems;
-          _onAfterPageLoad(_maxLoadedPage, mergedItems);
-          if (_isLastPage(rawNewItems)) {
-            nextPageStateNotifier.value = const PageFullLoaded();
-            _knownMaxPage = _maxLoadedPage;
-          } else {
-            nextPageStateNotifier.value = const PageHasMore();
-          }
-        }
-
-        if (_nextPageCallback != null && newItemCount > 0) {
-          _nextPageCallback!(_maxLoadedPage, newItemCount, true, doInsert);
-        } else {
-          doInsert();
-        }
-      }
-    } catch (e) {
-      nextPageStateNotifier.value = PageError(e, forceLoadNextPage);
-    }
-    return newItemCount;
-  }
-
   void registerPreviousPageCallback(PageLoadCallback<T> callback) {
     _previousPageCallback = callback;
   }
@@ -502,9 +407,100 @@ class ThreadPageManager extends PageManager<ReplyJson> {
     return pageThread.replies;
   }
 
-  @override
-  bool isSameItem(ReplyJson item1, ReplyJson item2) {
-    return item1.id == item2.id;
+  Future<int> forceLoadNextPage() async {
+    if (nextPageStateNotifier.value is PageLoading) return 0;
+
+    // 该功能仅适用于有固定页面大小的场景。
+    if (pageMaxSize == null) {
+      await tryLoadNextPage();
+      return 0; // 无法计算新增数量，返回0。
+    }
+
+    nextPageStateNotifier.value = const PageLoading();
+    int newItemCount = 0;
+
+    try {
+      final lastPageItems = _pageItems[_maxLoadedPage];
+      final isLastPageFull = (lastPageItems?.length ?? 0) >= pageMaxSize!;
+
+      // 检查原先最后一页是否包含特殊reply（id=9999999）
+      final bool hadSpecialReply =
+          lastPageItems?.any((item) => item.id == 9999999) ?? false;
+      ReplyJson? originalSpecialReply;
+      if (hadSpecialReply) {
+        originalSpecialReply = lastPageItems!.firstWhere(
+          (item) => item.id == 9999999,
+        );
+      }
+
+      if (isLastPageFull) {
+        final nextPage = _maxLoadedPage + 1;
+        final items = _processNewItems(await fetchPage(nextPage));
+        if (items.isEmpty) return 0;
+        newItemCount = items.length;
+
+        void doInsert() {
+          if (items.isNotEmpty) {
+            _pageItems[nextPage] = items;
+            _onAfterPageLoad(nextPage, items);
+            _maxLoadedPage = nextPage;
+          }
+          if (_isLastPage(items)) {
+            nextPageStateNotifier.value = const PageFullLoaded();
+            _knownMaxPage = items.isEmpty ? nextPage - 1 : nextPage;
+          } else {
+            nextPageStateNotifier.value = const PageHasMore();
+          }
+        }
+
+        if (_nextPageCallback != null) {
+          _nextPageCallback!(nextPage, items.length, false, doInsert);
+        } else {
+          doInsert();
+        }
+      } else {
+        final oldItems = lastPageItems ?? [];
+        final oldItemsCount = oldItems.length;
+        final processedNewItems = _processNewItems(
+          await fetchPage(_maxLoadedPage),
+        );
+
+        if (!hadSpecialReply) {
+          // 原先没有特殊reply，移除新数据中的特殊reply
+          processedNewItems.removeWhere((item) => item.id == 9999999);
+        } else {
+          // 原先有特殊reply，但新数据中没有，则添加原先的特殊reply
+          final bool newHasSpecialReply = processedNewItems.any(
+            (item) => item.id == 9999999,
+          );
+          if (!newHasSpecialReply && originalSpecialReply != null) {
+            processedNewItems.insert(0, originalSpecialReply);
+          }
+        }
+
+        newItemCount = processedNewItems.length - oldItemsCount;
+
+        doInsert() {
+          _pageItems[_maxLoadedPage] = processedNewItems;
+          _onAfterPageLoad(_maxLoadedPage, processedNewItems);
+          if (_isLastPage(processedNewItems)) {
+            nextPageStateNotifier.value = const PageFullLoaded();
+            _knownMaxPage = _maxLoadedPage;
+          } else {
+            nextPageStateNotifier.value = const PageHasMore();
+          }
+        }
+
+        if (_nextPageCallback != null && newItemCount > 0) {
+          _nextPageCallback!(_maxLoadedPage, newItemCount, true, doInsert);
+        } else {
+          doInsert();
+        }
+      }
+    } catch (e) {
+      nextPageStateNotifier.value = PageError(e, forceLoadNextPage);
+    }
+    return newItemCount;
   }
 }
 
