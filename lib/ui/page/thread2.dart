@@ -774,6 +774,16 @@ class _ThreadPage2State extends State<ThreadPage2> {
       Future.delayed(Duration(milliseconds: 100), () {
         if (!mounted) return;
 
+        // 缓存header reply为引用
+        _refCache.put(
+          widget.headerThread.id,
+          Future.value(
+            RefHtml.fromReplyJson(
+              widget.headerThread,
+            ).copyWith(threadId: widget.headerThread.id),
+          ),
+        );
+
         _saveHistory();
         if (widget.startReplyId == null) {
           return;

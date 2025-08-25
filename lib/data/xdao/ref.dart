@@ -23,6 +23,40 @@ class RefHtml extends RefJson {
     required super.hide,
   });
 
+  RefHtml copyWith({
+    int? threadId,
+    int? id,
+    int? fid,
+    int? replyCount,
+    String? img,
+    String? ext,
+    String? now,
+    String? userHash,
+    String? name,
+    String? title,
+    String? content,
+    bool? sage,
+    bool? admin,
+    bool? hide,
+  }) {
+    return RefHtml(
+      threadId: threadId ?? this.threadId,
+      id: id ?? this.id,
+      fid: fid ?? this.fid,
+      replyCount: replyCount ?? this.replyCount,
+      img: img ?? this.img,
+      ext: ext ?? this.ext,
+      now: now ?? this.now,
+      userHash: userHash ?? this.userHash,
+      name: name ?? this.name,
+      title: title ?? this.title,
+      content: content ?? this.content,
+      sage: sage ?? this.sage,
+      admin: admin ?? this.admin,
+      hide: hide ?? this.hide,
+    );
+  }
+
   factory RefHtml.fromReplyJson(ReplyJson replyJson) {
     return RefHtml(
       threadId: -1,
