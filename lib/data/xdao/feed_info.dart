@@ -46,14 +46,16 @@ class FeedInfo {
   factory FeedInfo.fromJson(Map<String, dynamic> json) {
     return FeedInfo(
       id: json['id'],
-      userId: json['user_id'],
+      userId: json['user_id'] ?? '',
       fid: json['fid'],
-      replyCount: json['reply_count'],
-      recentReplies: (jsonDecode(json['recent_replies']) as List<dynamic>)
-          .map((e) => int.parse(e.toString()))
-          .toList(),
-      category: json['category'],
-      fileId: json['file_id'],
+      replyCount: json['reply_count'] ?? '0',
+      recentReplies: json['recent_replies'] != null
+          ? (jsonDecode(json['recent_replies']) as List<dynamic>)
+                .map((e) => int.parse(e.toString()))
+                .toList()
+          : [],
+      category: json['category'] ?? '',
+      fileId: json['file_id'] ?? '',
       img: json['img'],
       ext: json['ext'],
       now: json['now'],
@@ -62,10 +64,10 @@ class FeedInfo {
       email: json['email'],
       title: json['title'],
       content: json['content'],
-      status: json['status'],
-      admin: json['admin'],
-      hide: json['hide'],
-      po: json['po'],
+      status: json['status'] ?? '',
+      admin: json['admin'] ?? '0',
+      hide: json['hide'] ?? '0',
+      po: json['po'] ?? '',
     );
   }
   factory FeedInfo.fromReplyJson(ReplyJson reply) {

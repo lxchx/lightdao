@@ -173,7 +173,7 @@ Widget starPage(BuildContext context) {
                         throw Exception('单页重试时间超过1秒');
                       }
                       syncStatus.value =
-                          '拉取失败，${retryDelay.inMilliseconds}ms后重试...';
+                          '拉取失败: $e，${retryDelay.inMilliseconds}ms后重试...';
                       await Future.delayed(retryDelay);
                       retryCount++;
                     }
