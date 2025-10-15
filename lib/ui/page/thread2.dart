@@ -267,6 +267,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
     int selectedPage = currentPage;
     bool jumpToEnd = false;
+    final textController = TextEditingController(text: selectedPage.toString());
 
     showDialog(
       context: context,
@@ -278,89 +279,104 @@ class _ThreadPage2State extends State<ThreadPage2> {
             final isNextDisabled = selectedPage >= maxPage;
             final isLastPage = selectedPage >= maxPage;
 
+            void updatePage(int newPage) {
+              final clampedPage = newPage.clamp(1, maxPage);
+              setState(() {
+                selectedPage = clampedPage;
+                textController.text = selectedPage.toString();
+                textController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: textController.text.length),
+                );
+              });
+            }
+
             return AlertDialog(
               title: Text('跳页'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SingleChildScrollView(
-                    clipBehavior: Clip.none,
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.first_page),
-                          onPressed: isFirstPage
-                              ? null
-                              : () {
-                                  setState(() {
-                                    selectedPage = 1;
-                                  });
-                                },
-                          tooltip: '第一页',
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.navigate_before),
-                          onPressed: isPrevDisabled
-                              ? null
-                              : () {
-                                  setState(() {
-                                    selectedPage = selectedPage - 1;
-                                  });
-                                },
-                          tooltip: '上一页',
-                        ),
-                        SizedBox(
-                          width: 70,
-                          child: TextField(
-                            controller: TextEditingController(
-                              text: selectedPage.toString(),
+                  ClipRect(
+                    clipper: _HorizontalOnlyClipper(),
+                    child: ShaderMask(
+                      shaderCallback: (Rect bounds) {
+                        // The gradient is transparent at the edges and opaque in the center.
+                        return LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: <Color>[
+                            Colors.transparent,
+                            Colors.black,
+                            Colors.black,
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.1, 0.9, 1.0],
+                        ).createShader(
+                          Rect.fromLTRB(0, 0, bounds.width, bounds.height),
+                        );
+                      },
+                      blendMode: BlendMode.dstIn,
+                      child: SingleChildScrollView(
+                        clipBehavior: Clip.none,
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.first_page),
+                              onPressed: isFirstPage
+                                  ? null
+                                  : () => updatePage(1),
+                              tooltip: '第一页',
                             ),
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              labelText: '页数',
-                              border: OutlineInputBorder(),
+                            IconButton(
+                              icon: const Icon(Icons.navigate_before),
+                              onPressed: isPrevDisabled
+                                  ? null
+                                  : () => updatePage(selectedPage - 1),
+                              tooltip: '上一页',
                             ),
-                            onChanged: (value) {
-                              if (value.isNotEmpty) {
-                                final newPage = int.tryParse(value);
-                                if (newPage != null &&
-                                    newPage > 0 &&
-                                    newPage <= maxPage) {
-                                  setState(() {
-                                    selectedPage = newPage;
-                                  });
-                                }
-                              }
-                            },
-                          ),
-                        ),
-                        SizedBox(width: 5),
-                        Text('/ $maxPage'),
-                        IconButton(
-                          icon: Icon(Icons.navigate_next),
-                          onPressed: isNextDisabled
-                              ? null
-                              : () {
-                                  setState(() {
-                                    selectedPage = selectedPage + 1;
-                                  });
+                            SizedBox(
+                              width: 70,
+                              child: TextField(
+                                controller: textController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: '页数',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (value) {
+                                  if (value.isNotEmpty) {
+                                    final newPage = int.tryParse(value);
+                                    if (newPage != null &&
+                                        newPage >= 1 &&
+                                        newPage <= maxPage) {
+                                      setState(() {
+                                        selectedPage = newPage;
+                                      });
+                                    }
+                                  }
                                 },
-                          tooltip: '下一页',
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text('/ $maxPage'),
+                            IconButton(
+                              icon: const Icon(Icons.navigate_next),
+                              onPressed: isNextDisabled
+                                  ? null
+                                  : () => updatePage(selectedPage + 1),
+                              tooltip: '下一页',
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.last_page),
+                              onPressed: isLastPage
+                                  ? null
+                                  : () => updatePage(maxPage),
+                              tooltip: '最后一页',
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          icon: Icon(Icons.last_page),
-                          onPressed: isLastPage
-                              ? null
-                              : () {
-                                  setState(() {
-                                    selectedPage = maxPage;
-                                  });
-                                },
-                          tooltip: '最后一页',
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                   if (isLastPage)
@@ -401,7 +417,9 @@ class _ThreadPage2State extends State<ThreadPage2> {
           },
         );
       },
-    );
+    ).then((_) {
+      textController.dispose();
+    });
   }
 
   Future<T?> _handlePageManagerError<T>(Future<T> future) {
@@ -1381,4 +1399,13 @@ class _ThreadPage2State extends State<ThreadPage2> {
             ),
     );
   }
+}
+
+class _HorizontalOnlyClipper extends CustomClipper<Rect> {
+  @override
+  Rect getClip(Size size) =>
+      Rect.fromLTWH(0, -1000000, size.width, size.height + 2000000);
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Rect> oldClipper) => false;
 }
