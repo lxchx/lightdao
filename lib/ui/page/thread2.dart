@@ -284,7 +284,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SingleChildScrollView(
-                    clipBehavior: Clip.none,
+                    clipBehavior: Clip.hardEdge,
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
