@@ -267,6 +267,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
     int selectedPage = currentPage;
     bool jumpToEnd = false;
+    final textController = TextEditingController(text: selectedPage.toString());
 
     showDialog(
       context: context,
@@ -277,6 +278,17 @@ class _ThreadPage2State extends State<ThreadPage2> {
             final isPrevDisabled = selectedPage <= 1;
             final isNextDisabled = selectedPage >= maxPage;
             final isLastPage = selectedPage >= maxPage;
+
+            void updatePage(int newPage) {
+              final clampedPage = newPage.clamp(1, maxPage);
+              setState(() {
+                selectedPage = clampedPage;
+                textController.text = selectedPage.toString();
+                textController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: textController.text.length),
+                );
+              });
+            }
 
             return AlertDialog(
               title: Text('跳页'),
@@ -291,32 +303,20 @@ class _ThreadPage2State extends State<ThreadPage2> {
                       children: [
                         IconButton(
                           icon: Icon(Icons.first_page),
-                          onPressed: isFirstPage
-                              ? null
-                              : () {
-                                  setState(() {
-                                    selectedPage = 1;
-                                  });
-                                },
+                          onPressed: isFirstPage ? null : () => updatePage(1),
                           tooltip: '第一页',
                         ),
                         IconButton(
                           icon: Icon(Icons.navigate_before),
                           onPressed: isPrevDisabled
                               ? null
-                              : () {
-                                  setState(() {
-                                    selectedPage = selectedPage - 1;
-                                  });
-                                },
+                              : () => updatePage(selectedPage - 1),
                           tooltip: '上一页',
                         ),
                         SizedBox(
                           width: 70,
                           child: TextField(
-                            controller: TextEditingController(
-                              text: selectedPage.toString(),
-                            ),
+                            controller: textController,
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
                               labelText: '页数',
@@ -326,7 +326,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
                               if (value.isNotEmpty) {
                                 final newPage = int.tryParse(value);
                                 if (newPage != null &&
-                                    newPage > 0 &&
+                                    newPage >= 1 &&
                                     newPage <= maxPage) {
                                   setState(() {
                                     selectedPage = newPage;
@@ -342,22 +342,13 @@ class _ThreadPage2State extends State<ThreadPage2> {
                           icon: Icon(Icons.navigate_next),
                           onPressed: isNextDisabled
                               ? null
-                              : () {
-                                  setState(() {
-                                    selectedPage = selectedPage + 1;
-                                  });
-                                },
+                              : () => updatePage(selectedPage + 1),
                           tooltip: '下一页',
                         ),
                         IconButton(
                           icon: Icon(Icons.last_page),
-                          onPressed: isLastPage
-                              ? null
-                              : () {
-                                  setState(() {
-                                    selectedPage = maxPage;
-                                  });
-                                },
+                          onPressed:
+                              isLastPage ? null : () => updatePage(maxPage),
                           tooltip: '最后一页',
                         ),
                       ],
@@ -401,7 +392,9 @@ class _ThreadPage2State extends State<ThreadPage2> {
           },
         );
       },
-    );
+    ).then((_) {
+      textController.dispose();
+    });
   }
 
   Future<T?> _handlePageManagerError<T>(Future<T> future) {
