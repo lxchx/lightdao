@@ -344,6 +344,20 @@ class SettingsPage extends StatelessWidget {
               ),
               SettingsTile.sliderTile(
                 contentPadding: breakpoint.gutters,
+                title:
+                    '论坛页字体大小缩放（${appState.setting.forumFontSizeFactor.toStringAsFixed(1)}）',
+                min: 0.7,
+                max: 1.3,
+                value: appState.setting.forumFontSizeFactor,
+                divisions: 6,
+                onChanged: (double value) {
+                  appState.setState((state) {
+                    state.setting.forumFontSizeFactor = value;
+                  });
+                },
+              ),
+              SettingsTile.sliderTile(
+                contentPadding: breakpoint.gutters,
                 title: '表情栏列宽度（${appState.setting.phraseWidth}）',
                 subtitle: '值越小表情栏列数越多',
                 min: 75,

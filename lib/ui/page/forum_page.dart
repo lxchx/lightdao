@@ -471,16 +471,26 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                                     );
                                     if (item == null) return const SizedBox();
                                     final post = item.$1;
-                                    final replyItem = ReplyItem(
-                                      inCardView: appState.setting.isCardView,
-                                      collapsedRef: mustCollapsed,
-                                      isThreadFirstOrForumPreview: true,
-                                      contentNeedCollapsed: true,
-                                      threadJson: post,
-                                      contentHeroTag: 'ThreadCard ${post.id}',
-                                      imageHeroTag:
-                                          'Image ${post.img}${post.ext}',
-                                      cacheImageSize: true,
+                                    final replyItem = Theme(
+                                      data: Theme.of(context).copyWith(
+                                        textTheme: Theme.of(context).textTheme
+                                            .apply(
+                                              fontSizeFactor: appState
+                                                  .setting
+                                                  .forumFontSizeFactor,
+                                            ),
+                                      ),
+                                      child: ReplyItem(
+                                        inCardView: appState.setting.isCardView,
+                                        collapsedRef: mustCollapsed,
+                                        isThreadFirstOrForumPreview: true,
+                                        contentNeedCollapsed: true,
+                                        threadJson: post,
+                                        contentHeroTag: 'ThreadCard ${post.id}',
+                                        imageHeroTag:
+                                            'Image ${post.img}${post.ext}',
+                                        cacheImageSize: true,
+                                      ),
                                     );
                                     onTapThread() =>
                                         appState.navigateThreadPage2(
@@ -1029,9 +1039,20 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                                                 left: 10,
                                                 right: 10,
                                               ),
-                                              child: ReplyItem(
-                                                contentNeedCollapsed: false,
-                                                threadJson: fakeThread,
+                                              child: Theme(
+                                                data: Theme.of(context).copyWith(
+                                                  textTheme: Theme.of(context)
+                                                      .textTheme
+                                                      .apply(
+                                                        fontSizeFactor: appState
+                                                            .setting
+                                                            .forumFontSizeFactor,
+                                                      ),
+                                                ),
+                                                child: ReplyItem(
+                                                  contentNeedCollapsed: false,
+                                                  threadJson: fakeThread,
+                                                ),
                                               ),
                                             )
                                           else
@@ -1041,10 +1062,21 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                                                 padding: EdgeInsets.all(
                                                   breakpoint.gutters,
                                                 ),
-                                                child: ReplyItem(
-                                                  inCardView: true,
-                                                  contentNeedCollapsed: false,
-                                                  threadJson: fakeThread,
+                                                child: Theme(
+                                                  data: Theme.of(context).copyWith(
+                                                    textTheme: Theme.of(context)
+                                                        .textTheme
+                                                        .apply(
+                                                          fontSizeFactor: appState
+                                                              .setting
+                                                              .forumFontSizeFactor,
+                                                        ),
+                                                  ),
+                                                  child: ReplyItem(
+                                                    inCardView: true,
+                                                    contentNeedCollapsed: false,
+                                                    threadJson: fakeThread,
+                                                  ),
                                                 ),
                                               ),
                                             ),
