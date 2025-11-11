@@ -11,11 +11,8 @@ import 'package:tsukuyomi_list/src/tsukuyomi/rendering/viewport.dart';
 import 'package:tsukuyomi_list/src/tsukuyomi/widgets/scroll_activity.dart';
 import 'package:tsukuyomi_list/src/tsukuyomi/widgets/scroll_view.dart';
 
-typedef _OnPerformLayout = void Function(
-  RenderBox box,
-  Size? oldSize,
-  Size newSize,
-);
+typedef _OnPerformLayout =
+    void Function(RenderBox box, Size? oldSize, Size newSize);
 
 class TsukuyomiList extends StatefulWidget {
   const TsukuyomiList.builder({
@@ -36,11 +33,13 @@ class TsukuyomiList extends StatefulWidget {
     this.sliverLeading = const <Widget>[],
     this.sliverTrailing = const <Widget>[],
     this.cacheExtent, // 添加这一行
-  })  : assert(initialScrollIndex == null || initialScrollIndex >= 0),
-        assert(initialScrollIndex == null ||
-            initialScrollIndex < itemCount ||
-            itemCount == 0),
-        assert(anchor == null || (anchor >= 0.0 && anchor <= 1.0));
+  }) : assert(initialScrollIndex == null || initialScrollIndex >= 0),
+       assert(
+         initialScrollIndex == null ||
+             initialScrollIndex < itemCount ||
+             itemCount == 0,
+       ),
+       assert(anchor == null || (anchor >= 0.0 && anchor <= 1.0));
 
   /// 列表项数量
   final int itemCount;
@@ -378,8 +377,8 @@ class _TsukuyomiListState extends State<TsukuyomiList> {
               color: index == _anchorIndex
                   ? _pinkDebugMask
                   : index == _centerIndex
-                      ? _greenDebugMask
-                      : null,
+                  ? _greenDebugMask
+                  : null,
             ),
             child: widget.itemBuilder(context, index),
           );
@@ -566,8 +565,10 @@ class TsukuyomiListScrollController extends ScrollController {
 
   /// 获取当前锚点索引
   int get anchorIndex {
-    assert(_tsukuyomiListState != null,
-        'Controller is not attached to TsukuyomiList');
+    assert(
+      _tsukuyomiListState != null,
+      'Controller is not attached to TsukuyomiList',
+    );
     return _tsukuyomiListState!._anchorIndex;
   }
 
@@ -575,10 +576,14 @@ class TsukuyomiListScrollController extends ScrollController {
   ///
   /// [index] 新的锚点索引
   set anchorIndex(int index) {
-    assert(_tsukuyomiListState != null,
-        'Controller is not attached to TsukuyomiList');
-    assert(index >= 0 && index < _tsukuyomiListState!.widget.itemCount,
-        'Index out of range');
+    assert(
+      _tsukuyomiListState != null,
+      'Controller is not attached to TsukuyomiList',
+    );
+    assert(
+      index >= 0 && index < _tsukuyomiListState!.widget.itemCount,
+      'Index out of range',
+    );
 
     if (_tsukuyomiListState!._anchorIndex != index) {
       _tsukuyomiListState!._anchorIndex = index;
@@ -731,7 +736,9 @@ class TsukuyomiListScrollPosition extends ScrollPositionWithSingleContext {
   @override
   @protected
   bool correctForNewDimensions(
-      ScrollMetrics oldPosition, ScrollMetrics newPosition) {
+    ScrollMetrics oldPosition,
+    ScrollMetrics newPosition,
+  ) {
     // 是否需要修正滚动偏移
     if (_corrected) {
       return _corrected = false;
@@ -820,7 +827,9 @@ class _TsukuyomiListItem extends SingleChildRenderObjectWidget {
 
   @override
   void updateRenderObject(
-      BuildContext context, _RenderTsukuyomiListItem renderObject) {
+    BuildContext context,
+    _RenderTsukuyomiListItem renderObject,
+  ) {
     renderObject.onPerformLayout = onPerformLayout;
   }
 }
@@ -860,11 +869,8 @@ class _RenderTsukuyomiListItem extends RenderProxyBox {
 }
 
 class _SliverLayout extends SingleChildRenderObjectWidget {
-  const _SliverLayout({
-    super.key,
-    this.onPerformLayout,
-    required Widget sliver,
-  }) : super(child: sliver);
+  const _SliverLayout({super.key, this.onPerformLayout, required Widget sliver})
+    : super(child: sliver);
 
   final void Function(SliverGeometry geometry)? onPerformLayout;
 
@@ -875,7 +881,9 @@ class _SliverLayout extends SingleChildRenderObjectWidget {
 
   @override
   void updateRenderObject(
-      BuildContext context, _RenderSliverLayout renderObject) {
+    BuildContext context,
+    _RenderSliverLayout renderObject,
+  ) {
     renderObject.onPerformLayout = onPerformLayout;
   }
 }

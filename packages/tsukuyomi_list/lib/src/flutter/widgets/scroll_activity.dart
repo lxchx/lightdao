@@ -27,14 +27,18 @@ class DrivenScrollActivity extends ScrollActivity {
     required TickerProvider vsync,
   }) : assert(duration > Duration.zero) {
     _completer = Completer<void>();
-    _controller = AnimationController.unbounded(
-      value: from,
-      debugLabel: objectRuntimeType(this, 'DrivenScrollActivity'),
-      vsync: vsync,
-    )
-      ..addListener(_tick)
-      ..animateTo(to, duration: duration, curve: curve)
-          .whenComplete(_end); // won't trigger if we dispose _controller first
+    _controller =
+        AnimationController.unbounded(
+            value: from,
+            debugLabel: objectRuntimeType(this, 'DrivenScrollActivity'),
+            vsync: vsync,
+          )
+          ..addListener(_tick)
+          ..animateTo(
+            to,
+            duration: duration,
+            curve: curve,
+          ).whenComplete(_end); // won't trigger if we dispose _controller first
   }
 
   late final Completer<void> _completer;
@@ -59,13 +63,16 @@ class DrivenScrollActivity extends ScrollActivity {
 
   @override
   void dispatchOverscrollNotification(
-      ScrollMetrics metrics, BuildContext context, double overscroll) {
+    ScrollMetrics metrics,
+    BuildContext context,
+    double overscroll,
+  ) {
     OverscrollNotification(
-            metrics: metrics,
-            context: context,
-            overscroll: overscroll,
-            velocity: velocity)
-        .dispatch(context);
+      metrics: metrics,
+      context: context,
+      overscroll: overscroll,
+      velocity: velocity,
+    ).dispatch(context);
   }
 
   @override

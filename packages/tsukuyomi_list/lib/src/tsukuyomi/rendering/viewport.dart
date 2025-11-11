@@ -60,8 +60,11 @@ class RenderTsukuyomiScrollViewViewport extends RenderViewport {
     double correction;
     int count = 0;
     do {
-      correction = _attemptLayout(mainAxisExtent, crossAxisExtent,
-          offset.pixels + centerOffsetAdjustment);
+      correction = _attemptLayout(
+        mainAxisExtent,
+        crossAxisExtent,
+        offset.pixels + centerOffsetAdjustment,
+      );
       if (correction != 0.0) {
         offset.correctBy(correction);
       } else {

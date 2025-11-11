@@ -473,9 +473,12 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                                     final post = item.$1;
                                     final replyItem = Theme(
                                       data: Theme.of(context).copyWith(
-                                        textTheme: Theme.of(context).textTheme.apply(
-                                          fontSizeFactor: appState.setting.forumFontSizeFactor,
-                                        ),
+                                        textTheme: Theme.of(context).textTheme
+                                            .apply(
+                                              fontSizeFactor: appState
+                                                  .setting
+                                                  .forumFontSizeFactor,
+                                            ),
                                       ),
                                       child: ReplyItem(
                                         inCardView: appState.setting.isCardView,
@@ -1038,9 +1041,13 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                                               ),
                                               child: Theme(
                                                 data: Theme.of(context).copyWith(
-                                                  textTheme: Theme.of(context).textTheme.apply(
-                                                    fontSizeFactor: appState.setting.forumFontSizeFactor,
-                                                  ),
+                                                  textTheme: Theme.of(context)
+                                                      .textTheme
+                                                      .apply(
+                                                        fontSizeFactor: appState
+                                                            .setting
+                                                            .forumFontSizeFactor,
+                                                      ),
                                                 ),
                                                 child: ReplyItem(
                                                   contentNeedCollapsed: false,
@@ -1057,9 +1064,13 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                                                 ),
                                                 child: Theme(
                                                   data: Theme.of(context).copyWith(
-                                                    textTheme: Theme.of(context).textTheme.apply(
-                                                      fontSizeFactor: appState.setting.forumFontSizeFactor,
-                                                    ),
+                                                    textTheme: Theme.of(context)
+                                                        .textTheme
+                                                        .apply(
+                                                          fontSizeFactor: appState
+                                                              .setting
+                                                              .forumFontSizeFactor,
+                                                        ),
                                                   ),
                                                   child: ReplyItem(
                                                     inCardView: true,
