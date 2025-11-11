@@ -202,6 +202,9 @@ class LightDaoSetting extends HiveObject {
   @HiveField(43, defaultValue: [])
   List<FavoredItem> favoredItems;
 
+  @HiveField(44, defaultValue: 1.0)
+  double forumFontSizeFactor;
+
   LightDaoSetting({
     required this.cookies,
     required this.currentCookie,
@@ -246,6 +249,7 @@ class LightDaoSetting extends HiveObject {
     required this.phraseWidth,
     required this.fetchTimeout,
     required this.favoredItems,
+    required this.forumFontSizeFactor,
     LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
   }) : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
        viewPoOnlyHistory =
@@ -296,6 +300,7 @@ class LightDaoSetting extends HiveObject {
        isMultiColumn = true,
        phraseWidth = 175,
        fetchTimeout = 3,
+       forumFontSizeFactor = 1.0,
        seenNoticeDate = 0,
        viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
        viewPoOnlyHistory =
