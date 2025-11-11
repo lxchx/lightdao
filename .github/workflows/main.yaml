@@ -122,27 +122,22 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: apk
+          path: artifacts
 
       - name: Display structure of downloaded files
         run: ls -R
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Create Release and Upload APK
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           body_path: RELEASE_BODY.md
-
-      - name: Upload Release APK
-        id: upload_release_asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/app-release.apk
-          asset_name: app-release.apk
-          asset_content_type: application/zip
+          files: |
+            artifacts/**/*.apk
+          draft: false
+          prerelease: false
+          allowUpdates: true
+          make_latest: true
