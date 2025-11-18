@@ -268,10 +268,22 @@ class _ThreadPage2State extends State<ThreadPage2> {
     int selectedPage = currentPage;
     bool jumpToEnd = false;
     final textController = TextEditingController(text: selectedPage.toString());
+    final focusNode = FocusNode();
 
     showDialog(
       context: context,
       builder: (context) {
+        // 延迟聚焦以确保对话框完全显示
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Future.delayed(Duration(milliseconds: 100), () {
+            focusNode.requestFocus();
+            // 将光标定位到文本末尾
+            textController.selection = TextSelection.fromPosition(
+              TextPosition(offset: textController.text.length),
+            );
+          });
+        });
+
         return StatefulBuilder(
           builder: (context, setState) {
             final isFirstPage = selectedPage <= 1;
@@ -339,6 +351,8 @@ class _ThreadPage2State extends State<ThreadPage2> {
                               width: 70,
                               child: TextField(
                                 controller: textController,
+                                focusNode: focusNode,
+                                autofocus: true,
                                 keyboardType: TextInputType.number,
                                 decoration: const InputDecoration(
                                   labelText: '页数',
@@ -419,6 +433,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
       },
     ).then((_) {
       textController.dispose();
+      focusNode.dispose();
     });
   }
 
