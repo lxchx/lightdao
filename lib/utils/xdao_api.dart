@@ -16,6 +16,138 @@ import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/xdao/thread.dart';
 import 'package:lightdao/utils/throttle.dart';
 
+const String defaultBaseCdn = 'https://api.nmb.best';
+const String defaultPostHost = 'https://www.nmbxd.com';
+const String defaultLastPostHost = 'https://www.nmbxd1.com';
+const String defaultRefCdn = 'https://www.nmbxd1.com';
+const List<String> baseCdnCandidates = [
+  defaultBaseCdn,
+  'https://nmbxd.com',
+  'https://nmbxd1.com',
+  'https://api.nmb.fastmirror.org',
+];
+const List<String> refCdnCandidates = [
+  'https://nmbxd.com',
+  'https://nmbxd1.com',
+];
+
+String _baseCdn = defaultBaseCdn;
+String _refCdn = defaultRefCdn;
+bool _baseIsAuto = false;
+bool _refIsAuto = false;
+bool _autoSelectingCdns = false;
+
+String get resolvedBaseCdn => _baseCdn;
+String get resolvedRefCdn => _refCdn;
+
+void applyCdnSetting({required String baseCdn, required String refCdn}) {
+  _baseIsAuto = _isAuto(baseCdn);
+  _refIsAuto = _isAuto(refCdn);
+  _baseCdn = _normalizeCdn(baseCdn, defaultBaseCdn);
+  _refCdn = _normalizeCdn(refCdn, defaultRefCdn);
+  if (_baseIsAuto || _refIsAuto) {
+    unawaited(_autoSelectCdns());
+  }
+}
+
+String _normalizeCdn(String value, String fallback) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty || _isAuto(trimmed)) {
+    return fallback;
+  }
+  if (trimmed.endsWith('/')) {
+    return trimmed.substring(0, trimmed.length - 1);
+  }
+  return trimmed;
+}
+
+bool _isAuto(String value) => value.trim().toLowerCase() == 'auto';
+
+Future<void> _autoSelectCdns() async {
+  if (_autoSelectingCdns) return;
+  _autoSelectingCdns = true;
+  try {
+    if (_baseIsAuto) {
+      final bestBase = await _selectBestCdn(
+        baseCdnCandidates,
+        (host) => Uri.parse('$host/${_apiSegment(host)}/getForumList'),
+      );
+      if (bestBase != null) {
+        _baseCdn = bestBase;
+      }
+    }
+    if (_refIsAuto) {
+      final bestRef = await _selectBestCdn(
+        refCdnCandidates,
+        (host) => Uri.parse(
+          '$host/Home/Forum/ref',
+        ).replace(queryParameters: {'id': '1'}),
+      );
+      if (bestRef != null) {
+        _refCdn = bestRef;
+      }
+    }
+  } finally {
+    _autoSelectingCdns = false;
+  }
+}
+
+Future<String?> _selectBestCdn(
+  List<String> candidates,
+  Uri Function(String host) buildTestUri,
+) async {
+  final durations = <int, String>{};
+  for (final host in candidates) {
+    final normalized = _normalizeCdn(host, host);
+    final uri = buildTestUri(normalized);
+    final sw = Stopwatch()..start();
+    try {
+      final response = await http.get(uri).timeout(const Duration(seconds: 3));
+      if (response.statusCode == 200 || response.statusCode == 403) {
+        durations[sw.elapsedMilliseconds] = normalized;
+      }
+    } catch (_) {
+      // ignore failures and try next
+    }
+  }
+  if (durations.isEmpty) return null;
+  final bestElapsed = durations.keys.reduce((a, b) => a < b ? a : b);
+  return durations[bestElapsed];
+}
+
+String _apiSegment(String host) {
+  return host.contains('nmbxd') ? 'Api' : 'api';
+}
+
+Uri _buildApiUri(String endpoint, {Map<String, String>? queryParameters}) {
+  final host = _baseCdn;
+  return Uri.parse(
+    '$host/${_apiSegment(host)}/$endpoint',
+  ).replace(queryParameters: queryParameters);
+}
+
+Uri _buildPostUri(String endpoint, {Map<String, String>? queryParameters}) {
+  final host = _baseCdn.toLowerCase().contains('api.nmb.best')
+      ? defaultPostHost
+      : _baseCdn;
+  return Uri.parse(
+    '$host/Home/Forum/$endpoint',
+  ).replace(queryParameters: queryParameters);
+}
+
+Uri _buildRefHtmlUri(int refId) {
+  return Uri.parse(
+    '$_refCdn/Home/Forum/ref',
+  ).replace(queryParameters: {'id': refId.toString()});
+}
+
+Uri _buildLastPostUri() {
+  final host = _baseCdn.toLowerCase().contains('api.nmb.best')
+      ? defaultLastPostHost
+      : _baseCdn;
+  return Uri.parse('$host/${_apiSegment(host)}/getLastPost');
+}
+
 class XDaoApiExeption implements Exception {}
 
 class XDaoApiMsgException implements XDaoApiExeption {
@@ -84,7 +216,7 @@ Map<String, dynamic> getOKJsonMap(String mayJsonStr) {
 
 Future<List<ForumList>> fetchForumList() async {
   final response = await http.get(
-    Uri.parse('https://api.nmb.best/api/getForumList'),
+    _buildApiUri('getForumList'),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
 
@@ -107,7 +239,7 @@ Future<List<ForumList>> fetchForumList() async {
 
 Future<List<Timeline>> fetchTimelines() async {
   final response = await http.get(
-    Uri.parse('https://api.nmb.best/api/getTimelineList'),
+    _buildApiUri('getTimelineList'),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
 
@@ -143,7 +275,8 @@ Future<List<ThreadJson>> fetchForumThreads(
   }
 
   final response = await http.get(
-    Uri.parse('https://api.nmb.best/api/showf').replace(
+    _buildApiUri(
+      'showf',
       queryParameters: {'id': forumId.toString(), 'page': page.toString()},
     ),
     headers: headers,
@@ -183,7 +316,8 @@ Future<List<ThreadJson>> fetchTimelineThreads(
   }
 
   final response = await http.get(
-    Uri.parse('https://api.nmb.best/api/timeline').replace(
+    _buildApiUri(
+      'timeline',
       queryParameters: {'id': timelineId.toString(), 'page': page.toString()},
     ),
     headers: headers,
@@ -219,13 +353,14 @@ Future<List<ThreadJson>> fetchTimelineThreads(
 //}
 
 Future<ThreadJson> _getThreadGeneric(
-  String baseUrl,
+  String endpoint,
   int threadId,
   int page,
   String? cookie, {
   bool forceFromWeb = false,
 }) async {
-  final url = Uri.parse(baseUrl).replace(
+  final url = _buildApiUri(
+    endpoint,
     queryParameters: {'id': threadId.toString(), 'page': page.toString()},
   );
 
@@ -275,7 +410,7 @@ Future<ThreadJson> getThread(
   bool forceFromWeb = false,
 }) async {
   return _getThreadGeneric(
-    'https://api.nmb.best/api/thread',
+    'thread',
     threadId,
     page,
     cookie,
@@ -290,7 +425,7 @@ Future<ThreadJson> getThreadPoOnly(
   bool forceFromWeb = false,
 }) async {
   return _getThreadGeneric(
-    'https://api.nmb.best/api/po',
+    'po',
     threadId,
     page,
     cookie,
@@ -379,9 +514,7 @@ Future<ThreadJson> getThreadPoOnly(
 //}
 
 Future<RefJson> fetchRef(int refId, String? cookie) async {
-  final url = Uri.parse(
-    'https://api.nmb.best/api/ref',
-  ).replace(queryParameters: {'id': refId.toString()});
+  final url = _buildApiUri('ref', queryParameters: {'id': refId.toString()});
   late Map<String, String>? headers;
   if (cookie != null) {
     headers = {'Cookie': 'userhash=$cookie'};
@@ -409,9 +542,7 @@ Future<RefHtml> fetchRefFromHtml(
   final runner = throttle ?? fetchRefThrottle;
   return runner.run(() async {
     //print('${DateTime.now()} 排到了refId: $refId');
-    final url = Uri.parse(
-      'https://www.nmbxd1.com/Home/Forum/ref',
-    ).replace(queryParameters: {'id': refId.toString()});
+    final url = _buildRefHtmlUri(refId);
 
     late Map<String, String>? headers;
     if (cookie != null) {
@@ -477,7 +608,7 @@ Future<Post> postThread({
   bool water = true,
   required String cookie,
 }) async {
-  final url = Uri.parse('https://www.nmbxd.com/home/forum/doPostThread.html');
+  final url = _buildPostUri('doPostThread.html');
   await _sendRequest(
     url,
     {
@@ -502,7 +633,7 @@ Future<Post> replyThread({
   bool water = true,
   required String cookie,
 }) async {
-  final url = Uri.parse('https://www.nmbxd.com/home/forum/doReplyThread.html');
+  final url = _buildPostUri('doReplyThread.html');
   await _sendRequest(
     url,
     {
@@ -567,7 +698,7 @@ Future<void> _sendRequest(
 }
 
 Future<Post> getLastPost(String? cookie) async {
-  final url = Uri.parse('https://www.nmbxd1.com/Api/getLastPost');
+  final url = _buildLastPostUri();
   late Map<String, String>? headers;
   if (cookie != null) {
     headers = {'Cookie': 'userhash=$cookie'};
@@ -585,7 +716,10 @@ Future<Post> getLastPost(String? cookie) async {
 
 Future<List<FeedInfo>> getFeedInfos(String uuid, int page) async {
   final response = await http.get(
-    Uri.parse('https://api.nmb.best/api/feed?uuid=$uuid&page=$page'),
+    _buildApiUri(
+      'feed',
+      queryParameters: {'uuid': uuid, 'page': page.toString()},
+    ),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
   if (response.statusCode == 200) {
@@ -601,7 +735,10 @@ Future<List<FeedInfo>> getFeedInfos(String uuid, int page) async {
 
 Future<void> addFeed(String uuid, int tid) async {
   final response = await http.post(
-    Uri.parse('https://api.nmb.best/api/addFeed?uuid=$uuid&tid=$tid'),
+    _buildApiUri(
+      'addFeed',
+      queryParameters: {'uuid': uuid, 'tid': tid.toString()},
+    ),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
   if (response.statusCode == 200) {
@@ -617,7 +754,10 @@ Future<void> addFeed(String uuid, int tid) async {
 
 Future<void> delFeed(String uuid, int tid) async {
   final response = await http.post(
-    Uri.parse('https://api.nmb.best/api/delFeed?uuid=$uuid&tid=$tid'),
+    _buildApiUri(
+      'delFeed',
+      queryParameters: {'uuid': uuid, 'tid': tid.toString()},
+    ),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
   if (response.statusCode == 200) {
