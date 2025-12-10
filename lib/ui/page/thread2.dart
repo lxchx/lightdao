@@ -247,13 +247,17 @@ class _ThreadPage2State extends State<ThreadPage2> {
         );
       });
     } else {
+      final anchorReplyIndex = _anchorReplyIndex ?? 0;
+      final (currReply, _, pageIndex) =
+          _curPageManager.getItemByIndex(anchorReplyIndex) ?? (_poReply, 0, 0);
+
       _appState.setState((_) {
         final history = ReplyJsonWithPage(
           _anchorPage,
-          _curPageManager.getItemByIndex(_anchorReplyIndex!)!.$3,
+          pageIndex,
           _poReply.id,
           _poReply,
-          _curPageManager.getItemByIndex(_anchorReplyIndex!)!.$1,
+          currReply,
         );
 
         _appState.setting.starHistory.add(history);
