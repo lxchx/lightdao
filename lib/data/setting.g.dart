@@ -168,6 +168,7 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
           ? []
           : (fields[43] as List).cast<FavoredItem>(),
       forumFontSizeFactor: fields[44] == null ? 1.0 : fields[44] as double,
+      checkUpdateOnLaunch: fields[45] == null ? true : fields[45] as bool,
       viewPoOnlyHistory: fields[39] as LRUCache<int, ReplyJsonWithPage>?,
     );
   }
@@ -175,7 +176,7 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
   @override
   void write(BinaryWriter writer, LightDaoSetting obj) {
     writer
-      ..writeByte(45)
+      ..writeByte(46)
       ..writeByte(0)
       ..write(obj.cookies)
       ..writeByte(1)
@@ -265,7 +266,9 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
       ..writeByte(43)
       ..write(obj.favoredItems)
       ..writeByte(44)
-      ..write(obj.forumFontSizeFactor);
+      ..write(obj.forumFontSizeFactor)
+      ..writeByte(45)
+      ..write(obj.checkUpdateOnLaunch);
   }
 
   @override

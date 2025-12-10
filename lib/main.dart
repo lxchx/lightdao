@@ -201,35 +201,39 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     Future.delayed(Duration(milliseconds: 100), () async {
       appState.tryFetchTimelines(scaffoldMessengerKey);
       appState.tryFetchForumLists(scaffoldMessengerKey);
-      try {
-        final updateInfo = await UpdateChecker.checkUpdate();
-        final packageInfo = await PackageInfo.fromPlatform();
-        if (updateInfo != null && updateInfo.hasUpdate) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('发现新版本: ${updateInfo.latestVersion}, 请到关于页面更新'),
-              action: SnackBarAction(
-                label: '跳转到关于',
-                onPressed: () => Navigator.push(
-                  context,
-                  appState.createPageRoute(
-                    builder: (context) =>
-                        AboutPage(appState: appState, packageInfo: packageInfo),
+      if (appState.setting.checkUpdateOnLaunch) {
+        try {
+          final updateInfo = await UpdateChecker.checkUpdate();
+          final packageInfo = await PackageInfo.fromPlatform();
+          if (updateInfo != null && updateInfo.hasUpdate) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('发现新版本: ${updateInfo.latestVersion}, 请到关于页面更新'),
+                action: SnackBarAction(
+                  label: '跳转到关于',
+                  onPressed: () => Navigator.push(
+                    context,
+                    appState.createPageRoute(
+                      builder: (context) => AboutPage(
+                        appState: appState,
+                        packageInfo: packageInfo,
+                      ),
+                    ),
                   ),
                 ),
               ),
+            );
+          }
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('检查更新失败: ${e.toString()}'),
+              behavior: SnackBarBehavior.floating,
             ),
           );
         }
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('检查更新失败: ${e.toString()}'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
       }
     });
   }

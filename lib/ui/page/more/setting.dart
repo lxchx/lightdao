@@ -376,6 +376,17 @@ class SettingsPage extends StatelessWidget {
           SettingsSection(
             title: Text('功能'),
             children: [
+              SettingsTile.switchTile(
+                contentPadding: breakpoint.gutters,
+                title: '启动时检查更新',
+                subtitle: '关闭后启动时不再自动检查新版本',
+                switchValue: appState.setting.checkUpdateOnLaunch,
+                onToggle: (bool value) {
+                  appState.setState((state) {
+                    state.setting.checkUpdateOnLaunch = value;
+                  });
+                },
+              ),
               SettingsTile.inputTile(
                 contentPadding: breakpoint.gutters,
                 title: '拉取超时',
