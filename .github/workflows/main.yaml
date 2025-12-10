@@ -115,8 +115,19 @@ jobs:
         with:
           fetch-depth: 0 # Required to fetch all history for tags
 
-      - name: Get release body from tag
-        run: git tag -l --format='%(contents)' ${{ github.ref_name }} > RELEASE_BODY.md
+      - name: Build release body from tag
+        run: |
+          set -e
+          TAG_NAME="${{ github.ref_name }}"
+          BODY="$(git for-each-ref "refs/tags/${TAG_NAME}" --format='%(contents)')"
+          if [ -z "$BODY" ]; then
+            BODY="$(git show -s --format=%B "${TAG_NAME}" || true)"
+          fi
+          if [ -z "$BODY" ]; then
+            echo "Release ${TAG_NAME}" > RELEASE_BODY.md
+          else
+            printf "%s\n" "$BODY" > RELEASE_BODY.md
+          fi
 
       - name: Download APK from build
         uses: actions/download-artifact@v4
