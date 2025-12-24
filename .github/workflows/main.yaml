@@ -114,16 +114,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Required to fetch all history for tags
+          fetch-tags: true
 
       - name: Build release body from tag
         shell: bash
         run: |
           set -euo pipefail
           TAG_NAME="${{ github.ref_name }}"
-          TAG_TYPE="$(git cat-file -t "$TAG_NAME")"
+          TAG_REF="refs/tags/${TAG_NAME}"
+          # actions/checkout may fetch the peeled commit object for annotated tags.
+          # Force-fetch the tag ref to ensure the tag object exists locally.
+          git fetch --force origin "${TAG_REF}:${TAG_REF}"
+
+          TAG_TYPE="$(git cat-file -t "$TAG_REF" | tr -d '\r\n')"
           if [ "$TAG_TYPE" = "tag" ]; then
             # Annotated tag: strip headers, keep raw message (markdown headings preserved)
-            BODY="$(git cat-file -p "$TAG_NAME" | sed '1,/^$/d')"
+            BODY="$(git cat-file -p "$TAG_REF" | sed '1,/^$/d' | sed 's/\r$//')"
           else
             # Lightweight tag: fall back to commit message
             BODY="$(git show -s --format=%B "$TAG_NAME")"
