@@ -15,21 +15,16 @@ import 'package:html/parser.dart';
 import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/xdao/thread.dart';
 import 'package:lightdao/utils/throttle.dart';
+import 'package:lightdao/utils/xdao_cdn.dart';
+
+final http.Client _httpClient = http.Client();
 
 const String defaultBaseCdn = 'https://api.nmb.best';
 const String defaultPostHost = 'https://www.nmbxd.com';
 const String defaultLastPostHost = 'https://www.nmbxd1.com';
 const String defaultRefCdn = 'https://www.nmbxd1.com';
-const List<String> baseCdnCandidates = [
-  defaultBaseCdn,
-  'https://nmbxd.com',
-  'https://nmbxd1.com',
-  'https://api.nmb.fastmirror.org',
-];
-const List<String> refCdnCandidates = [
-  'https://nmbxd.com',
-  'https://nmbxd1.com',
-];
+const List<String> baseCdnCandidates = xdaoBaseCdns;
+const List<String> refCdnCandidates = xdaoRefCdns;
 
 String _baseCdn = defaultBaseCdn;
 String _refCdn = defaultRefCdn;
@@ -39,6 +34,95 @@ bool _autoSelectingCdns = false;
 
 String get resolvedBaseCdn => _baseCdn;
 String get resolvedRefCdn => _refCdn;
+
+bool _isRedirectStatusCode(int statusCode) {
+  return statusCode == 301 ||
+      statusCode == 302 ||
+      statusCode == 303 ||
+      statusCode == 307 ||
+      statusCode == 308;
+}
+
+String _toggleWww(String host) {
+  final normalized = host.toLowerCase();
+  if (normalized.startsWith('www.')) {
+    return normalized.substring(4);
+  }
+  return 'www.$normalized';
+}
+
+Set<String> _buildCookieRedirectHostAllowlist(Uri initialUri) {
+  final allowlist = <String>{};
+
+  void addHost(String host) {
+    final normalized = host.trim().toLowerCase();
+    if (normalized.isEmpty) return;
+    allowlist.add(normalized);
+    allowlist.add(_toggleWww(normalized));
+  }
+
+  // Known hosts (from base/ref cdn lists + posting hosts)
+  for (final url in [...baseCdnCandidates, ...refCdnCandidates]) {
+    addHost(Uri.tryParse(url)?.host ?? '');
+  }
+  addHost(Uri.tryParse(defaultPostHost)?.host ?? '');
+  addHost(Uri.tryParse(defaultLastPostHost)?.host ?? '');
+
+  // User-configured hosts (custom mirrors)
+  addHost(initialUri.host);
+  addHost(Uri.tryParse(_baseCdn)?.host ?? '');
+  addHost(Uri.tryParse(_refCdn)?.host ?? '');
+  return allowlist;
+}
+
+Future<http.Response> _getWithCookiePreservedRedirects(
+  Uri uri, {
+  Map<String, String>? headers,
+  int maxRedirects = 5,
+}) async {
+  var currentUri = uri;
+  final allowlist = _buildCookieRedirectHostAllowlist(currentUri);
+  final requestHeaders = headers == null
+      ? null
+      : Map<String, String>.of(headers);
+
+  for (var i = 0; i <= maxRedirects; i++) {
+    final request = http.Request('GET', currentUri)
+      ..followRedirects = false
+      ..maxRedirects = 0;
+    if (requestHeaders != null) {
+      request.headers.addAll(requestHeaders);
+    }
+    final response = await http.Response.fromStream(
+      await _httpClient.send(request),
+    );
+
+    if (!_isRedirectStatusCode(response.statusCode)) {
+      return response;
+    }
+
+    final location = response.headers['location'];
+    if (location == null) {
+      return response;
+    }
+
+    final nextUri = currentUri.resolve(location);
+    if (nextUri.scheme.toLowerCase() != 'https') {
+      return response;
+    }
+
+    final nextHost = nextUri.host.toLowerCase();
+    if (requestHeaders != null &&
+        requestHeaders.containsKey('Cookie') &&
+        !allowlist.contains(nextHost)) {
+      throw XDaoApiMsgException('重定向到不受信任的域名：$nextHost');
+    }
+
+    currentUri = nextUri;
+  }
+
+  throw XDaoApiMsgException('重定向次数过多');
+}
 
 void applyCdnSetting({required String baseCdn, required String refCdn}) {
   _baseIsAuto = _isAuto(baseCdn);
@@ -274,7 +358,7 @@ Future<List<ThreadJson>> fetchForumThreads(
     headers = null;
   }
 
-  final response = await http.get(
+  final response = await _getWithCookiePreservedRedirects(
     _buildApiUri(
       'showf',
       queryParameters: {'id': forumId.toString(), 'page': page.toString()},
@@ -315,11 +399,13 @@ Future<List<ThreadJson>> fetchTimelineThreads(
     headers = null;
   }
 
-  final response = await http.get(
-    _buildApiUri(
-      'timeline',
-      queryParameters: {'id': timelineId.toString(), 'page': page.toString()},
-    ),
+  final queryParameters = {
+    'id': timelineId.toString(),
+    'page': page.toString(),
+  };
+
+  final response = await _getWithCookiePreservedRedirects(
+    _buildApiUri('timeline', queryParameters: queryParameters),
     headers: headers,
   );
 
@@ -389,7 +475,10 @@ Future<ThreadJson> _getThreadGeneric(
     headers = null;
   }
 
-  final response = await http.get(url, headers: headers);
+  final response = await _getWithCookiePreservedRedirects(
+    url,
+    headers: headers,
+  );
 
   if (response.statusCode == 200) {
     final data = getOKJsonMap(response.body);
@@ -655,46 +744,62 @@ Future<void> _sendRequest(
   File? image,
   String cookie,
 ) async {
-  var request = http.MultipartRequest('POST', url);
-  request.fields.addAll(fields);
-  if (image != null) {
-    request.files.add(await http.MultipartFile.fromPath('image', image.path));
-  }
-  request.headers['Cookie'] = 'userhash=$cookie';
+  var currentUrl = url;
+  final allowlist = _buildCookieRedirectHostAllowlist(currentUrl);
 
-  var response = await request.send();
-  if (response.statusCode == 307) {
-    final newUrl = response.headers['location'];
-    if (newUrl != null) {
-      request = http.MultipartRequest('POST', Uri.parse(newUrl));
-      request.fields.addAll(fields);
-      if (image != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath('image', image.path),
-        );
-      }
-      request.headers['Cookie'] = 'userhash=$cookie';
-      response = await request.send();
+  for (var i = 0; i <= 5; i++) {
+    final request = http.MultipartRequest('POST', currentUrl)
+      ..followRedirects = false
+      ..maxRedirects = 0;
+    request.fields.addAll(fields);
+    if (image != null) {
+      request.files.add(await http.MultipartFile.fromPath('image', image.path));
     }
-  }
+    request.headers['Cookie'] = 'userhash=$cookie';
 
-  final responseBody = await response.stream.bytesToString();
-  if (response.statusCode == 200) {
-    final document = parse(responseBody);
-    final successElement = document.querySelector('.success');
-    if (successElement != null) {
-      print('操作成功');
-    } else {
-      final errorElement = document.querySelector('.error');
-      if (errorElement != null) {
-        throw XDaoApiNotSuccussException(errorElement.text.trim());
+    final response = await request.send();
+
+    if (_isRedirectStatusCode(response.statusCode)) {
+      final location = response.headers['location'];
+      if (location == null) {
+        throw XDaoApiMsgException('请求被重定向但缺少 Location');
+      }
+
+      final nextUrl = currentUrl.resolve(location);
+      if (nextUrl.scheme.toLowerCase() != 'https') {
+        throw XDaoApiMsgException('请求被重定向到非 https 地址：$nextUrl');
+      }
+
+      final nextHost = nextUrl.host.toLowerCase();
+      if (!allowlist.contains(nextHost)) {
+        throw XDaoApiMsgException('重定向到不受信任的域名：$nextHost');
+      }
+
+      currentUrl = nextUrl;
+      continue;
+    }
+
+    final responseBody = await response.stream.bytesToString();
+    if (response.statusCode == 200) {
+      final document = parse(responseBody);
+      final successElement = document.querySelector('.success');
+      if (successElement != null) {
+        print('操作成功');
+        return;
       } else {
-        throw XDaoApiMsgException('未知错误');
+        final errorElement = document.querySelector('.error');
+        if (errorElement != null) {
+          throw XDaoApiNotSuccussException(errorElement.text.trim());
+        } else {
+          throw XDaoApiMsgException('未知错误');
+        }
       }
+    } else {
+      throw XDaoApiMsgException('请求失败，状态码：${response.statusCode}');
     }
-  } else {
-    throw XDaoApiMsgException('请求失败，状态码：${response.statusCode}');
   }
+
+  throw XDaoApiMsgException('重定向次数过多');
 }
 
 Future<Post> getLastPost(String? cookie) async {
@@ -705,7 +810,10 @@ Future<Post> getLastPost(String? cookie) async {
   } else {
     headers = null;
   }
-  final response = await http.get(url, headers: headers);
+  final response = await _getWithCookiePreservedRedirects(
+    url,
+    headers: headers,
+  );
   if (response.statusCode == 200) {
     final data = getOKJsonMap(response.body);
     return Post.fromJson(data);

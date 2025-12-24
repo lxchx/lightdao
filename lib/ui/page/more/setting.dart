@@ -8,6 +8,7 @@ import 'package:lightdao/data/phrase.dart';
 import 'package:lightdao/ui/page/more/icon_select.dart';
 import 'package:lightdao/ui/page/debug/tsukuyomi_test.dart';
 import 'package:lightdao/ui/page/debug/reply_dialog.dart';
+import 'package:lightdao/utils/xdao_cdn.dart';
 import 'package:provider/provider.dart';
 import 'package:swipeable_page_route/swipeable_page_route.dart';
 import 'package:file_picker/file_picker.dart';
@@ -32,14 +33,9 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = Provider.of<MyAppState>(context);
     final breakpoint = Breakpoint.fromMediaQuery(context);
-    const baseCdnPresets = [
-      'auto',
-      'https://nmbxd.com',
-      'https://nmbxd1.com',
-      'https://api.nmb.fastmirror.org',
-    ];
-    const refCdnPresets = ['auto', 'https://nmbxd.com', 'https://nmbxd1.com'];
-    String cdnLabel(String value) => value == 'auto' ? '自动' : value;
+    final baseCdnPresets = [xdaoCdnAuto, ...xdaoBaseCdns];
+    final refCdnPresets = [xdaoCdnAuto, ...xdaoRefCdns];
+    String cdnLabel(String value) => value == xdaoCdnAuto ? '自动' : value;
 
     Future<void> pickCdn({required bool isBase}) async {
       final presets = isBase ? baseCdnPresets : refCdnPresets;
