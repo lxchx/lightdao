@@ -955,96 +955,103 @@ class _ThreadPage2State extends State<ThreadPage2>
           controller: _scrollController,
           cacheExtent: MediaQuery.of(context).size.height * 3,
           slivers: [
-            SliverAppBar(
-              surfaceTintColor: Colors.transparent,
-              scrolledUnderElevation: 0,
-              // 跟手：往下滚多少收多少，往回滚多少出多少；
-              // 设置里打开"固定底栏&顶栏"时始终停在顶部
-              floating: true,
-              snap: false,
+            // 跟手：往下滚多少收多少，往回滚多少出多少；
+            // 设置里打开"固定底栏&顶栏"时始终停在顶部。
+            // 不用 SliverAppBar(floating)：从中间页进来后往上翻，列表会修正滚动
+            // 位置（上方内容的实际高度和估计的不一样），画面不动但位置数值突然
+            // 变大，SliverAppBar 会把它当成"往下滚了一大段"而收起。
+            SliverAnchoredFloatingHeader(
+              controller: _anchorController,
+              extent: kToolbarHeight + MediaQuery.of(context).padding.top,
               pinned: appState.setting.fixedBottomBar,
-              title: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    HtmlWidget('${_getForumName()}・${_poReply.id}'),
-                    Text(
-                      'X岛・nmbxd.com',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).hintColor,
+              child: AppBar(
+                surfaceTintColor: Colors.transparent,
+                scrolledUnderElevation: 0,
+                title: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      HtmlWidget('${_getForumName()}・${_poReply.id}'),
+                      Text(
+                        'X岛・nmbxd.com',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).hintColor,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                IconButton(
-                  tooltip: '分享',
-                  onPressed: () async => await Share.share(
-                    'https://www.nmbxd1.com/t/${_poReply.id}',
+                    ],
                   ),
-                  icon: Icon(Icons.share),
                 ),
-                PopupMenuButton<String>(
-                  tooltip: '更多选项',
-                  onSelected: (value) async {
-                    switch (value) {
-                      case 'raw_mode':
-                        setState(() {
-                          _isRawPicMode = !_isRawPicMode;
-                        });
-                        break;
-                      case 'po_mode':
-                        if (_poPageManager == null) {
-                          final threadHistory = _appState
-                              .setting
-                              .viewPoOnlyHistory
-                              .get(_poReply.id);
-
-                          _poPageManager = ThreadPageManager(
-                            threadId: _poReply.id,
-                            initialPage: threadHistory?.page ?? 1,
-                            cookie: _appState.getCurrentCookie(),
-                            refCache: _refCache,
-                            isPoOnly: true,
-                          );
-
-                          _handlePageManagerError(_poPageManager!.initialize());
-
-                          _poPageManager!.registerPreviousPageCallback((
-                            page,
-                            newItemCount,
-                            _,
-                            doInsert,
-                          ) {
-                            _insertPreviousPage(doInsert, newItemCount);
+                actions: [
+                  IconButton(
+                    tooltip: '分享',
+                    onPressed: () async => await Share.share(
+                      'https://www.nmbxd1.com/t/${_poReply.id}',
+                    ),
+                    icon: Icon(Icons.share),
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: '更多选项',
+                    onSelected: (value) async {
+                      switch (value) {
+                        case 'raw_mode':
+                          setState(() {
+                            _isRawPicMode = !_isRawPicMode;
                           });
-                        }
-                        await _scrollController.animateTo(
-                          0,
-                          duration: Durations.long1,
-                          curve: Curves.easeOut,
-                        );
-                        setState(() => _isPoOnlyMode = !_isPoOnlyMode);
-                        //setState(() {});
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    CheckedPopupMenuItem(
-                      value: 'raw_mode',
-                      checked: _isRawPicMode,
-                      child: Text('原图模式'),
-                    ),
-                    CheckedPopupMenuItem(
-                      value: 'po_mode',
-                      checked: _isPoOnlyMode,
-                      child: Text('仅看Po'),
-                    ),
-                  ],
-                ),
-              ],
+                          break;
+                        case 'po_mode':
+                          if (_poPageManager == null) {
+                            final threadHistory = _appState
+                                .setting
+                                .viewPoOnlyHistory
+                                .get(_poReply.id);
+
+                            _poPageManager = ThreadPageManager(
+                              threadId: _poReply.id,
+                              initialPage: threadHistory?.page ?? 1,
+                              cookie: _appState.getCurrentCookie(),
+                              refCache: _refCache,
+                              isPoOnly: true,
+                            );
+
+                            _handlePageManagerError(
+                              _poPageManager!.initialize(),
+                            );
+
+                            _poPageManager!.registerPreviousPageCallback((
+                              page,
+                              newItemCount,
+                              _,
+                              doInsert,
+                            ) {
+                              _insertPreviousPage(doInsert, newItemCount);
+                            });
+                          }
+                          await _scrollController.animateTo(
+                            0,
+                            duration: Durations.long1,
+                            curve: Curves.easeOut,
+                          );
+                          setState(() => _isPoOnlyMode = !_isPoOnlyMode);
+                          //setState(() {});
+                          break;
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      CheckedPopupMenuItem(
+                        value: 'raw_mode',
+                        checked: _isRawPicMode,
+                        child: Text('原图模式'),
+                      ),
+                      CheckedPopupMenuItem(
+                        value: 'po_mode',
+                        checked: _isPoOnlyMode,
+                        child: Text('仅看Po'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
             SliverAnchoredList.builder(
               // 换数据源（仅看Po / 跳到未加载的页）时整个列表重新开始
