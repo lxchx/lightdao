@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:lightdao/utils/bench_flags.dart';
 import 'package:flutter/services.dart';
 import 'package:lightdao/ui/page/xdao_image_viewer.dart';
 import 'package:lightdao/ui/widget/conditional_hero.dart';
@@ -16,7 +17,6 @@ class LongPressPreviewImage extends StatefulWidget {
   final bool isRawPicMode;
   final List<String>? imageNames;
   final int? initIndex;
-  final bool cacheImageSize;
   final Function(File imageFile, Object? heroTag)? onEdit;
 
   LongPressPreviewImage({
@@ -26,7 +26,6 @@ class LongPressPreviewImage extends StatefulWidget {
     this.isRawPicMode = false,
     this.imageNames,
     this.initIndex,
-    this.cacheImageSize = false,
     this.onEdit,
   });
 
@@ -41,8 +40,6 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
   late AnimationController _animationController;
   late Animation<double> _animation;
   bool _isPreview = false;
-  double? cacheWidth;
-  double? cacheHeight;
 
   @override
   void initState() {
@@ -55,9 +52,6 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
       parent: _animationController,
       curve: Curves.easeInOut,
     );
-    final size = memoryImageInfoCache.get('${widget.img}${widget.ext}');
-    cacheWidth = size?.width;
-    cacheHeight = size?.height;
   }
 
   @override
@@ -222,37 +216,32 @@ class _LongPressPreviewImageState extends State<LongPressPreviewImage>
       },
       child: ConditionalHero(
         tag: widget.imageHeroTag,
-        child: CachedNetworkImage(
-          cacheManager: MyImageCacheManager(),
-          onImageLoaded: widget.cacheImageSize
-              ? (imageInfo, synchronousCall) {
-                  memoryImageInfoCache.put(
-                    '${widget.img}${widget.ext}',
-                    Size(
-                      imageInfo.image.width.toDouble(),
-                      imageInfo.image.height.toDouble(),
-                    ),
-                  );
-                }
-              : null,
-          imageUrl: widget.isRawPicMode
-              ? 'https://image.nmb.best/image/${widget.img}${widget.ext}'
-              : 'https://image.nmb.best/thumb/${widget.img}${widget.ext}',
-          progressIndicatorBuilder: (context, url, downloadProgress) =>
-              SizedBox(
-                width: cacheWidth,
-                height: cacheHeight,
-                child: cacheWidth == null
-                    ? CircularProgressIndicator(
-                        value: downloadProgress.progress,
-                      )
-                    : Center(
-                        child: CircularProgressIndicator(
-                          value: downloadProgress.progress,
-                        ),
-                      ),
+        child: BenchFlags.off('img')
+            ? const SizedBox(
+                width: 150,
+                height: 150,
+                child: ColoredBox(color: Color(0x33808080)),
+              )
+            : CachedNetworkImage(
+                cacheManager: MyImageCacheManager(),
+                // 默认是"图 500ms 淡入 + 占位 1000ms 淡出"。淡入淡出期间这条帖子
+                // 每帧都要重画，还要多开离屏图层；滑动时不断有新图进来，就一直在付。
+                // 列表里直接显示即可。
+                fadeInDuration: BenchFlags.off('nofade')
+                    ? const Duration(milliseconds: 500)
+                    : Duration.zero,
+                fadeOutDuration: BenchFlags.off('nofade')
+                    ? const Duration(milliseconds: 1000)
+                    : Duration.zero,
+                // 这里以前传 onImageLoaded 来记图片尺寸（往回翻时给占位一个基准高度）。
+                // 现在列表自己锚定位置，不需要了；而且那个回调会给图片流挂一个
+                // 永不摘除的监听，让动图滚出屏幕后还一直在后台解码、上传。
+                imageUrl: widget.isRawPicMode
+                    ? 'https://image.nmb.best/image/${widget.img}${widget.ext}'
+                    : 'https://image.nmb.best/thumb/${widget.img}${widget.ext}',
+                progressIndicatorBuilder: (context, url, downloadProgress) =>
+                    CircularProgressIndicator(value: downloadProgress.progress),
               ),
-        ),
       ),
     );
   }

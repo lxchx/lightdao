@@ -203,8 +203,13 @@ String _apiSegment(String host) {
   return host.contains('nmbxd') ? 'Api' : 'api';
 }
 
+/// 性能测量用：编译时传 --dart-define=LD_BENCH_HOST=http://10.0.2.2:8766
+/// 就把 JSON 接口指到本机的录制回放服务（flutter-scroll/tools/
+/// xdao_replay_server.py），让每次测量看到同一份内容。正常构建为空，不生效。
+const String _benchHost = String.fromEnvironment('LD_BENCH_HOST');
+
 Uri _buildApiUri(String endpoint, {Map<String, String>? queryParameters}) {
-  final host = _baseCdn;
+  final host = _benchHost.isNotEmpty ? _benchHost : _baseCdn;
   return Uri.parse(
     '$host/${_apiSegment(host)}/$endpoint',
   ).replace(queryParameters: queryParameters);

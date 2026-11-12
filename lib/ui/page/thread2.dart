@@ -947,13 +947,8 @@ class _ThreadPage2State extends State<ThreadPage2>
     );
 
     return Scaffold(
-      // 只负责给状态栏垫底色；真正的标题栏是下面随列表滚动的 SliverAppBar
-      appBar: AppBar(
-        toolbarHeight: 0,
-        automaticallyImplyLeading: false,
-        surfaceTintColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-      ),
+      // 不放固定的 AppBar：标题栏是下面随列表滚动的 SliverAppBar，它自己把
+      // 状态栏那一条也算进高度里，所以收起时连状态栏区域一起让出来（和首页一致）。
       body: NotificationListener<ScrollNotification>(
         onNotification: _barHide.handleNotification,
         child: CustomScrollView(
@@ -961,7 +956,6 @@ class _ThreadPage2State extends State<ThreadPage2>
           cacheExtent: MediaQuery.of(context).size.height * 3,
           slivers: [
             SliverAppBar(
-              primary: false,
               surfaceTintColor: Colors.transparent,
               scrolledUnderElevation: 0,
               // 跟手：往下滚多少收多少，往回滚多少出多少；

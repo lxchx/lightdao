@@ -494,7 +494,6 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                                               'ThreadCard ${post.id}',
                                           imageHeroTag:
                                               'Image ${post.img}${post.ext}',
-                                          cacheImageSize: true,
                                         ),
                                       );
                                       onTapThread() =>
