@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:app_installer/app_installer.dart';
 import 'package:breakpoint/breakpoint.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +9,7 @@ import 'package:lightdao/data/const_data.dart';
 import 'package:lightdao/data/setting.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lightdao/utils/update_checker.dart';
+import 'package:lightdao/utils/update_downloader.dart';
 import 'package:lightdao/ui/widget/fading_scroll_view.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -214,7 +214,9 @@ class AboutPage extends StatelessWidget {
                   TextButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      AppInstaller.installApk(savePath!).catchError((error) {
+                      UpdateDownloader.installApk(savePath!).catchError((
+                        error,
+                      ) {
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -223,7 +225,7 @@ class AboutPage extends StatelessWidget {
                                 Expanded(child: Text('安装失败: $error')),
                                 TextButton(
                                   onPressed: () {
-                                    AppInstaller.installApk(savePath!);
+                                    UpdateDownloader.installApk(savePath!);
                                   },
                                   child: Text('重试'),
                                 ),
@@ -257,35 +259,25 @@ class AboutPage extends StatelessWidget {
     await initCompleter.future;
 
     try {
-      // 开始下载
-      savePath = await UpdateChecker.downloadUpdate(
-        url: updateInfo.downloadUrl,
-        version: updateInfo.latestVersion,
+      // 开始下载。下载逻辑在 UpdateDownloader 里，启动时的「自动更新」也用它，
+      // 拿不到保存路径时会抛异常，由下面的 catch 显示成「下载失败：...」。
+      savePath = await UpdateDownloader.downloadApk(
+        updateInfo: updateInfo,
         cancelToken: cancelToken,
         onProgress: (received, total) {
           if (total != -1 && context.mounted) {
             // 更新进度显示
             dialogSetState(() {
               progress = received / total; // 更新进度变量
-              if (received == total && savePath != null) {
-                isDownloading = false;
-                downloadComplete = true; // 标记下载完成
-              }
             });
           }
         },
       );
 
-      if (savePath == null && context.mounted && !cancelToken.isCancelled) {
+      if (context.mounted) {
         dialogSetState(() {
           isDownloading = false;
-          downloadComplete = false;
-          errorMessage = '下载失败：无法获取保存路径';
-        });
-      } else {
-        dialogSetState(() {
-          isDownloading = false;
-          downloadComplete = true;
+          downloadComplete = true; // 标记下载完成
         });
       }
     } catch (e) {

@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/phrase.dart';
 import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/data/trend_data.dart';
+import 'package:lightdao/data/update_policy.dart';
 import 'package:lightdao/data/xdao/reply.dart';
 import 'package:lightdao/data/xdao/thread.dart';
 import 'package:lightdao/ui/page/thread2.dart';
@@ -214,6 +217,13 @@ class LightDaoSetting extends HiveObject {
   @HiveField(47, defaultValue: 'auto')
   String refCdn;
 
+  /// 更新策略：0=自动更新、1=自动检查、2=永不检查，见 [UpdatePolicy]。
+  ///
+  /// 老版本的用户数据里没有这个字段，读出来是 null；此时按 [checkUpdateOnLaunch]
+  /// 推导（见 [effectiveUpdatePolicy]），所以这个字段要允许为空。
+  @HiveField(48, defaultValue: null)
+  int? updatePolicy;
+
   LightDaoSetting({
     required this.cookies,
     required this.currentCookie,
@@ -262,6 +272,7 @@ class LightDaoSetting extends HiveObject {
     required this.checkUpdateOnLaunch,
     required this.baseCdn,
     required this.refCdn,
+    this.updatePolicy,
     LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
   }) : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
        viewPoOnlyHistory =
@@ -320,6 +331,17 @@ class LightDaoSetting extends HiveObject {
        viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
        viewPoOnlyHistory =
            viewPoOnlyHistory ?? LRUCache<int, ReplyJsonWithPage>(5000);
+
+  /// 当前生效的更新策略。
+  ///
+  /// [updatePolicy] 为 null（老用户升级上来的数据 / 全新安装）时按
+  /// [checkUpdateOnLaunch] 推导；非 Android 平台没有安装 APK 的能力，
+  /// 自动更新会退化成自动检查。
+  UpdatePolicy get effectiveUpdatePolicy => resolveUpdatePolicy(
+    storedPolicy: updatePolicy,
+    legacyCheckUpdateOnLaunch: checkUpdateOnLaunch,
+    isAndroid: Platform.isAndroid,
+  );
 }
 
 class MaterialColorAdapter extends TypeAdapter<MaterialColor> {

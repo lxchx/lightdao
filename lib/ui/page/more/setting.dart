@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:breakpoint/breakpoint.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/const_data.dart';
 import 'package:lightdao/data/phrase.dart';
+import 'package:lightdao/data/update_policy.dart';
 import 'package:lightdao/ui/page/more/icon_select.dart';
 import 'package:lightdao/ui/page/debug/tsukuyomi_test.dart';
 import 'package:lightdao/ui/page/debug/reply_dialog.dart';
@@ -138,6 +141,73 @@ class SettingsPage extends StatelessWidget {
                       } else {
                         appState.setState((state) {
                           state.setting.refCdn = result;
+                        });
+                      }
+                      Navigator.pop(context);
+                    },
+                    child: Text('确定'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    }
+
+    Future<void> pickUpdatePolicy() async {
+      final current = appState.setting.effectiveUpdatePolicy;
+      UpdatePolicy? selected = current;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: Text('更新策略'),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ...UpdatePolicy.values.map(
+                        (policy) => RadioListTile<UpdatePolicy>(
+                          value: policy,
+                          groupValue: selected,
+                          title: Text(policy.label),
+                          subtitle: Text(policy.description),
+                          onChanged: (v) {
+                            setState(() {
+                              selected = v;
+                            });
+                          },
+                        ),
+                      ),
+                      if (!Platform.isAndroid)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            '当前平台不支持安装更新包，自动更新会按自动检查处理。',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('取消'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      final policy = selected;
+                      if (policy != null && policy != current) {
+                        appState.setState((state) {
+                          state.setting.updatePolicy = policy.value;
+                          // 老字段保留同步，回退到老版本时行为也一致
+                          state.setting.checkUpdateOnLaunch =
+                              policy != UpdatePolicy.never;
                         });
                       }
                       Navigator.pop(context);
@@ -526,16 +596,14 @@ class SettingsPage extends StatelessWidget {
           SettingsSection(
             title: Text('功能'),
             children: [
-              SettingsTile.switchTile(
-                contentPadding: breakpoint.gutters,
-                title: '启动时检查更新',
-                subtitle: '关闭后启动时不再自动检查新版本',
-                switchValue: appState.setting.checkUpdateOnLaunch,
-                onToggle: (bool value) {
-                  appState.setState((state) {
-                    state.setting.checkUpdateOnLaunch = value;
-                  });
-                },
+              ListTile(
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: breakpoint.gutters,
+                ),
+                title: Text('更新策略'),
+                subtitle: Text(appState.setting.effectiveUpdatePolicy.label),
+                trailing: Icon(Icons.chevron_right),
+                onTap: () => pickUpdatePolicy(),
               ),
               SettingsTile.inputTile(
                 contentPadding: breakpoint.gutters,
