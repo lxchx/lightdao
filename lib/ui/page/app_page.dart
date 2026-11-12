@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:lightdao/data/setting.dart';
 import 'package:lightdao/data/xdao/ref.dart';
 import 'package:lightdao/ui/widget/scaffold_accessory_builder.dart';
+import 'package:lightdao/ui/widget/scroll_hide_bar.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:provider/provider.dart';
 import 'package:breakpoint/breakpoint.dart';
@@ -18,12 +18,14 @@ class AppPage extends StatefulWidget {
   State<AppPage> createState() => _AppPageState();
 }
 
-class _AppPageState extends State<AppPage> {
+class _AppPageState extends State<AppPage> with SingleTickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final List<GlobalKey?> _pageKeys = [];
 
   int _selectedPageIndex = 0;
-  bool _isBottomBarVisible = true;
+
+  /// 底部导航栏随滚动跟手收起/展开
+  late final _barHide = ScrollHideController(vsync: this);
   bool _isOutSideDrawerExpanded = true;
 
   // 获取当前页面的 ScaffoldAccessoryBuilder
@@ -95,6 +97,7 @@ class _AppPageState extends State<AppPage> {
   @override
   void dispose() {
     _forumSelectionNotifier.dispose();
+    _barHide.dispose();
     super.dispose();
   }
 
@@ -109,7 +112,7 @@ class _AppPageState extends State<AppPage> {
     setState(() {
       _selectedPageIndex = index;
       if (index != 0) {
-        _isBottomBarVisible = true;
+        _barHide.show();
       }
     });
   }
@@ -150,12 +153,17 @@ class _AppPageState extends State<AppPage> {
     if (!_isInitialized) return null;
     final breakpoint = Breakpoint.fromMediaQuery(context);
     final appState = Provider.of<MyAppState>(context, listen: false);
-    if (breakpoint.window >= WindowSize.small ||
-        (!appState.setting.fixedBottomBar && !_isBottomBarVisible)) {
+    if (breakpoint.window >= WindowSize.small) {
       return null;
     }
-    return _currentPageScaffoldAccessoryBuilder?.buildFloatingActionButton(
+    final fab = _currentPageScaffoldAccessoryBuilder?.buildFloatingActionButton(
       context,
+    );
+    if (fab == null) return null;
+    return ScrollHideFab(
+      controller: _barHide,
+      fixed: appState.setting.fixedBottomBar,
+      child: fab,
     );
   }
 
@@ -301,17 +309,10 @@ class _AppPageState extends State<AppPage> {
             ),
           // 主内容区
           Expanded(
-            child: NotificationListener<UserScrollNotification>(
+            child: NotificationListener<ScrollNotification>(
               onNotification: (notification) {
                 if (_selectedPageIndex == 0) {
-                  final ScrollDirection direction = notification.direction;
-                  if (direction == ScrollDirection.reverse &&
-                      _isBottomBarVisible) {
-                    setState(() => _isBottomBarVisible = false);
-                  } else if (direction == ScrollDirection.forward &&
-                      !_isBottomBarVisible) {
-                    setState(() => _isBottomBarVisible = true);
-                  }
+                  _barHide.handleNotification(notification);
                 }
                 return true;
               },
@@ -323,12 +324,10 @@ class _AppPageState extends State<AppPage> {
       // 小屏幕的底部导航栏
       bottomNavigationBar: breakpoint.window >= WindowSize.small
           ? null
-          : AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutExpo,
-              height: _isBottomBarVisible || appState.setting.fixedBottomBar
-                  ? 67 + MediaQuery.of(context).padding.bottom
-                  : 0,
+          : ScrollHideBottomBar(
+              controller: _barHide,
+              fixed: appState.setting.fixedBottomBar,
+              height: 67 + MediaQuery.of(context).padding.bottom,
               child: ClipRRect(
                 child: NavigationBar(
                   onDestinationSelected: _onDestinationSelected,

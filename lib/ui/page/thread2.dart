@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:breakpoint/breakpoint.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/setting.dart';
@@ -15,7 +14,7 @@ import 'package:lightdao/ui/page/drawing_board_page.dart';
 import 'package:lightdao/ui/page/thread.dart';
 import 'package:lightdao/utils/page_manager.dart';
 import 'package:lightdao/ui/widget/reply_item.dart';
-import 'package:lightdao/ui/widget/slivding_app_bar.dart';
+import 'package:lightdao/ui/widget/scroll_hide_bar.dart';
 import 'package:lightdao/ui/widget/util_funtions.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/throttle.dart';
@@ -24,7 +23,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:swipeable_page_route/swipeable_page_route.dart';
-import 'package:tsukuyomi_list/tsukuyomi_list.dart';
+import 'package:anchored_slivers/anchored_slivers.dart';
 
 /// 分隔线包装器
 ///
@@ -80,16 +79,22 @@ class ThreadPage2 extends StatefulWidget {
   State<ThreadPage2> createState() => _ThreadPage2State();
 }
 
-class _ThreadPage2State extends State<ThreadPage2> {
+class _ThreadPage2State extends State<ThreadPage2>
+    with SingleTickerProviderStateMixin {
   final _fetchRefThrottle = IntervalRunner<RefHtml>(
     interval: Duration(milliseconds: 750),
   );
-  final _scrollController = TsukuyomiListScrollController();
+  final _scrollController = ScrollController();
+
+  /// 锚定列表的控制器：读当前锚点下标、按下标跳转。
+  final _anchorController = SliverAnchorController();
   late ThreadPageManager _pageManager;
   ThreadPageManager? _poPageManager;
 
   bool _isPoOnlyMode = false;
-  bool _showBar = true;
+
+  /// 底栏随滚动跟手收起/展开（顶栏由 SliverAppBar 自己跟手）
+  late final _barHide = ScrollHideController(vsync: this);
   bool _isRawPicMode = false;
 
   final _refCache = LRUCache<int, Future<RefHtml>>(100);
@@ -460,6 +465,24 @@ class _ThreadPage2State extends State<ThreadPage2> {
         });
   }
 
+  /// 前页数据插到列表头部。列表项带 key，锚定列表会自己保持当前位置不动。
+  ///
+  /// 插入的那一帧额外把"当前屏幕上的那条回复"钉住：这样无论顶栏是否正在
+  /// 收起、锚点落在哪，新内容都只会出现在它上方，画面不动。
+  void _insertPreviousPage(void Function() doInsert, int newItemCount) {
+    final anchor = _anchorController.anchorIndex;
+    doInsert();
+    if (!mounted) return;
+    if (anchor != null) {
+      // 下标 0 是串头；锚点落在串头上时改钉紧挨着它的第一条回复
+      _anchorController.pinnedIndex = (anchor < 1 ? 1 : anchor) + newItemCount;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _anchorController.pinnedIndex = null;
+      });
+    }
+    setState(() {});
+  }
+
   void _jumpToPage(int page, bool jumpToEnd) {
     final loadedRange = _curPageManager.loadedPageRange;
 
@@ -476,15 +499,15 @@ class _ThreadPage2State extends State<ThreadPage2> {
       }
 
       if (targetIndex != -1) {
-        // TsukuyomiList的索引需要+1（因为第一项是头部）
-        _scrollController.jumpToIndex(targetIndex + 1);
+        // 列表的索引需要+1（因为第一项是头部）
+        _anchorController.jumpToIndex(targetIndex + 1);
         if (jumpToEnd) {
           _curPageManager.tryLoadNextPage();
         }
       }
     } else {
       // 页面未加载，直接换一个新的PageManager
-      _scrollController.jumpToIndex(0); // 先跳转到首个回复
+      if (_scrollController.hasClients) _scrollController.jumpTo(0);
       _pageManager = ThreadPageManager(
         threadId: widget.headerThread.id,
         initialPage: page,
@@ -497,15 +520,20 @@ class _ThreadPage2State extends State<ThreadPage2> {
         _,
         doInsert,
       ) {
-        _scrollController.onBatchInsertItems(0, newItemCount, () => doInsert());
+        _insertPreviousPage(doInsert, newItemCount);
       });
       Future.microtask(() async {
         await _pageManager.initialize();
+        if (!mounted) return;
         setState(() {});
         if (jumpToEnd) {
-          _scrollController.jumpToIndex(_curPageManager.totalItemsCount - 1);
-          _handlePageManagerError(_curPageManager.tryLoadNextPage());
-          setState(() {});
+          // 等新列表挂上之后再跳
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _anchorController.jumpToIndex(_curPageManager.totalItemsCount);
+            _handlePageManagerError(_curPageManager.tryLoadNextPage());
+            setState(() {});
+          });
         }
       });
     }
@@ -763,15 +791,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
       _,
       doInsert,
     ) {
-      _scrollController.onBatchInsertItems(0, newItemCount, () => doInsert());
-    });
-    _scrollController.addListener(() {
-      final shouldShowBar =
-          _scrollController.position.userScrollDirection !=
-          ScrollDirection.reverse;
-      if (_showBar != shouldShowBar) {
-        setState(() => _showBar = shouldShowBar);
-      }
+      _insertPreviousPage(doInsert, newItemCount);
     });
     _scrollController.addListener(() {
       // 当距离底部不到一个屏幕高度时加载下一页
@@ -781,12 +801,27 @@ class _ThreadPage2State extends State<ThreadPage2> {
       final viewportDimension = position.viewportDimension;
 
       if (maxScrollExtent - currentPixels <= viewportDimension) {
-        _curPageManager.tryLoadNextPage();
+        final manager = _curPageManager;
+        final before = manager.totalItemsCount;
+        manager.tryLoadNextPage().then((_) {
+          // 新一页到了就重建，让列表看到新增的回复
+          if (mounted && manager.totalItemsCount != before) setState(() {});
+        });
       }
     });
-    _scrollController.addListener(() {
-      _lastKnownReplyIndex = _scrollController.anchorIndex;
+    _anchorController.addListener(() {
+      _lastKnownReplyIndex = _anchorController.anchorIndex;
     });
+    if (widget.isCompletePage && widget.startReplyId != null) {
+      final initIndex = widget.headerThread.replies.indexWhere(
+        (rply) => rply.id == widget.startReplyId,
+      );
+      if (initIndex > 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _anchorController.jumpToIndex(initIndex + 1);
+        });
+      }
+    }
 
     Future.microtask(() async {
       await _pageManager.initialize();
@@ -822,7 +857,7 @@ class _ThreadPage2State extends State<ThreadPage2> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               try {
-                _scrollController.jumpToIndex(replyIndex + 1);
+                _anchorController.jumpToIndex(replyIndex + 1);
               } catch (e) {
                 print('跳转失败: $e');
               }
@@ -838,6 +873,8 @@ class _ThreadPage2State extends State<ThreadPage2> {
   void dispose() {
     _saveHistory();
     _scrollController.dispose();
+    _anchorController.dispose();
+    _barHide.dispose();
     _replyTextControler.dispose();
     _replyTitleControler.dispose();
     _replyAuthorControler.dispose();
@@ -851,17 +888,28 @@ class _ThreadPage2State extends State<ThreadPage2> {
 
     final replyCount = _curPageManager.totalItemsCount;
 
-    final initReplyIndex = !widget.isCompletePage
-        ? null
-        : _poReply.replies.indexWhere((rply) => rply.id == widget.startReplyId);
-
-    // 确保索引有效（大于0且小于总项数）
-    final validInitReplyIndex =
-        initReplyIndex != null &&
-            initReplyIndex > 0 &&
-            initReplyIndex < replyCount + 2
-        ? initReplyIndex
-        : null;
+    // 每个列表项一个稳定的 key：前页插到头部后，锚定列表靠它找回原来那一项，
+    // 位置才不会跳。
+    const headerKey = ValueKey<String>('thread-header');
+    const footerKey = ValueKey<String>('thread-footer');
+    final replyKeys = <Key>[];
+    final keyToIndex = <Key, int>{};
+    for (var i = 0; i < replyCount; i++) {
+      final item = _curPageManager.getItemByIndex(i);
+      Key key = item == null
+          ? ValueKey<String>('missing $i')
+          : ValueKey<String>('reply ${item.$1.id} p${item.$2}');
+      if (keyToIndex.containsKey(key)) {
+        key = ValueKey<String>('dup $i');
+      }
+      replyKeys.add(key);
+      keyToIndex[key] = i + 1;
+    }
+    Key itemKey(int index) {
+      if (index == 0) return headerKey;
+      if (index > replyKeys.length) return footerKey;
+      return replyKeys[index - 1];
+    }
 
     late List<String> allImageNames;
     allImageNames = [
@@ -899,508 +947,573 @@ class _ThreadPage2State extends State<ThreadPage2> {
     );
 
     return Scaffold(
-      appBar: SlidingAppBar(
-        duration: Durations.medium1,
-        visible: _showBar || appState.setting.fixedBottomBar,
-        child: AppBar(
-          title: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                HtmlWidget('${_getForumName()}・${_poReply.id}'),
-                Text(
-                  'X岛・nmbxd.com',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).hintColor,
+      // 只负责给状态栏垫底色；真正的标题栏是下面随列表滚动的 SliverAppBar
+      appBar: AppBar(
+        toolbarHeight: 0,
+        automaticallyImplyLeading: false,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+      ),
+      body: NotificationListener<ScrollNotification>(
+        onNotification: _barHide.handleNotification,
+        child: CustomScrollView(
+          controller: _scrollController,
+          cacheExtent: MediaQuery.of(context).size.height * 3,
+          slivers: [
+            SliverAppBar(
+              primary: false,
+              surfaceTintColor: Colors.transparent,
+              scrolledUnderElevation: 0,
+              // 跟手：往下滚多少收多少，往回滚多少出多少；
+              // 设置里打开"固定底栏&顶栏"时始终停在顶部
+              floating: true,
+              snap: false,
+              pinned: appState.setting.fixedBottomBar,
+              title: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    HtmlWidget('${_getForumName()}・${_poReply.id}'),
+                    Text(
+                      'X岛・nmbxd.com',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).hintColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                IconButton(
+                  tooltip: '分享',
+                  onPressed: () async => await Share.share(
+                    'https://www.nmbxd1.com/t/${_poReply.id}',
                   ),
+                  icon: Icon(Icons.share),
                 ),
-              ],
-            ),
-          ),
-          actions: [
-            IconButton(
-              tooltip: '分享',
-              onPressed: () async =>
-                  await Share.share('https://www.nmbxd1.com/t/${_poReply.id}'),
-              icon: Icon(Icons.share),
-            ),
-            PopupMenuButton<String>(
-              tooltip: '更多选项',
-              onSelected: (value) async {
-                switch (value) {
-                  case 'raw_mode':
-                    setState(() {
-                      _isRawPicMode = !_isRawPicMode;
-                    });
-                    break;
-                  case 'po_mode':
-                    if (_poPageManager == null) {
-                      final threadHistory = _appState.setting.viewPoOnlyHistory
-                          .get(_poReply.id);
+                PopupMenuButton<String>(
+                  tooltip: '更多选项',
+                  onSelected: (value) async {
+                    switch (value) {
+                      case 'raw_mode':
+                        setState(() {
+                          _isRawPicMode = !_isRawPicMode;
+                        });
+                        break;
+                      case 'po_mode':
+                        if (_poPageManager == null) {
+                          final threadHistory = _appState
+                              .setting
+                              .viewPoOnlyHistory
+                              .get(_poReply.id);
 
-                      _poPageManager = ThreadPageManager(
-                        threadId: _poReply.id,
-                        initialPage: threadHistory?.page ?? 1,
-                        cookie: _appState.getCurrentCookie(),
-                        refCache: _refCache,
-                        isPoOnly: true,
-                      );
+                          _poPageManager = ThreadPageManager(
+                            threadId: _poReply.id,
+                            initialPage: threadHistory?.page ?? 1,
+                            cookie: _appState.getCurrentCookie(),
+                            refCache: _refCache,
+                            isPoOnly: true,
+                          );
 
-                      _handlePageManagerError(_poPageManager!.initialize());
+                          _handlePageManagerError(_poPageManager!.initialize());
 
-                      _poPageManager!.registerPreviousPageCallback((
-                        page,
-                        newItemCount,
-                        _,
-                        doInsert,
-                      ) {
-                        _scrollController.onBatchInsertItems(
+                          _poPageManager!.registerPreviousPageCallback((
+                            page,
+                            newItemCount,
+                            _,
+                            doInsert,
+                          ) {
+                            _insertPreviousPage(doInsert, newItemCount);
+                          });
+                        }
+                        await _scrollController.animateTo(
                           0,
-                          newItemCount,
-                          () => doInsert(),
+                          duration: Durations.long1,
+                          curve: Curves.easeOut,
                         );
-                      });
+                        setState(() => _isPoOnlyMode = !_isPoOnlyMode);
+                        //setState(() {});
+                        break;
                     }
-                    await _scrollController.animateTo(
-                      0,
-                      duration: Durations.long1,
-                      curve: Curves.easeOut,
-                    );
-                    setState(() => _isPoOnlyMode = !_isPoOnlyMode);
-                    //setState(() {});
-                    break;
-                }
-              },
-              itemBuilder: (context) => [
-                CheckedPopupMenuItem(
-                  value: 'raw_mode',
-                  checked: _isRawPicMode,
-                  child: Text('原图模式'),
-                ),
-                CheckedPopupMenuItem(
-                  value: 'po_mode',
-                  checked: _isPoOnlyMode,
-                  child: Text('仅看Po'),
+                  },
+                  itemBuilder: (context) => [
+                    CheckedPopupMenuItem(
+                      value: 'raw_mode',
+                      checked: _isRawPicMode,
+                      child: Text('原图模式'),
+                    ),
+                    CheckedPopupMenuItem(
+                      value: 'po_mode',
+                      checked: _isPoOnlyMode,
+                      child: Text('仅看Po'),
+                    ),
+                  ],
                 ),
               ],
+            ),
+            SliverAnchoredList.builder(
+              // 换数据源（仅看Po / 跳到未加载的页）时整个列表重新开始
+              key: ObjectKey(_curPageManager),
+              controller: _anchorController,
+              // 以屏幕顶部那一条为准：它上方的内容变高变矮，它都不动
+              anchorAlignment: 0.0,
+              itemCount: replyCount + 2,
+              findChildIndexCallback: (key) {
+                if (key == headerKey) return 0;
+                if (key == footerKey) return replyCount + 1;
+                return keyToIndex[key];
+              },
+              itemBuilder: (context, index) => KeyedSubtree(
+                key: itemKey(index),
+                child: Builder(
+                  builder: (context) {
+                    if (index == 0) {
+                      return Column(
+                        children: [
+                          InkWell(
+                            onLongPress: () =>
+                                _showThreadActionMenu(context, _poReply, true),
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                left: breakpoint.gutters,
+                                right: breakpoint.gutters,
+                                bottom: breakpoint.gutters / 2,
+                              ),
+                              child: FilterableThreadWidget(
+                                reply: _poReply,
+                                isTimeLineFilter: false,
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                    textTheme: Theme.of(context).textTheme
+                                        .apply(
+                                          fontSizeFactor:
+                                              appState.setting.fontSizeFactor,
+                                        ),
+                                  ),
+                                  child: ReplyItem(
+                                    poUserHash: _poReply.userHash,
+                                    isRawPicMode: _isRawPicMode,
+                                    isThreadFirstOrForumPreview: true,
+                                    threadJson: _poReply,
+                                    contentNeedCollapsed: false,
+                                    contentHeroTag: 'ThreadCard ${_poReply.id}',
+                                    imageHeroTag:
+                                        'Image ${_poReply.img}${_poReply.ext}',
+                                    imageInitIndex: _poReply.img == ''
+                                        ? null
+                                        : 0,
+                                    imageNames: allImageNames,
+                                    onImageEdit: _onImageEdit,
+                                    throttle: _fetchRefThrottle,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const Divider(),
+                          if (!_curPageManager.isEmpty)
+                            ValueListenableBuilder<PageState>(
+                              valueListenable:
+                                  _curPageManager.previousPageStateNotifier,
+                              builder: (context, state, child) {
+                                return switch (state) {
+                                  PageHasMore() => myDividerWrapper(
+                                    child: InkWell(
+                                      onTap: () {
+                                        _anchorController.jumpToIndex(1);
+                                        _handlePageManagerError(
+                                          _curPageManager.tryLoadPreviousPage(),
+                                        );
+                                      },
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              _anchorController.jumpToIndex(1);
+                                              _handlePageManagerError(
+                                                _curPageManager
+                                                    .tryLoadPreviousPage(),
+                                              );
+                                            },
+                                            child: Text('加载前页的回复'),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  PageLoading() => myDividerWrapper(
+                                    child: loadingReply,
+                                  ),
+                                  PageError(
+                                    error: final err,
+                                    retry: final retry,
+                                  ) =>
+                                    ListTile(
+                                      textColor: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                      title: Text(
+                                        err is TimeoutException
+                                            ? '前页加载超时'
+                                            : '前页加载失败: $err',
+                                      ),
+                                      onTap: () => setState(() => retry()),
+                                      trailing: TextButton.icon(
+                                        onPressed: () =>
+                                            setState(() => retry()),
+                                        label: Text('重试'),
+                                        icon: Icon(Icons.refresh),
+                                      ),
+                                    ),
+                                  PageFullLoaded() => const SizedBox.shrink(),
+                                };
+                              },
+                            ),
+                        ],
+                      );
+                    } else if (index == replyCount + 1) {
+                      return ValueListenableBuilder<PageState>(
+                        valueListenable: _curPageManager.nextPageStateNotifier,
+                        builder: (context, state, child) {
+                          return switch (state) {
+                            PageLoading() => loadingReply,
+                            PageFullLoaded() => Column(
+                              children: [
+                                if (!appState.setting.dividerBetweenReply &&
+                                    replyCount > 0)
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: breakpoint.gutters / 2,
+                                    ),
+                                    child: Divider(),
+                                  ),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: _curPageManager.isEmpty ? 300 : null,
+                                  child: InkWell(
+                                    onTap: _curPageManager.isEmpty
+                                        ? null
+                                        : () {
+                                            _handlePageManagerError(
+                                              _curPageManager
+                                                  .forceLoadNextPage(),
+                                            ).then((replyCount) {
+                                              if (replyCount == 0) {
+                                                if (!context.mounted) return;
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('没有更多回复了！'),
+                                                    duration: Durations.long1,
+                                                    behavior: SnackBarBehavior
+                                                        .floating,
+                                                  ),
+                                                );
+                                              }
+                                            });
+                                          },
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: breakpoint.gutters / 2,
+                                      ),
+                                      child: !_curPageManager.isEmpty
+                                          ? Text.rich(
+                                              textAlign: TextAlign.center,
+                                              TextSpan(
+                                                text: '到底了(　ﾟ 3ﾟ)\n',
+                                                children: [
+                                                  TextSpan(
+                                                    text: '\n刷新试试？',
+                                                    style: TextStyle(
+                                                      decoration: TextDecoration
+                                                          .underline,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              style: TextStyle(
+                                                color: Theme.of(
+                                                  context,
+                                                ).hintColor,
+                                              ),
+                                            )
+                                          : Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              spacing: breakpoint.gutters,
+                                              children: [
+                                                Text(
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleLarge
+                                                      ?.copyWith(
+                                                        fontSize:
+                                                            Theme.of(context)
+                                                                .textTheme
+                                                                .titleLarge!
+                                                                .fontSize! *
+                                                            3,
+                                                      ),
+                                                  '(｀･ω･)',
+                                                ),
+                                                Text(
+                                                  style: Theme.of(
+                                                    context,
+                                                  ).textTheme.titleLarge,
+                                                  '暂时没有回复噢',
+                                                ),
+                                                ElevatedButton.icon(
+                                                  onPressed: () {
+                                                    _handlePageManagerError(
+                                                      _curPageManager
+                                                          .forceLoadNextPage(),
+                                                    ).then((replyCount) {
+                                                      if (replyCount == 0) {
+                                                        if (!context.mounted)
+                                                          return;
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                              '还是没有回复(｀･ω･)',
+                                                            ),
+                                                            duration:
+                                                                Durations.long1,
+                                                            behavior:
+                                                                SnackBarBehavior
+                                                                    .floating,
+                                                          ),
+                                                        );
+                                                      }
+                                                    });
+                                                  },
+                                                  label: Text('刷新'),
+                                                  icon: Icon(Icons.restart_alt),
+                                                ),
+                                              ],
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            PageError(error: final err, retry: final retry) =>
+                              _curPageManager.isEmpty
+                                  ? SizedBox(
+                                      height: 300,
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: breakpoint.gutters,
+                                        ),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          spacing: breakpoint.gutters,
+                                          children: [
+                                            Text(
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleLarge
+                                                  ?.copyWith(
+                                                    fontSize:
+                                                        Theme.of(context)
+                                                            .textTheme
+                                                            .titleLarge!
+                                                            .fontSize! *
+                                                        3,
+                                                  ),
+                                              '( ;´д`)',
+                                            ),
+                                            Text(
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.error,
+                                              ),
+                                              '加载回复内容失败',
+                                            ),
+                                            Text(
+                                              err is TimeoutException
+                                                  ? '原因：加载超时'
+                                                  : err.toString(),
+                                            ),
+                                            ElevatedButton.icon(
+                                              onPressed: () =>
+                                                  setState(() => retry()),
+                                              label: Text('重试'),
+                                              icon: Icon(Icons.restart_alt),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                  : ListTile(
+                                      textColor: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                      title: Text(
+                                        err is TimeoutException
+                                            ? '后页加载超时'
+                                            : '后页加载失败: $err',
+                                      ),
+                                      onTap: () => setState(() => retry()),
+                                      trailing: TextButton.icon(
+                                        onPressed: () =>
+                                            setState(() => retry()),
+                                        label: Text('重试'),
+                                        icon: Icon(Icons.refresh),
+                                      ),
+                                    ),
+                            PageHasMore() => const SizedBox.shrink(),
+                          };
+                        },
+                      );
+                    }
+                    final replyIndex = index - 1;
+                    // 有的时候因为数据不同步会导致index越界，简单处理一下
+                    if (replyIndex >= _curPageManager.totalItemsCount) {
+                      return SizedBox.shrink();
+                    }
+                    final (reply, page, _) = _curPageManager.getItemByIndex(
+                      replyIndex,
+                    )!;
+                    final imageName = '${reply.img}${reply.ext}';
+                    final imageIndex = allImageNames.indexOf(imageName);
+                    return myDividerWrapper(
+                      child: InkWell(
+                        onLongPress: () =>
+                            _showThreadActionMenu(context, reply, false),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: breakpoint.gutters,
+                            vertical: breakpoint.gutters / 2,
+                          ),
+                          child: FilterableThreadWidget(
+                            reply: reply,
+                            isTimeLineFilter: false,
+                            child: Theme(
+                              data: Theme.of(context).copyWith(
+                                textTheme: Theme.of(context).textTheme.apply(
+                                  fontSizeFactor:
+                                      appState.setting.fontSizeFactor,
+                                ),
+                              ),
+                              child: ReplyItem(
+                                key: ValueKey(
+                                  'threadCard ${reply.id} in Page $page',
+                                ),
+                                poUserHash: _poReply.userHash,
+                                isRawPicMode: _isRawPicMode,
+                                threadJson: reply,
+                                contentNeedCollapsed: false,
+                                imageHeroTag: 'Image ${reply.img}${reply.ext}',
+                                imageInitIndex: imageIndex,
+                                imageNames: allImageNames,
+                                refCache: _refCache,
+                                onImageEdit: _onImageEdit,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
           ],
         ),
       ),
-      body: TsukuyomiList.builder(
-        cacheExtent: MediaQuery.of(context).size.height * 3,
-        controller: _scrollController,
-        initialScrollIndex: validInitReplyIndex,
-        itemCount: replyCount + 2,
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return Column(
-              children: [
-                InkWell(
-                  onLongPress: () =>
-                      _showThreadActionMenu(context, _poReply, true),
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: breakpoint.gutters,
-                      right: breakpoint.gutters,
-                      bottom: breakpoint.gutters / 2,
-                    ),
-                    child: FilterableThreadWidget(
-                      reply: _poReply,
-                      isTimeLineFilter: false,
-                      child: Theme(
-                        data: Theme.of(context).copyWith(
-                          textTheme: Theme.of(context).textTheme.apply(
-                            fontSizeFactor: appState.setting.fontSizeFactor,
-                          ),
-                        ),
-                        child: ReplyItem(
-                          poUserHash: _poReply.userHash,
-                          isRawPicMode: _isRawPicMode,
-                          isThreadFirstOrForumPreview: true,
-                          threadJson: _poReply,
-                          contentNeedCollapsed: false,
-                          contentHeroTag: 'ThreadCard ${_poReply.id}',
-                          imageHeroTag: 'Image ${_poReply.img}${_poReply.ext}',
-                          imageInitIndex: _poReply.img == '' ? null : 0,
-                          imageNames: allImageNames,
-                          onImageEdit: _onImageEdit,
-                          throttle: _fetchRefThrottle,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const Divider(),
-                if (!_curPageManager.isEmpty)
-                  ValueListenableBuilder<PageState>(
-                    valueListenable: _curPageManager.previousPageStateNotifier,
-                    builder: (context, state, child) {
-                      return switch (state) {
-                        PageHasMore() => myDividerWrapper(
-                          child: InkWell(
-                            onTap: () {
-                              _scrollController.jumpToIndex(1);
-                              _handlePageManagerError(
-                                _curPageManager.tryLoadPreviousPage(),
-                              );
-                            },
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: () {
-                                    _scrollController.jumpToIndex(1);
-                                    _handlePageManagerError(
-                                      _curPageManager.tryLoadPreviousPage(),
-                                    );
-                                  },
-                                  child: Text('加载前页的回复'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        PageLoading() => myDividerWrapper(child: loadingReply),
-                        PageError(error: final err, retry: final retry) =>
-                          ListTile(
-                            textColor: Theme.of(context).colorScheme.error,
-                            title: Text(
-                              err is TimeoutException
-                                  ? '前页加载超时'
-                                  : '前页加载失败: $err',
-                            ),
-                            onTap: () => setState(() => retry()),
-                            trailing: TextButton.icon(
-                              onPressed: () => setState(() => retry()),
-                              label: Text('重试'),
-                              icon: Icon(Icons.refresh),
-                            ),
-                          ),
-                        PageFullLoaded() => const SizedBox.shrink(),
-                      };
-                    },
-                  ),
-              ],
-            );
-          } else if (index == replyCount + 1) {
-            return ValueListenableBuilder<PageState>(
-              valueListenable: _curPageManager.nextPageStateNotifier,
-              builder: (context, state, child) {
-                return switch (state) {
-                  PageLoading() => loadingReply,
-                  PageFullLoaded() => Column(
-                    children: [
-                      if (!appState.setting.dividerBetweenReply &&
-                          replyCount > 0)
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: breakpoint.gutters / 2,
-                          ),
-                          child: Divider(),
-                        ),
-                      SizedBox(
-                        width: double.infinity,
-                        height: _curPageManager.isEmpty ? 300 : null,
-                        child: InkWell(
-                          onTap: _curPageManager.isEmpty
-                              ? null
-                              : () {
-                                  _handlePageManagerError(
-                                    _curPageManager.forceLoadNextPage(),
-                                  ).then((replyCount) {
-                                    if (replyCount == 0) {
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text('没有更多回复了！'),
-                                          duration: Durations.long1,
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
-                                    }
-                                  });
-                                },
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              vertical: breakpoint.gutters / 2,
-                            ),
-                            child: !_curPageManager.isEmpty
-                                ? Text.rich(
-                                    textAlign: TextAlign.center,
-                                    TextSpan(
-                                      text: '到底了(　ﾟ 3ﾟ)\n',
-                                      children: [
-                                        TextSpan(
-                                          text: '\n刷新试试？',
-                                          style: TextStyle(
-                                            decoration:
-                                                TextDecoration.underline,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    style: TextStyle(
-                                      color: Theme.of(context).hintColor,
-                                    ),
-                                  )
-                                : Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    spacing: breakpoint.gutters,
-                                    children: [
-                                      Text(
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleLarge
-                                            ?.copyWith(
-                                              fontSize:
-                                                  Theme.of(context)
-                                                      .textTheme
-                                                      .titleLarge!
-                                                      .fontSize! *
-                                                  3,
-                                            ),
-                                        '(｀･ω･)',
-                                      ),
-                                      Text(
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.titleLarge,
-                                        '暂时没有回复噢',
-                                      ),
-                                      ElevatedButton.icon(
-                                        onPressed: () {
-                                          _handlePageManagerError(
-                                            _curPageManager.forceLoadNextPage(),
-                                          ).then((replyCount) {
-                                            if (replyCount == 0) {
-                                              if (!context.mounted) return;
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                SnackBar(
-                                                  content: Text('还是没有回复(｀･ω･)'),
-                                                  duration: Durations.long1,
-                                                  behavior:
-                                                      SnackBarBehavior.floating,
-                                                ),
-                                              );
-                                            }
-                                          });
-                                        },
-                                        label: Text('刷新'),
-                                        icon: Icon(Icons.restart_alt),
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  PageError(error: final err, retry: final retry) =>
-                    _curPageManager.isEmpty
-                        ? SizedBox(
-                            height: 300,
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: breakpoint.gutters,
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                spacing: breakpoint.gutters,
-                                children: [
-                                  Text(
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge
-                                        ?.copyWith(
-                                          fontSize:
-                                              Theme.of(context)
-                                                  .textTheme
-                                                  .titleLarge!
-                                                  .fontSize! *
-                                              3,
-                                        ),
-                                    '( ;´д`)',
-                                  ),
-                                  Text(
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.error,
-                                    ),
-                                    '加载回复内容失败',
-                                  ),
-                                  Text(
-                                    err is TimeoutException
-                                        ? '原因：加载超时'
-                                        : err.toString(),
-                                  ),
-                                  ElevatedButton.icon(
-                                    onPressed: () => setState(() => retry()),
-                                    label: Text('重试'),
-                                    icon: Icon(Icons.restart_alt),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : ListTile(
-                            textColor: Theme.of(context).colorScheme.error,
-                            title: Text(
-                              err is TimeoutException
-                                  ? '后页加载超时'
-                                  : '后页加载失败: $err',
-                            ),
-                            onTap: () => setState(() => retry()),
-                            trailing: TextButton.icon(
-                              onPressed: () => setState(() => retry()),
-                              label: Text('重试'),
-                              icon: Icon(Icons.refresh),
-                            ),
-                          ),
-                  PageHasMore() => const SizedBox.shrink(),
-                };
-              },
-            );
-          }
-          final replyIndex = index - 1;
-          // 有的时候因为数据不同步会导致index越界，简单处理一下
-          if (replyIndex >= _curPageManager.totalItemsCount) {
-            return SizedBox.shrink();
-          }
-          final (reply, page, _) = _curPageManager.getItemByIndex(replyIndex)!;
-          final imageName = '${reply.img}${reply.ext}';
-          final imageIndex = allImageNames.indexOf(imageName);
-          return myDividerWrapper(
-            child: InkWell(
-              onLongPress: () => _showThreadActionMenu(context, reply, false),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: breakpoint.gutters,
-                  vertical: breakpoint.gutters / 2,
-                ),
-                child: FilterableThreadWidget(
-                  reply: reply,
-                  isTimeLineFilter: false,
-                  child: Theme(
-                    data: Theme.of(context).copyWith(
-                      textTheme: Theme.of(context).textTheme.apply(
-                        fontSizeFactor: appState.setting.fontSizeFactor,
-                      ),
-                    ),
-                    child: ReplyItem(
-                      key: ValueKey('threadCard ${reply.id} in Page $page'),
-                      poUserHash: _poReply.userHash,
-                      isRawPicMode: _isRawPicMode,
-                      threadJson: reply,
-                      contentNeedCollapsed: false,
-                      imageHeroTag: 'Image ${reply.img}${reply.ext}',
-                      imageInitIndex: imageIndex,
-                      imageNames: allImageNames,
-                      refCache: _refCache,
-                      onImageEdit: _onImageEdit,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-      bottomNavigationBar: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutExpo,
-        height: _showBar || appState.setting.fixedBottomBar
-            ? kToolbarHeight + 10 + MediaQuery.of(context).padding.bottom
-            : 0,
+      bottomNavigationBar: ScrollHideBottomBar(
+        controller: _barHide,
+        fixed: appState.setting.fixedBottomBar,
+        height: kToolbarHeight + 10 + MediaQuery.of(context).padding.bottom,
         child: BottomAppBar(
           shape: CircularNotchedRectangle(),
-          child: _showBar || appState.setting.fixedBottomBar
-              ? Row(
-                  children: [
-                    IconButton(
-                      tooltip: '收藏',
-                      onPressed: () => _toggleFavorite(context),
-                      icon: Icon(
-                        appState.isStared(_poReply.id)
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: '页跳转',
-                      onPressed: () {
-                        _showPageJumpDialog(context);
-                      },
-                      icon: Icon(Icons.move_down),
-                    ),
-                    IconButton(
-                      tooltip: '字体大小调整',
-                      onPressed: () => _showFontSizeDialog(context),
-                      icon: Icon(Icons.format_size),
-                    ),
-                  ],
-                )
-              : SizedBox.shrink(),
+          child: Row(
+            children: [
+              IconButton(
+                tooltip: '收藏',
+                onPressed: () => _toggleFavorite(context),
+                icon: Icon(
+                  appState.isStared(_poReply.id)
+                      ? Icons.favorite
+                      : Icons.favorite_border,
+                ),
+              ),
+              IconButton(
+                tooltip: '页跳转',
+                onPressed: () {
+                  _showPageJumpDialog(context);
+                },
+                icon: Icon(Icons.move_down),
+              ),
+              IconButton(
+                tooltip: '字体大小调整',
+                onPressed: () => _showFontSizeDialog(context),
+                icon: Icon(Icons.format_size),
+              ),
+            ],
+          ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
-      floatingActionButton: (!_showBar && !appState.setting.fixedBottomBar)
-          ? null
-          : FloatingActionButton(
-              shape: CircleBorder(),
-              tooltip: '回复',
-              child: Icon(Icons.create),
-              onPressed: () => showReplyBottomSheet(
-                context,
-                false,
-                _poReply.id,
-                _curPageManager.maxPage ?? 1,
-                _poReply,
-                _replyImageFile,
-                (image) => _replyImageFile = image,
-                _replyTitleControler,
-                _replyAuthorControler,
-                _replyTextControler,
-                () {
-                  // 在回调中首先检查组件是否仍然挂载
-                  if (!mounted) return;
+      floatingActionButton: ScrollHideFab(
+        controller: _barHide,
+        fixed: appState.setting.fixedBottomBar,
+        child: FloatingActionButton(
+          shape: CircleBorder(),
+          tooltip: '回复',
+          child: Icon(Icons.create),
+          onPressed: () => showReplyBottomSheet(
+            context,
+            false,
+            _poReply.id,
+            _curPageManager.maxPage ?? 1,
+            _poReply,
+            _replyImageFile,
+            (image) => _replyImageFile = image,
+            _replyTitleControler,
+            _replyAuthorControler,
+            _replyTextControler,
+            () {
+              // 在回调中首先检查组件是否仍然挂载
+              if (!mounted) return;
 
-                  // 如果已经加载到最后一页，重新加载以刷出自己的回复
-                  if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
-                    _handlePageManagerError(
-                      _curPageManager.forceLoadNextPage(),
-                    );
-                  }
+              // 如果已经加载到最后一页，重新加载以刷出自己的回复
+              if (_anchorPage >= (_curPageManager.maxPage ?? 1)) {
+                _handlePageManagerError(_curPageManager.forceLoadNextPage());
+              }
 
-                  // 显示发送成功提示
-                  if (mounted) {
-                    scaffoldMessengerKey.currentState?.showSnackBar(
-                      SnackBar(
-                        content: Text('发送成功'),
-                        duration: Duration(seconds: 2),
-                        behavior: SnackBarBehavior.floating,
-                        action: SnackBarAction(
-                          label: '查看回复',
-                          onPressed: () {
-                            // 跳转到最后一页前检查组件是否仍然挂载
-                            if (!mounted) return;
-                            _jumpToPage(_curPageManager.maxPage ?? 1, true);
-                          },
-                        ),
-                      ),
-                    );
-                  }
-                },
-              ),
-            ),
+              // 显示发送成功提示
+              if (mounted) {
+                scaffoldMessengerKey.currentState?.showSnackBar(
+                  SnackBar(
+                    content: Text('发送成功'),
+                    duration: Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                    action: SnackBarAction(
+                      label: '查看回复',
+                      onPressed: () {
+                        // 跳转到最后一页前检查组件是否仍然挂载
+                        if (!mounted) return;
+                        _jumpToPage(_curPageManager.maxPage ?? 1, true);
+                      },
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+      ),
     );
   }
 }
