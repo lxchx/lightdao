@@ -645,52 +645,69 @@ Future<RefHtml> fetchRefFromHtml(
       headers = null;
     }
 
-    File? responseFile;
-    try {
-      responseFile = await MyThreadCacheManager().getSingleFile(
-        url.toString(),
-        headers: headers,
-      );
-    } on HttpException catch (e) {
-      if (e.message.contains('statusCode: 429')) {
-        await Future.delayed(Duration(seconds: 1));
-        responseFile = responseFile = await MyThreadCacheManager()
-            .getSingleFile(url.toString(), headers: headers);
-      }
-    }
-
-    if (responseFile == null) {
-      throw Exception('获取串失败');
-    }
-    final responseBody = await responseFile.readAsString();
-
-    try {
-      // 尝试解析为 JSON
-      final jsonData = json.decode(responseBody);
-      if (jsonData is Map<String, dynamic> && jsonData.containsKey('info')) {
-        throw XDaoApiNotSuccussException(jsonData['info']);
-      } else {
-        throw XDaoApiMsgException(responseBody);
-      }
-    } on FormatException {
-      // 如果 JSON 解析失败，尝试解析为 HTML
-      final document = parse(responseBody);
-
-      // 查找 class="error" 的元素
-      final errorElement = document.querySelector('.error');
-      if (errorElement != null) {
-        final errorMessage = errorElement.text.trim();
-        throw XDaoApiNotSuccussException(errorMessage);
-      }
-
-      // 如果没有找到错误信息，则继续解析为 RefHtml
+    // 1. 从cache拿。只有能解析成功的内容才算命中；旧版本会把
+    //    "必须登入领取饼干" 之类的错误页也缓存下来，这里顺手清掉并重新拉取。
+    final cacheKey = url.toString();
+    final cached = await MyThreadCacheManager().getFileFromCache(cacheKey);
+    if (cached != null) {
       try {
-        return RefHtml.fromHtml(document);
-      } catch (e) {
-        throw Exception('串不存在');
+        return parseRefHtmlBody(await cached.file.readAsString());
+      } catch (_) {
+        await MyThreadCacheManager().removeFile(cacheKey);
       }
     }
+
+    // 2. 从http拿。引用站可能 30x 到另一个域名（www.nmbxd.com ->
+    //    www.nmbxd1.com），默认的跟随重定向会丢掉 Cookie，需登录的板块
+    //    就会返回 "必须登入领取饼干"，所以这里必须手动带着 Cookie 跟随。
+    var response = await _getWithCookiePreservedRedirects(
+      url,
+      headers: headers,
+    );
+    if (response.statusCode == 429) {
+      await Future.delayed(Duration(seconds: 1));
+      response = await _getWithCookiePreservedRedirects(url, headers: headers);
+    }
+    if (response.statusCode != 200) {
+      throw Exception('获取串失败: ${response.statusCode}');
+    }
+
+    // 解析失败（错误页）会抛出，不写入缓存
+    final ref = parseRefHtmlBody(utf8.decode(response.bodyBytes));
+    unawaited(MyThreadCacheManager().putFile(cacheKey, response.bodyBytes));
+    return ref;
   });
+}
+
+/// 解析引用页的响应体。错误页（JSON 的 info，或 HTML 里 class="error"
+/// 的提示，如 "必须登入领取饼干"）会抛出异常，调用方据此决定不缓存。
+RefHtml parseRefHtmlBody(String responseBody) {
+  try {
+    // 尝试解析为 JSON
+    final jsonData = json.decode(responseBody);
+    if (jsonData is Map<String, dynamic> && jsonData.containsKey('info')) {
+      throw XDaoApiNotSuccussException(jsonData['info']);
+    } else {
+      throw XDaoApiMsgException(responseBody);
+    }
+  } on FormatException {
+    // 如果 JSON 解析失败，尝试解析为 HTML
+    final document = parse(responseBody);
+
+    // 查找 class="error" 的元素
+    final errorElement = document.querySelector('.error');
+    if (errorElement != null) {
+      final errorMessage = errorElement.text.trim();
+      throw XDaoApiNotSuccussException(errorMessage);
+    }
+
+    // 如果没有找到错误信息，则继续解析为 RefHtml
+    try {
+      return RefHtml.fromHtml(document);
+    } catch (e) {
+      throw Exception('串不存在');
+    }
+  }
 }
 
 Future<Post> postThread({
