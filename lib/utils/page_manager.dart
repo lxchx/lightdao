@@ -441,7 +441,15 @@ class ThreadPageManager extends PageManager<ReplyJson> {
       if (isLastPageFull) {
         final nextPage = _maxLoadedPage + 1;
         final items = _processNewItems(await fetchPage(nextPage));
-        if (items.isEmpty) return 0;
+        if (items.isEmpty) {
+          // 下一页没有任何内容（XDao 用「只有一条 Tips 回复」的页表示空页，
+          // fetchPage 已经把它折成 []）。这里必须落状态：直接 return 会把
+          // 状态机永远挂在 PageLoading 上——底部骨架不停转，刷新按钮和滚动
+          // 加载又都被下面的 `is PageLoading` 早退挡掉，页面等于死掉。
+          nextPageStateNotifier.value = const PageFullLoaded();
+          _knownMaxPage = nextPage - 1;
+          return 0;
+        }
         newItemCount = items.length;
 
         void doInsert() {

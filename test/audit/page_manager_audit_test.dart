@@ -93,4 +93,33 @@ void main() {
       expect(threadPageCount(38), 2);
     });
   });
+  group('BUG-D 空页后状态必须复位 (audit #2)', () {
+    test('最后一页正好装满 + 下一页为空 → PageFullLoaded', () async {
+      final pm = FakeThreadPM(initialPage: 1);
+      pm.pages[1] = List<ReplyJson>.generate(19, (i) => reply(i + 1));
+      pm.pages[2] = const <ReplyJson>[]; // 「只有 Tips 的页」被 fetchPage 折成 []
+      await pm.initialize();
+      expect(pm.nextPageStateNotifier.value, isA<PageHasMore>());
+
+      final added = await pm.forceLoadNextPage();
+      expect(added, 0);
+      expect(
+        pm.nextPageStateNotifier.value,
+        isA<PageFullLoaded>(),
+        reason: '空页后停在 PageLoading：底部永久骨架、刷新按钮与滚动加载全部早退',
+      );
+      expect(pm.totalItemsCount, 19);
+    });
+
+    test('空页之后再点刷新，也不应卡回 PageLoading', () async {
+      final pm = FakeThreadPM(initialPage: 1);
+      pm.pages[1] = List<ReplyJson>.generate(19, (i) => reply(i + 1));
+      pm.pages[2] = const <ReplyJson>[];
+      await pm.initialize();
+
+      await pm.forceLoadNextPage();
+      await pm.forceLoadNextPage();
+      expect(pm.nextPageStateNotifier.value, isA<PageFullLoaded>());
+    });
+  });
 }
