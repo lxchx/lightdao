@@ -63,3 +63,25 @@ UpdatePolicy resolveUpdatePolicy({
   }
   return resolved;
 }
+
+/// 叠加「第三方服务同意状态」后的更新策略。
+///
+/// 检查更新（api.github.com）和下载安装包（GitHub release）都要访问
+/// 第三方服务器，所以没同意时一律是 [UpdatePolicy.never]：启动不检查、
+/// 不自动下载，关于页也不能手动检查。同意后才按 [resolveUpdatePolicy]
+/// 正常解析。和它一样是纯函数，方便单测。
+UpdatePolicy resolveConsentedUpdatePolicy({
+  required bool thirdPartyConsented,
+  required int? storedPolicy,
+  required bool legacyCheckUpdateOnLaunch,
+  bool isAndroid = true,
+}) {
+  if (!thirdPartyConsented) {
+    return UpdatePolicy.never;
+  }
+  return resolveUpdatePolicy(
+    storedPolicy: storedPolicy,
+    legacyCheckUpdateOnLaunch: legacyCheckUpdateOnLaunch,
+    isAndroid: isAndroid,
+  );
+}

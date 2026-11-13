@@ -13,6 +13,7 @@ import 'package:lightdao/data/xdao/timeline.dart';
 import 'package:lightdao/ui/page/app_page.dart';
 import 'package:flutter/material.dart';
 import 'package:lightdao/ui/page/more/about.dart';
+import 'package:lightdao/ui/page/third_party_consent_page.dart';
 import 'package:lightdao/ui/page/thread.dart';
 import 'package:lightdao/utils/frame_log.dart';
 import 'package:lightdao/utils/kv_store.dart';
@@ -177,9 +178,34 @@ class App extends StatelessWidget {
               : (appState.setting.userSettingIsDarkMode
                     ? ThemeMode.dark
                     : ThemeMode.light),
-          home: MyHomePage(),
+          home: _AppRoot(),
         ),
       ),
+    );
+  }
+}
+
+/// 启动入口：还没被问过第三方服务时先显示同意页，决定之后再进首页。
+///
+/// 时间线、板块、更新检查这些网络请求都在 [MyHomePage] 的 initState 里，
+/// 决定之前 [MyHomePage] 根本不会被创建，请求也就不会发出去。
+class _AppRoot extends StatelessWidget {
+  const _AppRoot();
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<MyAppState>(context);
+    if (appState.setting.thirdPartyConsent != null) {
+      return MyHomePage();
+    }
+    return ThirdPartyConsentPage(
+      onDecided: (allowed) {
+        // 写入后 applyNetworkSettings 会立刻按新的同意状态重设线路：
+        // 同意时恢复用户保存的线路设置，不同意时固定走官方线路且不测速。
+        appState.setState((state) {
+          state.setting.thirdPartyConsent = allowed;
+        });
+      },
     );
   }
 }
