@@ -103,7 +103,6 @@ jobs:
           path: |
             build/app/outputs/apk/release/app-release.apk
             build/app/outputs/apk/debug/app-debug.apk
-
   release:
     name: Release APK
     needs: apk
@@ -127,18 +126,23 @@ jobs:
           git fetch --force origin "${TAG_REF}:${TAG_REF}"
 
           TAG_TYPE="$(git cat-file -t "$TAG_REF" | tr -d '\r\n')"
-          if [ "$TAG_TYPE" = "tag" ]; then
-            # Annotated tag: strip headers, keep raw message (markdown headings preserved)
-            BODY="$(git cat-file -p "$TAG_REF" | sed '1,/^$/d' | sed 's/\r$//')"
-          else
-            # Lightweight tag: fall back to commit message
-            BODY="$(git show -s --format=%B "$TAG_NAME")"
+          if [ "$TAG_TYPE" != "tag" ]; then
+            echo "::error::Tag $TAG_NAME is not an annotated tag (type: $TAG_TYPE)"
+            echo "Please use 'git tag -a' or run scripts/make-release.sh"
+            exit 1
           fi
+
+          # Extract tag body: strip header, normalize line endings, trim leading/trailing blanks
+          BODY="$(git cat-file -p "$TAG_REF" | sed '1,/^$/d' | tr -d '\r' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
+          
           if [ -z "$BODY" ]; then
-            echo "Release ${TAG_NAME}" > RELEASE_BODY.md
-          else
-            printf '%s\n' "$BODY" > RELEASE_BODY.md
+            echo "::error::Tag $TAG_NAME has no message body"
+            echo "Please add a release description to the tag"
+            exit 1
           fi
+          
+          printf '%s\n' "$BODY" > RELEASE_BODY.md
+          echo "Release body extracted ($(wc -l < RELEASE_BODY.md) lines)"
 
       - name: Download APK from build
         uses: actions/download-artifact@v4
