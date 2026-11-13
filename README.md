@@ -142,3 +142,35 @@ flutter pub run build_runner build --delete-conflicting-outputs
 
 欢迎提交 Pull Request 或 Issue 来帮助改进项目。
 
+
+
+## 发布新版本
+
+使用 用法: scripts/make-release.sh <version> [--push]
+示例: scripts/make-release.sh 1.4.8        # 本地创建 v1.4.8
+      scripts/make-release.sh 1.4.8 --push # 创建并推送到远端 创建规范的 release：
+
+❌ 工作区有未提交的改动，请先 commit
+ M .github/workflows/main.yaml
+ M ios/Flutter/Debug.xcconfig
+ M ios/Flutter/Release.xcconfig
+ M macos/Flutter/Flutter-Debug.xcconfig
+ M macos/Flutter/Flutter-Release.xcconfig
+?? ios/Podfile
+?? macos/Podfile
+?? scripts/make-release.sh
+❌ 工作区有未提交的改动，请先 commit
+ M .github/workflows/main.yaml
+ M ios/Flutter/Debug.xcconfig
+ M ios/Flutter/Release.xcconfig
+ M macos/Flutter/Flutter-Debug.xcconfig
+ M macos/Flutter/Flutter-Release.xcconfig
+?? ios/Podfile
+?? macos/Podfile
+?? scripts/make-release.sh
+
+脚本会：
+- 自动规范化换行（ → ）
+- 去除多余空行和注释
+- 检查 tag 是否已存在、工作区是否干净
+- 创建 annotated tag（CI 要求）
