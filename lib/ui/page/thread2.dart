@@ -825,6 +825,9 @@ class _ThreadPage2State extends State<ThreadPage2>
 
     Future.microtask(() async {
       await _pageManager.initialize();
+      // 初始化是异步的：等它回来时页面可能已经被关掉了（同一函数里其它分支
+      // 都做了 mounted 检查，只有这里漏了）
+      if (!mounted) return;
       setState(() {});
       // 预加载下一页
       _pageManager.tryLoadNextPage().then((_) => setState(() {}));

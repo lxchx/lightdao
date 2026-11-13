@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lightdao/data/phrase.dart';
 import 'package:lightdao/data/setting.dart';
+import 'package:lightdao/data/xdao/thread.dart';
 import 'package:lightdao/ui/page/thread.dart' show ReplyJsonWithPage;
+import 'package:lightdao/ui/page/thread2.dart';
 import 'package:lightdao/ui/page/xdao_image_viewer.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:provider/provider.dart';
@@ -120,6 +122,47 @@ void main() {
       expect(clampImageIndex(9, 3), 2);
       expect(clampImageIndex(1, 3), 1);
       expect(clampImageIndex(5, 0), 0, reason: '空列表返回 0，由调用方先判长度');
+    });
+  });
+  group('疑似#3 串页初始化在 await 之后要检查 mounted', () {
+    ThreadJson header() => ThreadJson(
+      id: 63452788,
+      fid: 4,
+      replyCount: 0,
+      img: '',
+      ext: '',
+      now: '2026-11-13(四)10:00:00',
+      userHash: 'tips',
+      name: '无名氏',
+      title: '无标题',
+      content: '串内容',
+      sage: false,
+      admin: false,
+      hide: false,
+      replies: const [],
+    );
+
+    testWidgets('请求还没回来就关掉串页，不应抛 setState after dispose', (tester) async {
+      await tester.pumpWidget(
+        ChangeNotifierProvider<MyAppState>.value(
+          value: FakeAppState(),
+          child: MaterialApp(
+            home: ThreadPage2(headerThread: header(), startPage: 1),
+          ),
+        ),
+      );
+      // 立刻把页面卸掉：initialize() 的 Future 会在 dispose 之后才完成
+      await tester.pumpWidget(const SizedBox());
+      // 11 秒 = GET 请求的 timeout（ThreadPageManager.timeout），
+      // 让挂起的定时器都落地，否则框架会报 "A Timer is still pending"
+      await tester.pump(const Duration(seconds: 11));
+
+      expect(
+        tester.takeException(),
+        isNull,
+        reason:
+            'await 之后直接 setState 会在页面已 dispose 时抛 setState() called after dispose()',
+      );
     });
   });
 }
