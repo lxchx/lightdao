@@ -96,12 +96,28 @@ class CookieManagementPage extends StatelessWidget {
                         icon: Icon(Icons.delete),
                         onPressed: () {
                           appState.setState((state) {
-                            if (state.setting.currentCookie == index) {
+                            final current = state.setting.currentCookie;
+                            if (current == index) {
+                              // 删掉的正是当前账号：退回列表第一项
                               state.setting.currentCookie = 0;
+                            } else if (current > index) {
+                              // 删的是当前账号之前的项：后面的元素整体前移一位，
+                              // 下标不减一就会指向"下一个账号"（或越界成匿名态）
+                              state.setting.currentCookie = current - 1;
                             }
+                            // 删的是当前账号之后的项：下标不用动
+
                             state.setting.cookies.remove(c);
+
                             if (state.setting.cookies.isEmpty) {
                               state.setting.currentCookie = -1;
+                            } else {
+                              // 兜底：无论怎么删，下标都必须落在列表范围内
+                              state.setting.currentCookie = state
+                                  .setting
+                                  .currentCookie
+                                  .clamp(0, state.setting.cookies.length - 1)
+                                  .toInt();
                             }
                           });
                         },
