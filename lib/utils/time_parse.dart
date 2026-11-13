@@ -7,7 +7,15 @@ DateTime replyTimeToDateTime(String timeStr) {
   return DateFormat('yyyy-MM-dd HH:mm:ss').parseUtc(cleanedTimeStr);
 }
 
-String parseJsonTimeStr(String timeStr, {bool displayExactTime = false}) {
+/// 把服务端时间串渲染成界面上那句相对时间。
+///
+/// [now] 只为测试留的注入口：不传就是「现在」，线上行为不变。传进来的是一个
+/// 真实时刻，内部照旧换算成东八区墙上时间再和 [timeStr] 比。
+String parseJsonTimeStr(
+  String timeStr, {
+  bool displayExactTime = false,
+  DateTime? now,
+}) {
   final time = replyTimeToDateTime(timeStr);
 
   if (displayExactTime) {
@@ -15,8 +23,10 @@ String parseJsonTimeStr(String timeStr, {bool displayExactTime = false}) {
   }
 
   // 用东八区时间
-  DateTime now = DateTime.now().toUtc().add(Duration(hours: 8));
-  DateTime todayStart = DateTime.utc(now.year, now.month, now.day);
+  final DateTime nowBj = (now ?? DateTime.now()).toUtc().add(
+    Duration(hours: 8),
+  );
+  DateTime todayStart = DateTime.utc(nowBj.year, nowBj.month, nowBj.day);
   DateTime yesterdayStart = todayStart.subtract(Duration(days: 1));
   DateTime dayBeforeYesterdayStart = todayStart.subtract(Duration(days: 2));
 
@@ -25,7 +35,7 @@ String parseJsonTimeStr(String timeStr, {bool displayExactTime = false}) {
   //
   // 只处理负数这一种情况；"今天 00:00:00 被算成昨天"是另一个边界，
   // 属于既有行为，本次不动。
-  final diff = now.difference(time);
+  final diff = nowBj.difference(time);
 
   String result;
   if (diff.inSeconds < 60) {
@@ -41,7 +51,7 @@ String parseJsonTimeStr(String timeStr, {bool displayExactTime = false}) {
   } else if (time.isAfter(dayBeforeYesterdayStart)) {
     result =
         '前天 ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-  } else if (now.year == time.year) {
+  } else if (nowBj.year == time.year) {
     result =
         '${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   } else {
