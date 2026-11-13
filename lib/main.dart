@@ -6,6 +6,7 @@ import 'package:lightdao/data/const_data.dart';
 import 'package:lightdao/data/phrase.dart';
 import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/data/trend_data.dart';
+import 'package:lightdao/data/update_policy.dart';
 import 'package:lightdao/data/xdao/forum.dart';
 import 'package:lightdao/data/xdao/reply.dart';
 import 'package:lightdao/data/xdao/timeline.dart';
@@ -15,6 +16,7 @@ import 'package:lightdao/ui/page/more/about.dart';
 import 'package:lightdao/ui/page/thread.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/update_checker.dart';
+import 'package:lightdao/utils/update_downloader.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -201,41 +203,109 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     Future.delayed(Duration(milliseconds: 100), () async {
       appState.tryFetchTimelines(scaffoldMessengerKey);
       appState.tryFetchForumLists(scaffoldMessengerKey);
-      if (appState.setting.checkUpdateOnLaunch) {
-        try {
-          final updateInfo = await UpdateChecker.checkUpdate();
-          final packageInfo = await PackageInfo.fromPlatform();
-          if (updateInfo != null && updateInfo.hasUpdate) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('发现新版本: ${updateInfo.latestVersion}, 请到关于页面更新'),
-                action: SnackBarAction(
-                  label: '跳转到关于',
-                  onPressed: () => Navigator.push(
-                    context,
-                    appState.createPageRoute(
-                      builder: (context) => AboutPage(
-                        appState: appState,
-                        packageInfo: packageInfo,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }
-        } catch (e) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('检查更新失败: ${e.toString()}'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
+      await _checkUpdateOnLaunch(appState);
     });
+  }
+
+  /// 启动时的更新检查，按设置里的「更新策略」分档处理：
+  /// - 永不检查：不检查；
+  /// - 自动检查：发现新版本时提示去关于页更新（与引入更新策略之前一致）；
+  /// - 自动更新：发现新版本时在后台静默下载安装包，下载完成后提示安装，
+  ///   下载失败则退回「自动检查」的提示。
+  /// 非 Android 平台没有安装 APK 的能力，由 [resolveUpdatePolicy] 把
+  /// 自动更新退化成自动检查。
+  Future<void> _checkUpdateOnLaunch(MyAppState appState) async {
+    final policy = appState.setting.effectiveUpdatePolicy;
+    if (policy == UpdatePolicy.never) {
+      return;
+    }
+    try {
+      final updateInfo = await UpdateChecker.checkUpdate();
+      if (updateInfo == null || !updateInfo.hasUpdate) {
+        return;
+      }
+      if (policy == UpdatePolicy.auto) {
+        await _autoDownloadUpdate(appState, updateInfo);
+      } else {
+        await _showUpdateAvailableHint(appState, updateInfo);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('检查更新失败: ${e.toString()}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  /// 「自动检查」档的提示：告诉用户有新版本，并可一键跳到关于页手动更新。
+  Future<void> _showUpdateAvailableHint(
+    MyAppState appState,
+    UpdateInfo updateInfo,
+  ) async {
+    if (!mounted) return;
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('发现新版本: ${updateInfo.latestVersion}, 请到关于页面更新'),
+        action: SnackBarAction(
+          label: '跳转到关于',
+          onPressed: () => Navigator.push(
+            context,
+            appState.createPageRoute(
+              builder: (context) =>
+                  AboutPage(appState: appState, packageInfo: packageInfo),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 「自动更新」档：后台静默下载新版本安装包，下载完成后提示安装。
+  ///
+  /// 下载失败时不弹错误，而是退回「自动检查」的提示，用户仍可去关于页手动更新。
+  Future<void> _autoDownloadUpdate(
+    MyAppState appState,
+    UpdateInfo updateInfo,
+  ) async {
+    String? savePath;
+    try {
+      savePath = await UpdateDownloader.downloadApk(updateInfo: updateInfo);
+    } catch (e) {
+      // 下载失败时 savePath 保持为 null，下面退回「自动检查」的提示
+      debugPrint('自动下载新版本失败: $e');
+    }
+    if (!mounted) return;
+    final apkPath = savePath;
+    if (apkPath == null) {
+      await _showUpdateAvailableHint(appState, updateInfo);
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        // 需要用户点「安装」，停留久一点
+        duration: const Duration(seconds: 10),
+        content: Text('新版本 ${updateInfo.latestVersion} 已下载'),
+        action: SnackBarAction(
+          label: '安装',
+          onPressed: () {
+            UpdateDownloader.installApk(apkPath).catchError((error) {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('安装失败: $error'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            });
+          },
+        ),
+      ),
+    );
   }
 
   @override
