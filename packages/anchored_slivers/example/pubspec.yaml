@@ -1,0 +1,21 @@
+name: anchored_slivers_example
+description: "Example app for the anchored_slivers package: anchored list and anchored masonry demos."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  anchored_slivers:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

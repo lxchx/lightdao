@@ -42,7 +42,6 @@ class ReplyItem extends StatelessWidget {
   final bool isRawPicMode;
   final List<String>? imageNames;
   final int? imageInitIndex;
-  final bool cacheImageSize;
   final Function(File image, Object? heroTag)? onImageEdit;
   final IntervalRunner<RefHtml>? throttle;
   final Widget? topRightWidget;
@@ -62,7 +61,6 @@ class ReplyItem extends StatelessWidget {
     this.isRawPicMode = false,
     this.imageNames,
     this.imageInitIndex,
-    this.cacheImageSize = false,
     this.onImageEdit,
     this.throttle,
     this.topRightWidget,
@@ -253,7 +251,6 @@ class ReplyItem extends StatelessWidget {
                   isRawPicMode: isRawPicMode,
                   initIndex: imageInitIndex,
                   imageNames: imageNames,
-                  cacheImageSize: cacheImageSize,
                   onEdit: onImageEdit,
                 ),
               ),

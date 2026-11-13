@@ -14,6 +14,7 @@ import 'package:lightdao/ui/page/app_page.dart';
 import 'package:flutter/material.dart';
 import 'package:lightdao/ui/page/more/about.dart';
 import 'package:lightdao/ui/page/thread.dart';
+import 'package:lightdao/utils/frame_log.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/update_checker.dart';
 import 'package:lightdao/utils/update_downloader.dart';
@@ -28,6 +29,7 @@ import 'data/setting.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  installFrameLog();
   // 小白条通知栏沉浸
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   Hive.registerAdapter(CookieSettingAdapter());
