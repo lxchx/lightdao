@@ -13,7 +13,9 @@ class LRUCache<K, V> {
   V? get(K key) {
     if (_cache.containsKey(key)) {
       _keys.remove(key);
-      _keys.add(key);
+      // 头部 = 最新：读一次也算「刚用过」，必须挪到头部。
+      // 原来是 add 到末尾，与 put 的 insert(0, ...) 约定相反。
+      _keys.insert(0, key);
       return _cache[key];
     }
     return null;
@@ -21,7 +23,9 @@ class LRUCache<K, V> {
 
   void put(K key, V value) {
     if (capacity != -1 && _cache.length >= capacity) {
-      final oldestKey = _keys.removeAt(0);
+      // 头部 = 最新，所以最久未使用的是末尾那一项。
+      // 原来是 removeAt(0)，淘汰的正是刚插入的最新项。
+      final oldestKey = _keys.removeLast();
       _cache.remove(oldestKey);
     }
     _keys.remove(key);
