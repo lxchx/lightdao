@@ -5,6 +5,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lightdao/ui/page/thread2.dart';
+import 'package:lightdao/utils/xdao_api.dart';
 
 void main() {
   group('疑似#4 仅看Po模式跳页要用 Po 的 manager', () {
@@ -31,6 +32,22 @@ void main() {
 
       expect(manager.isPoOnly, isFalse);
       expect(manager.initialPage, 2);
+    });
+  });
+  group('疑似#6 getThread 的页码校验', () {
+    test('page <= 0 时抛 ArgumentError（不发请求）', () async {
+      await expectLater(
+        () => getThread(63452788, 0, null),
+        throwsA(isA<ArgumentError>()),
+      );
+      await expectLater(
+        () => getThread(63452788, -1, null),
+        throwsA(isA<ArgumentError>()),
+      );
+      await expectLater(
+        () => getThreadPoOnly(63452788, 0, null),
+        throwsA(isA<ArgumentError>()),
+      );
     });
   });
 }
