@@ -311,7 +311,8 @@ class _AppPageState extends State<AppPage> with SingleTickerProviderStateMixin {
           Expanded(
             child: NotificationListener<ScrollNotification>(
               onNotification: (notification) {
-                if (_selectedPageIndex == 0) {
+                // 板块、收藏、趋势三页的底栏跟手；「更多」页内容短，不收
+                if (_selectedPageIndex <= 2) {
                   _barHide.handleNotification(notification);
                 }
                 return true;
