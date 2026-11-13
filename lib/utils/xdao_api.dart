@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:lightdao/data/xdao/feed_info.dart';
@@ -23,6 +24,20 @@ const String defaultBaseCdn = 'https://api.nmb.best';
 const String defaultPostHost = 'https://www.nmbxd.com';
 const String defaultLastPostHost = 'https://www.nmbxd1.com';
 const String defaultRefCdn = 'https://www.nmbxd1.com';
+
+/// 串页每页的回复条数：服务端每页固定 1 条 tips + 19 条回复。
+///
+/// 页数换算只认这一个口径（page_manager.dart 也走 [threadPageCount]），
+/// 别再手写 `replyCount ~/ 19 + 1`——整除时会多算一页。
+const int _repliesPerPage = 19;
+
+/// 串的总页数。
+///
+/// - 整除 [_repliesPerPage] 时不多算一页：418 条回复 = 22 页，不是 23 页；
+/// - [replyCount] 为 0 时至少 1 页（0 页会让调用方去请求不存在的第 0 页）。
+int threadPageCount(int replyCount) =>
+    max(1, (replyCount / _repliesPerPage).ceil());
+
 const List<String> baseCdnCandidates = xdaoBaseCdns;
 const List<String> refCdnCandidates = xdaoRefCdns;
 
@@ -464,7 +479,7 @@ Future<ThreadJson> _getThreadGeneric(
       final threadJsonStr = await threadJsonFile.file.readAsString();
       final data = getOKJsonMap(threadJsonStr);
       final thread = ThreadJson.fromJson(data);
-      if (thread.replyCount ~/ 19 + 1 <= page) {
+      if (threadPageCount(thread.replyCount) <= page) {
         // 可能有更新，需要从Http拉取
         break;
       }
@@ -911,7 +926,7 @@ Future<ReplyJson> getLatestTrend(String? cookie) async {
     forceFromWeb: true,
   );
 
-  final int lastPage = (firstPageThread.replyCount / 19).ceil();
+  final int lastPage = threadPageCount(firstPageThread.replyCount);
 
   ThreadJson lastPageThread = await getThread(
     trendThreadId,

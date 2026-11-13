@@ -36,6 +36,19 @@ class PageError extends PageState {
   const PageError(this.error, this.retry);
 }
 
+/// 前页返回空、但那不是第 1 页：内容取不到，页码也停在这里。
+///
+/// 交给 [PageError] 而不是 [PageHasMore]：页面上才会停下来等用户显式
+/// 重试，而不是每触发一次就静默重发一遍同一个请求。
+class _EmptyPreviousPageException implements Exception {
+  final int page;
+
+  const _EmptyPreviousPageException(this.page);
+
+  @override
+  String toString() => '第 $page 页没有内容（空前页）';
+}
+
 /// 页面加载状态回调
 typedef PageLoadCallback<T> =
     void Function(
@@ -220,10 +233,23 @@ abstract class PageManager<T> {
           _pageItems[previousPage] = items;
           _onAfterPageLoad(previousPage, items);
           _minLoadedPage = previousPage;
+          previousPageStateNotifier.value = (previousPage == 1)
+              ? const PageFullLoaded()
+              : const PageHasMore();
+          return;
         }
-        previousPageStateNotifier.value = (previousPage == 1)
-            ? const PageFullLoaded()
-            : const PageHasMore();
+        // 前页返回空：只有第 1 页才算「真的到头」（XDao 会用只有一条 Tips
+        // 的空页表示前面没有内容）。中间的空白页若停在 PageHasMore，
+        // 「加载前页」每触发一次就再请求一遍同一个空页、永远不收敛，
+        // 所以记为失败，等用户显式重试。
+        if (previousPage == 1) {
+          previousPageStateNotifier.value = const PageFullLoaded();
+        } else {
+          previousPageStateNotifier.value = PageError(
+            _EmptyPreviousPageException(previousPage),
+            () => tryLoadPreviousPage(ignoreError: true),
+          );
+        }
       }
 
       if (_previousPageCallback != null) {
@@ -261,11 +287,17 @@ abstract class PageManager<T> {
         if (items.isNotEmpty) {
           _pageItems[nextPage] = items;
           _onAfterPageLoad(nextPage, items);
+        }
+        // 整页都是已见条目时去重结果为空，但这一页确实已经请求过了：
+        // 不推进页码的话，下一次滚动会把同一页再请求一遍，永远翻不到
+        // 下一页。所以页码按服务器的原始返回（rawItems）推进，末页判定
+        // 也同样只看 rawItems，不由去重后的条数反推。
+        if (rawItems.isNotEmpty) {
           _maxLoadedPage = nextPage;
         }
         if (_isLastPage(rawItems)) {
           nextPageStateNotifier.value = const PageFullLoaded();
-          _knownMaxPage = items.isEmpty ? nextPage - 1 : nextPage;
+          _knownMaxPage = rawItems.isEmpty ? nextPage - 1 : nextPage;
         } else {
           nextPageStateNotifier.value = const PageHasMore();
         }
@@ -390,7 +422,10 @@ class ThreadPageManager extends PageManager<ReplyJson> {
   Future<List<ReplyJson>> fetchPage(int page) async {
     final getItems = isPoOnly ? getThreadPoOnly : getThread;
     final pageThread = await getItems(threadId, page, cookie).timeout(timeout);
-    _threadMaxPage = max(_threadMaxPage, pageThread.replyCount ~/ 19 + 1);
+    _threadMaxPage = max(
+      _threadMaxPage,
+      threadPageCount(pageThread.replyCount),
+    );
     _fid ??= pageThread.fid;
     headerReply = pageThread;
 
@@ -438,7 +473,15 @@ class ThreadPageManager extends PageManager<ReplyJson> {
       if (isLastPageFull) {
         final nextPage = _maxLoadedPage + 1;
         final items = _processNewItems(await fetchPage(nextPage));
-        if (items.isEmpty) return 0;
+        if (items.isEmpty) {
+          // 下一页没有任何内容（XDao 用「只有一条 Tips 回复」的页表示空页，
+          // fetchPage 已经把它折成 []）。这里必须落状态：直接 return 会把
+          // 状态机永远挂在 PageLoading 上——底部骨架不停转，刷新按钮和滚动
+          // 加载又都被下面的 `is PageLoading` 早退挡掉，页面等于死掉。
+          nextPageStateNotifier.value = const PageFullLoaded();
+          _knownMaxPage = nextPage - 1;
+          return 0;
+        }
         newItemCount = items.length;
 
         void doInsert() {
