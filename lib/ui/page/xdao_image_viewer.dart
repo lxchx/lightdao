@@ -352,11 +352,13 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
     try {
       // 请求权限
       if (Platform.isAndroid) {
-        if (await Permission.storage.isGranted) {
+        // 未授权才请求。原来写成了 isGranted：已授权时反而去 request，
+        // 真正没授权的那一项却直接跳过。
+        if (await Permission.storage.isDenied) {
           await Permission.storage.request();
-        } else if (await Permission.manageExternalStorage.isGranted) {
+        } else if (await Permission.manageExternalStorage.isDenied) {
           await Permission.manageExternalStorage.request();
-        } else if (await Permission.photos.isGranted) {
+        } else if (await Permission.photos.isDenied) {
           await Permission.photos.request();
         } else {
           await [
