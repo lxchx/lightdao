@@ -611,12 +611,18 @@ class SettingsPage extends StatelessWidget {
                 subtitle: '单位为秒',
                 value: appState.setting.fetchTimeout.toString(),
                 onChanged: (String value) {
-                  final intValue = int.tryParse(value);
-                  if (intValue != null) {
-                    appState.setState((state) {
-                      state.setting.fetchTimeout = intValue;
-                    });
+                  final seconds = parseFetchTimeoutSeconds(value);
+                  if (seconds == null) {
+                    // 0 / 负数会让时间线与板块的 timeout 立刻到期，
+                    // 列表就永久拉不出来了：不写入并提示。
+                    scaffoldMessengerKey.currentState?.showSnackBar(
+                      SnackBar(content: Text('拉取超时需要不小于 1 的整数（秒）')),
+                    );
+                    return;
                   }
+                  appState.setState((state) {
+                    state.setting.fetchTimeout = seconds;
+                  });
                 },
               ),
             ],
@@ -852,6 +858,17 @@ class SettingsSection extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 「拉取超时」输入校验：只有 >= 1 的整数才写进设置。
+///
+/// 消费点是 `setting.dart` 里时间线/板块请求的
+/// `.timeout(Duration(seconds: fetchTimeout))`：填 0 或负数会让请求立刻超时，
+/// 列表永久拉不出来（用户只能去改备份文件才能救回来）。
+int? parseFetchTimeoutSeconds(String raw) {
+  final parsed = int.tryParse(raw.trim());
+  if (parsed == null || parsed < 1) return null;
+  return parsed;
 }
 
 class SettingsTile {

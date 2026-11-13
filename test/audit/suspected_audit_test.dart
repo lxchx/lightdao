@@ -5,6 +5,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lightdao/ui/page/more/cookies_management.dart';
+import 'package:lightdao/ui/page/more/setting.dart';
 import 'package:lightdao/ui/page/thread2.dart';
 import 'package:lightdao/utils/xdao_api.dart';
 
@@ -119,6 +120,21 @@ void main() {
       expect(parseCookieQrCode('{"cookie":"y"}'), isNull);
       expect(parseCookieQrCode('{"name":"","cookie":"y"}'), isNull);
       expect(parseCookieQrCode('[1,2,3]'), isNull);
+    });
+  });
+  group('疑似#12 拉取超时不接受小于 1 的值', () {
+    test('合法输入原样返回', () {
+      expect(parseFetchTimeoutSeconds('10'), 10);
+      expect(parseFetchTimeoutSeconds(' 1 '), 1);
+      expect(parseFetchTimeoutSeconds('600'), 600, reason: '不设上限');
+    });
+
+    test('0 / 负数 / 非数字都拒绝写入', () {
+      expect(parseFetchTimeoutSeconds('0'), isNull);
+      expect(parseFetchTimeoutSeconds('-5'), isNull);
+      expect(parseFetchTimeoutSeconds(''), isNull);
+      expect(parseFetchTimeoutSeconds('abc'), isNull);
+      expect(parseFetchTimeoutSeconds('1.5'), isNull);
     });
   });
 }
