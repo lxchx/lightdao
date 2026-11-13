@@ -1275,8 +1275,9 @@ class _ThreadPage2State extends State<ThreadPage2>
                                                           .forceLoadNextPage(),
                                                     ).then((replyCount) {
                                                       if (replyCount == 0) {
-                                                        if (!context.mounted)
+                                                        if (!context.mounted) {
                                                           return;
+                                                        }
                                                         ScaffoldMessenger.of(
                                                           context,
                                                         ).showSnackBar(
