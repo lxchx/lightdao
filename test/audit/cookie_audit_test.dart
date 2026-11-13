@@ -119,4 +119,81 @@ void main() {
       expect(appState.getCurrentCookie(), isNull);
     });
   });
+  group('BUG-G「手动创建」的确认按钮必须可点 (audit #6)', () {
+    testWidgets('输入 name 与 cookie 之后确认按钮可点', (tester) async {
+      final nameController = TextEditingController();
+      final cookieController = TextEditingController();
+      addTearDown(nameController.dispose);
+      addTearDown(cookieController.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  onPressed: () => showCookieEditDialog(
+                    context,
+                    nameController,
+                    cookieController,
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(find.text('手动创建'), findsOneWidget);
+
+      // 刚打开时两个输入框都是空的，按钮应当禁用
+      final before = tester.widget<TextButton>(
+        find.widgetWithText(TextButton, '确认'),
+      );
+      expect(before.onPressed, isNull);
+
+      await tester.enterText(find.byType(TextField).at(0), 'my phone');
+      await tester.pump();
+      final afterName = tester.widget<TextButton>(
+        find.widgetWithText(TextButton, '确认'),
+      );
+      expect(afterName.onPressed, isNull, reason: '只填了 Name，Cookie 还空着');
+
+      await tester.enterText(find.byType(TextField).at(1), 'AbCdEf1234567890');
+      await tester.pump();
+      final afterBoth = tester.widget<TextButton>(
+        find.widgetWithText(TextButton, '确认'),
+      );
+      expect(afterBoth.onPressed, isNotNull, reason: '输入非空后确认按钮应可用，否则该功能完全不可用');
+
+      // 点下去应该关掉对话框
+      await tester.tap(find.widgetWithText(TextButton, '确认'));
+      await tester.pumpAndSettle();
+      expect(find.text('手动创建'), findsNothing);
+    });
+
+    testWidgets('完整路径：添加饼干 → 手动创建 → 输入 → 确认 → 饼干入列', (tester) async {
+      final appState = await pumpCookiePage(tester, count: 0, current: -1);
+
+      await tester.tap(find.text('添加饼干'));
+      await tester.pumpAndSettle();
+      expect(find.text('手动创建'), findsOneWidget);
+
+      await tester.tap(find.text('手动创建'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).at(0), 'my phone');
+      await tester.enterText(find.byType(TextField).at(1), 'AbCdEf1234567890');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextButton, '确认'));
+      await tester.pumpAndSettle();
+
+      expect(appState.setting.cookies.length, 1);
+      expect(appState.setting.cookies.first.cookieHash, 'AbCdEf1234567890');
+      expect(appState.setting.cookies.first.name, 'my phone');
+      expect(appState.setting.currentCookie, 0);
+    });
+  });
 }

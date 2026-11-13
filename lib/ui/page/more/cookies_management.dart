@@ -279,13 +279,19 @@ Future<dynamic> showCookieEditDialog(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
+                // 带 controller 的 TextField 输入时只会重绘内部的
+                // EditableText，外层 StatefulBuilder 不会重建，于是下面
+                // 「确认」按钮的可用性会固化成初始值（永远禁用）。这里显式
+                // 触发一次重建。
                 TextField(
                   controller: nameController,
                   decoration: InputDecoration(labelText: 'Name'),
+                  onChanged: (_) => setState(() {}),
                 ),
                 TextField(
                   controller: cookieController,
                   decoration: InputDecoration(labelText: 'Cookie'),
+                  onChanged: (_) => setState(() {}),
                 ),
               ],
             ),
