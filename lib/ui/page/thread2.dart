@@ -61,6 +61,26 @@ class DividerWrapper extends StatelessWidget {
   }
 }
 
+/// 跳页时「目标页还没加载」要新建的 manager。
+///
+/// Po 模式必须继续走 po 接口（isPoOnly），否则跳过去会把整串回复当成
+/// Po 的回复渲染；调用方据此替换 _poPageManager / _pageManager。
+ThreadPageManager buildJumpTargetPageManager({
+  required int threadId,
+  required int page,
+  required String? cookie,
+  required bool poOnly,
+  LRUCache<int, Future<RefHtml>>? refCache,
+}) {
+  return ThreadPageManager(
+    threadId: threadId,
+    initialPage: page,
+    cookie: cookie,
+    refCache: refCache,
+    isPoOnly: poOnly,
+  );
+}
+
 class ThreadPage2 extends StatefulWidget {
   final ThreadJson headerThread;
   final int startPage;
@@ -506,24 +526,27 @@ class _ThreadPage2State extends State<ThreadPage2>
         }
       }
     } else {
-      // 页面未加载，直接换一个新的PageManager
+      // 页面未加载，换一个新的 PageManager——必须替换「当前生效的那个」：
+      // Po 模式下 _curPageManager 指向 _poPageManager，若固定改 _pageManager，
+      // 跳页就作用在一个没人读的 manager 上（页码不动、内容不刷新）。
       if (_scrollController.hasClients) _scrollController.jumpTo(0);
-      _pageManager = ThreadPageManager(
+      final manager = buildJumpTargetPageManager(
         threadId: widget.headerThread.id,
-        initialPage: page,
+        page: page,
         cookie: _appState.getCurrentCookie(),
+        poOnly: _isPoOnlyMode,
         refCache: _refCache,
       );
-      _pageManager.registerPreviousPageCallback((
-        page,
-        newItemCount,
-        _,
-        doInsert,
-      ) {
+      if (_isPoOnlyMode) {
+        _poPageManager = manager;
+      } else {
+        _pageManager = manager;
+      }
+      manager.registerPreviousPageCallback((page, newItemCount, _, doInsert) {
         _insertPreviousPage(doInsert, newItemCount);
       });
       Future.microtask(() async {
-        await _pageManager.initialize();
+        await manager.initialize();
         if (!mounted) return;
         setState(() {});
         if (jumpToEnd) {
@@ -825,6 +848,9 @@ class _ThreadPage2State extends State<ThreadPage2>
 
     Future.microtask(() async {
       await _pageManager.initialize();
+      // 初始化是异步的：等它回来时页面可能已经被关掉了（同一函数里其它分支
+      // 都做了 mounted 检查，只有这里漏了）
+      if (!mounted) return;
       setState(() {});
       // 预加载下一页
       _pageManager.tryLoadNextPage().then((_) => setState(() {}));

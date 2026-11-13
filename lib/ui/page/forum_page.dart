@@ -99,7 +99,7 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
     });
   }
 
-  void _initializePageManager() {
+  Future<void> _initializePageManager() async {
     final selection = widget.forumSelectionNotifier.value;
     final appState = Provider.of<MyAppState>(context, listen: false);
 
@@ -133,7 +133,9 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
     }
 
     _pageManager.nextPageStateNotifier.addListener(_onPageStateChanged);
-    _pageManager.initialize();
+    // 返回的 Future 要能等到首屏真正拉回来：下拉刷新的转圈靠它挂住，
+    // 否则 RefreshIndicator 立刻收回、内容闪一下骨架又回来。
+    await _pageManager.initialize();
 
     if (mounted) setState(() {});
   }
@@ -272,7 +274,7 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
 
               return RefreshIndicator(
                 onRefresh: () async {
-                  _initializePageManager();
+                  await _initializePageManager();
                 },
                 edgeOffset: 100,
                 child: ValueListenableBuilder(
