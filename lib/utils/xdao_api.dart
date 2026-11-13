@@ -458,6 +458,14 @@ Future<List<ThreadJson>> fetchTimelineThreads(
 //  return 2; // from http
 //}
 
+/// 解析接口返回的串页 JSON。
+///
+/// 解析失败会抛出（缓存内容坏了 / 网关返回了错误页），调用方据此决定
+/// 删缓存回源还是把错误抛给上层。
+ThreadJson parseThreadJsonBody(String body) {
+  return ThreadJson.fromJson(getOKJsonMap(body));
+}
+
 Future<ThreadJson> _getThreadGeneric(
   String endpoint,
   int threadId,
@@ -471,19 +479,26 @@ Future<ThreadJson> _getThreadGeneric(
   );
 
   if (!forceFromWeb) {
-    // 1. 从cache拿
+    // 1. 从cache拿。解析不出来（半截 JSON、代理/网关的错误页）就先删掉缓存
+    //    再回源——否则一条坏缓存会让这一页在整个 stalePeriod 内一直打不开。
+    //    对照 fetchRefFromHtml 已经这么做了。
+    final cacheKey = url.toString();
     final threadJsonFile = await MyThreadCacheManager().getFileFromCache(
-      url.toString(),
+      cacheKey,
     );
-    while (threadJsonFile != null) {
-      final threadJsonStr = await threadJsonFile.file.readAsString();
-      final data = getOKJsonMap(threadJsonStr);
-      final thread = ThreadJson.fromJson(data);
-      if (threadPageCount(thread.replyCount) <= page) {
-        // 可能有更新，需要从Http拉取
-        break;
+    if (threadJsonFile != null) {
+      try {
+        final threadJsonStr = await threadJsonFile.file.readAsString();
+        final data = getOKJsonMap(threadJsonStr);
+        final thread = ThreadJson.fromJson(data);
+        if (threadPageCount(thread.replyCount) <= page) {
+          // 可能有更新，需要从Http拉取
+        } else {
+          return thread;
+        }
+      } catch (_) {
+        await MyThreadCacheManager().removeFile(cacheKey);
       }
-      return thread;
     }
   }
 
@@ -501,8 +516,7 @@ Future<ThreadJson> _getThreadGeneric(
   );
 
   if (response.statusCode == 200) {
-    final data = getOKJsonMap(response.body);
-    final thread = ThreadJson.fromJson(data);
+    final thread = parseThreadJsonBody(response.body);
     MyThreadCacheManager().putFile(url.toString(), response.bodyBytes);
     return thread;
   } else {
@@ -878,6 +892,21 @@ Future<List<FeedInfo>> getFeedInfos(String uuid, int page) async {
   }
 }
 
+/// 订阅接口的成功文案可能是 JSON 字符串，也可能是不带引号的裸文本
+/// （还可能是代理/网关返回的 HTML）。
+///
+/// `jsonDecode` 解析不了时退回纯文本比较：判定结果与原来一致，
+/// 但不再把 FormatException（契约外异常，不属于 XDaoApiExeption 家族）
+/// 抛给上层重试逻辑。
+bool responseSaysSuccess(String body, String expected) {
+  final trimmed = body.trim();
+  try {
+    return jsonDecode(trimmed) == expected;
+  } on FormatException {
+    return trimmed == expected;
+  }
+}
+
 Future<void> addFeed(String uuid, int tid) async {
   final response = await http.post(
     _buildApiUri(
@@ -887,7 +916,7 @@ Future<void> addFeed(String uuid, int tid) async {
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
   if (response.statusCode == 200) {
-    if (jsonDecode(response.body.trim()) == '订阅大成功→_→') {
+    if (responseSaysSuccess(response.body, '订阅大成功→_→')) {
       return;
     } else {
       throw XDaoApiMsgException(response.body);
@@ -906,7 +935,7 @@ Future<void> delFeed(String uuid, int tid) async {
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
   if (response.statusCode == 200) {
-    if (jsonDecode(response.body.trim()) == '取消订阅成功!') {
+    if (responseSaysSuccess(response.body, '取消订阅成功!')) {
       return;
     } else {
       throw XDaoApiMsgException(response.body);

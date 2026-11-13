@@ -166,6 +166,75 @@ class CookieManagementPage extends StatelessWidget {
   }
 }
 
+/// 扫码页：识别成功后把 (name, cookieHash) 回传给调用方。
+///
+/// 控制器在 dispose 里释放（原来内联在 builder 里，没有释放的机会）。
+class QrCodeScanPage extends StatefulWidget {
+  const QrCodeScanPage({super.key});
+
+  @override
+  State<QrCodeScanPage> createState() => _QrCodeScanPageState();
+}
+
+class _QrCodeScanPageState extends State<QrCodeScanPage> {
+  final MobileScannerController _controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.normal,
+    facing: CameraFacing.back,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    final List<Barcode> barcodes = capture.barcodes;
+    if (barcodes.isEmpty) return;
+    final String? code = barcodes.first.rawValue;
+    if (code == null) return;
+    final parsed = parseCookieQrCode(code);
+    if (parsed == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('无效的二维码格式')));
+      return;
+    }
+    Navigator.of(context).pop(parsed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('扫描二维码')),
+      body: MobileScanner(controller: _controller, onDetect: _onDetect),
+    );
+  }
+}
+
+/// 解析二维码里的饼干信息，返回 (name, cookieHash)。
+///
+/// 二维码内容必须是 JSON 对象且带 name / cookie 两个键；解析失败或格式
+/// 不对都返回 null，由调用方提示用户。原来的实现是直接 `jsonDecode`（还要
+/// 先判空），非 JSON 的二维码会抛未捕获异常。
+(String, String)? parseCookieQrCode(String? raw) {
+  if (raw == null) return null;
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+  Object? decoded;
+  try {
+    decoded = jsonDecode(trimmed);
+  } on FormatException {
+    return null;
+  }
+  if (decoded is! Map<String, dynamic>) return null;
+  final name = decoded['name'];
+  final cookie = decoded['cookie'];
+  if (name is! String || cookie is! String) return null;
+  if (name.isEmpty || cookie.isEmpty) return null;
+  return (name, cookie);
+}
+
 // name, cookieHash
 Future<(String, String)?> showAddCookieDialog(BuildContext context) {
   return showDialog<(String, String)>(
@@ -175,48 +244,17 @@ Future<(String, String)?> showAddCookieDialog(BuildContext context) {
       children: [
         SimpleDialogOption(
           child: Text('扫描二维码'),
-          onPressed: () {
-            Navigator.push(
+          onPressed: () async {
+            // 结果要经过外层对话框 pop 出去。原来的实现里 onDetect 的
+            // context 来自扫码页的 builder，pop 掉的是扫码页；这个
+            // SimpleDialog 的 Future 永远不会完成，对话框就卡在那儿。
+            final result = await Navigator.push<(String, String)>(
               context,
-              MaterialPageRoute(
-                builder: (context) => Scaffold(
-                  appBar: AppBar(title: Text('扫描二维码')),
-                  body: MobileScanner(
-                    controller: MobileScannerController(
-                      detectionSpeed: DetectionSpeed.normal,
-                      facing: CameraFacing.back,
-                    ),
-                    onDetect: (capture) {
-                      final List<Barcode> barcodes = capture.barcodes;
-                      if (barcodes.isNotEmpty) {
-                        final String? code = barcodes.first.rawValue;
-                        if (code != null) {
-                          try {
-                            final Map<String, dynamic> jsonMap = jsonDecode(
-                              code,
-                            );
-                            if (jsonMap.containsKey('cookie') &&
-                                jsonMap.containsKey('name')) {
-                              Navigator.of(
-                                context,
-                              ).pop((jsonMap['name'], jsonMap['cookie']));
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("无效的二维码格式")),
-                              );
-                            }
-                          } catch (e) {
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(SnackBar(content: Text("二维码解析错误")));
-                          }
-                        }
-                      }
-                    },
-                  ),
-                ),
-              ),
+              MaterialPageRoute(builder: (_) => const QrCodeScanPage()),
             );
+            if (result == null) return;
+            if (!context.mounted) return;
+            Navigator.of(context).pop(result);
           },
         ),
         SimpleDialogOption(
@@ -228,16 +266,17 @@ Future<(String, String)?> showAddCookieDialog(BuildContext context) {
             if (result == null) {
               navigator.pop();
               scaffoldMessenger.showSnackBar(SnackBar(content: Text("识别失败")));
+              return;
             }
-            final Map<String, dynamic> jsonMap = jsonDecode(result ?? '');
-            if (jsonMap.containsKey('cookie') && jsonMap.containsKey('name')) {
-              navigator.pop((jsonMap['name'], jsonMap['cookie']));
-            } else {
+            final parsed = parseCookieQrCode(result);
+            if (parsed == null) {
               navigator.pop();
               scaffoldMessenger.showSnackBar(
                 SnackBar(content: Text("无效的二维码格式")),
               );
+              return;
             }
+            navigator.pop(parsed);
           },
         ),
         SimpleDialogOption(
