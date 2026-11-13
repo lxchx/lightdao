@@ -122,4 +122,48 @@ void main() {
       expect(pm.nextPageStateNotifier.value, isA<PageFullLoaded>());
     });
   });
+  group('BUG-E 整页重复时仍要推进页码 (audit #4)', () {
+    test('第 2 页全是已见条目 → 第 3 页仍能翻到', () async {
+      final pm = FakeDedupPM();
+      pm.pages[1] = [threadJson(1), threadJson(2), threadJson(3)];
+      pm.pages[2] = [threadJson(1), threadJson(2), threadJson(3)];
+      pm.pages[3] = [threadJson(4), threadJson(5)];
+      await pm.initialize();
+
+      await pm.tryLoadNextPage(); // 第 2 页全是重复
+      expect(pm.fetchedPages, [1, 2]);
+      expect(pm.loadedPageRange.end, 2, reason: '整页重复也要推进已加载页码');
+      expect(pm.nextPageStateNotifier.value, isA<PageHasMore>());
+
+      await pm.tryLoadNextPage();
+      expect(pm.fetchedPages, [1, 2, 3], reason: '不应反复请求第 2 页');
+      expect(pm.allLoadedItems.map((t) => t.id).toList(), [1, 2, 3, 4, 5]);
+    });
+  });
+
+  group('BUG-J 页间部分重复：只去重、不截断 (audit #4)', () {
+    test('第 2 页 5 条重复 + 15 条新条目', () async {
+      final pm = FakeDedupPM();
+      pm.pages[1] = List.generate(20, (i) => threadJson(i + 1)); // 1..20
+      pm.pages[2] = [
+        ...List.generate(5, (i) => threadJson(16 + i)), // 16..20：与第 1 页重复
+        ...List.generate(15, (i) => threadJson(21 + i)), // 21..35：新条目
+      ];
+      pm.pages[3] = List.generate(20, (i) => threadJson(36 + i)); // 36..55
+      await pm.initialize();
+
+      await pm.tryLoadNextPage();
+      expect(pm.allLoadedItems.length, 35, reason: '重复条目丢弃、新条目全部保留');
+      expect(pm.loadedPageRange.end, 2);
+      expect(
+        pm.nextPageStateNotifier.value,
+        isA<PageHasMore>(),
+        reason: '服务器返回满页就不能判定末页',
+      );
+
+      await pm.tryLoadNextPage();
+      expect(pm.fetchedPages, [1, 2, 3]);
+      expect(pm.allLoadedItems.length, 55);
+    });
+  });
 }
