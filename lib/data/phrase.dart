@@ -16,16 +16,21 @@ class Phrase {
   const Phrase(this.key, this.value, {this.canEdit = false});
 }
 
+/// 合并两份表情列表，按 [Phrase.key] 去重。
+///
+/// 顺序：先 [basePhrases] 里出现过的（保持原顺序），再是 [additionalPhrases]
+/// 里新增的。同一 key 只保留最先出现的那一条——包括两份列表**各自内部**的
+/// 重复（原实现只在循环外算一次 baseKeys、循环里从不 add，因此追加列表自己
+/// 的重复去不掉，"重置自带表情"会把同一份常量再插一遍）。
 List<Phrase> mergePhraseLists(
   List<Phrase> basePhrases,
   List<Phrase> additionalPhrases,
 ) {
-  Set<String> baseKeys = basePhrases.map((phrase) => phrase.key).toSet();
+  final mergedKeys = <String>{};
+  final mergedList = <Phrase>[];
 
-  List<Phrase> mergedList = List.from(basePhrases);
-
-  for (Phrase phrase in additionalPhrases) {
-    if (!baseKeys.contains(phrase.key)) {
+  for (final phrase in [...basePhrases, ...additionalPhrases]) {
+    if (mergedKeys.add(phrase.key)) {
       mergedList.add(phrase);
     }
   }
@@ -138,7 +143,6 @@ const List<Phrase> xDaoPhrases = [
 (　ﾟ 3ﾟ) `ー´) `д´) `д´)'''),
   Phrase('防剧透', '[h] [/h]'),
   Phrase('全角空格', '　'),
-  Phrase('･ﾟ( ﾉヮ´ )', '･ﾟ( ﾉヮ´ )'),
   Phrase('( ´_ゝ`)旦', '( ´_ゝ`)旦'),
   Phrase('(<ゝω・) ☆', '(<ゝω・) ☆'),
   Phrase('(`ε´ (つ*⊂)', '(`ε´ (つ*⊂)'),
