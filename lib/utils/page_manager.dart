@@ -36,6 +36,19 @@ class PageError extends PageState {
   const PageError(this.error, this.retry);
 }
 
+/// 前页返回空、但那不是第 1 页：内容取不到，页码也停在这里。
+///
+/// 交给 [PageError] 而不是 [PageHasMore]：页面上才会停下来等用户显式
+/// 重试，而不是每触发一次就静默重发一遍同一个请求。
+class _EmptyPreviousPageException implements Exception {
+  final int page;
+
+  const _EmptyPreviousPageException(this.page);
+
+  @override
+  String toString() => '第 $page 页没有内容（空前页）';
+}
+
 /// 页面加载状态回调
 typedef PageLoadCallback<T> =
     void Function(
@@ -220,10 +233,23 @@ abstract class PageManager<T> {
           _pageItems[previousPage] = items;
           _onAfterPageLoad(previousPage, items);
           _minLoadedPage = previousPage;
+          previousPageStateNotifier.value = (previousPage == 1)
+              ? const PageFullLoaded()
+              : const PageHasMore();
+          return;
         }
-        previousPageStateNotifier.value = (previousPage == 1)
-            ? const PageFullLoaded()
-            : const PageHasMore();
+        // 前页返回空：只有第 1 页才算「真的到头」（XDao 会用只有一条 Tips
+        // 的空页表示前面没有内容）。中间的空白页若停在 PageHasMore，
+        // 「加载前页」每触发一次就再请求一遍同一个空页、永远不收敛，
+        // 所以记为失败，等用户显式重试。
+        if (previousPage == 1) {
+          previousPageStateNotifier.value = const PageFullLoaded();
+        } else {
+          previousPageStateNotifier.value = PageError(
+            _EmptyPreviousPageException(previousPage),
+            () => tryLoadPreviousPage(ignoreError: true),
+          );
+        }
       }
 
       if (_previousPageCallback != null) {

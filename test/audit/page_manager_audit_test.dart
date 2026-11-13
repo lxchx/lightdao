@@ -166,4 +166,48 @@ void main() {
       expect(pm.allLoadedItems.length, 55);
     });
   });
+  group('BUG-K 上一页返回空时必须收敛 (audit #5)', () {
+    test('中间页为空 → 记为失败，不再重复请求同一页', () async {
+      final pm = FakeThreadPM(initialPage: 3);
+      pm.pages[3] = List<ReplyJson>.generate(19, (i) => reply(i + 100));
+      pm.pages[2] = const <ReplyJson>[];
+      await pm.initialize();
+      expect(pm.previousPageStateNotifier.value, isA<PageHasMore>());
+
+      await pm.tryLoadPreviousPage();
+      expect(
+        pm.previousPageStateNotifier.value,
+        isA<PageError>(),
+        reason: '停在 PageHasMore 会让「加载前页」每次点击都重发同一个请求',
+      );
+
+      // 没有 ignoreError 时不应再发请求
+      await pm.tryLoadPreviousPage();
+      expect(pm.fetchedPages.where((p) => p == 2).length, 1);
+      expect(pm.loadedPageRange.start, 3);
+    });
+
+    test('第 1 页为空 → PageFullLoaded（前面确实没有内容）', () async {
+      final pm = FakeThreadPM(initialPage: 2);
+      pm.pages[2] = List<ReplyJson>.generate(19, (i) => reply(i + 100));
+      pm.pages[1] = const <ReplyJson>[];
+      await pm.initialize();
+
+      await pm.tryLoadPreviousPage();
+      expect(pm.previousPageStateNotifier.value, isA<PageFullLoaded>());
+      expect(pm.loadedPageRange.start, 2);
+    });
+
+    test('前页有数据时行为不变：插入成功且页码前移', () async {
+      final pm = FakeThreadPM(initialPage: 3);
+      pm.pages[3] = List<ReplyJson>.generate(19, (i) => reply(i + 100));
+      pm.pages[2] = List<ReplyJson>.generate(19, (i) => reply(i + 200));
+      await pm.initialize();
+
+      await pm.tryLoadPreviousPage();
+      expect(pm.previousPageStateNotifier.value, isA<PageHasMore>());
+      expect(pm.loadedPageRange.start, 2);
+      expect(pm.totalItemsCount, 38);
+    });
+  });
 }
