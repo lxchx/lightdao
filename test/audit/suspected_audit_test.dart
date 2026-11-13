@@ -84,4 +84,21 @@ void main() {
       );
     });
   });
+  group('疑似#9 订阅接口的成功判定不应抛 FormatException', () {
+    test('JSON 字符串 / 裸文本都能判定成功', () {
+      expect(responseSaysSuccess('"订阅大成功→_→"', '订阅大成功→_→'), isTrue);
+      expect(responseSaysSuccess('订阅大成功→_→', '订阅大成功→_→'), isTrue);
+      expect(responseSaysSuccess('  订阅大成功→_→ ', '订阅大成功→_→'), isTrue);
+      expect(responseSaysSuccess('"取消订阅成功!"', '取消订阅成功!'), isTrue);
+    });
+
+    test('别的文案判定为失败，且不抛异常', () {
+      expect(responseSaysSuccess('"订阅失败"', '订阅大成功→_→'), isFalse);
+      expect(
+        responseSaysSuccess('<html>502 Bad Gateway</html>', '订阅大成功→_→'),
+        isFalse,
+      );
+      expect(responseSaysSuccess('', '订阅大成功→_→'), isFalse);
+    });
+  });
 }

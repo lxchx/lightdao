@@ -892,6 +892,21 @@ Future<List<FeedInfo>> getFeedInfos(String uuid, int page) async {
   }
 }
 
+/// 订阅接口的成功文案可能是 JSON 字符串，也可能是不带引号的裸文本
+/// （还可能是代理/网关返回的 HTML）。
+///
+/// `jsonDecode` 解析不了时退回纯文本比较：判定结果与原来一致，
+/// 但不再把 FormatException（契约外异常，不属于 XDaoApiExeption 家族）
+/// 抛给上层重试逻辑。
+bool responseSaysSuccess(String body, String expected) {
+  final trimmed = body.trim();
+  try {
+    return jsonDecode(trimmed) == expected;
+  } on FormatException {
+    return trimmed == expected;
+  }
+}
+
 Future<void> addFeed(String uuid, int tid) async {
   final response = await http.post(
     _buildApiUri(
@@ -901,7 +916,7 @@ Future<void> addFeed(String uuid, int tid) async {
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
   if (response.statusCode == 200) {
-    if (jsonDecode(response.body.trim()) == '订阅大成功→_→') {
+    if (responseSaysSuccess(response.body, '订阅大成功→_→')) {
       return;
     } else {
       throw XDaoApiMsgException(response.body);
@@ -920,7 +935,7 @@ Future<void> delFeed(String uuid, int tid) async {
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
   );
   if (response.statusCode == 200) {
-    if (jsonDecode(response.body.trim()) == '取消订阅成功!') {
+    if (responseSaysSuccess(response.body, '取消订阅成功!')) {
       return;
     } else {
       throw XDaoApiMsgException(response.body);
