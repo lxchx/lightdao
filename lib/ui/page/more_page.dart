@@ -12,6 +12,7 @@ import 'package:lightdao/ui/page/more/replys.dart';
 import 'package:lightdao/ui/page/more/setting.dart';
 import 'package:lightdao/ui/page/thread.dart';
 import 'package:lightdao/ui/widget/reply_item.dart';
+import 'package:lightdao/ui/widget/top_bar.dart';
 import 'package:lightdao/utils/uuid.dart';
 import 'package:lightdao/utils/xdao_api.dart';
 import 'package:loader_overlay/loader_overlay.dart';
@@ -604,68 +605,149 @@ class MorePage extends StatelessWidget {
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(title: Text('更多')),
-      body: SafeArea(
-        child: ListView(
-          children: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
-              child: Card(
-                shadowColor: Colors.transparent,
-                clipBehavior: Clip.hardEdge,
-                child: IntrinsicHeight(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              pageRoute(
-                                builder: (context) {
-                                  return starPage(context);
-                                },
-                              ),
-                            );
+    final TopBarMode topBarMode = topBarModeOf(
+      context,
+      fixedBottomBar: appState.setting.fixedBottomBar,
+    );
+    final List<Widget> tiles = <Widget>[
+      Padding(
+        padding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+        child: Card(
+          shadowColor: Colors.transparent,
+          clipBehavior: Clip.hardEdge,
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        pageRoute(
+                          builder: (context) {
+                            return starPage(context);
                           },
-                          child: Padding(
-                            padding: EdgeInsets.all(breakpoint.gutters),
-                            child: Column(
-                              children: [
-                                Text(
-                                  appState.setting.starHistory.length
-                                      .toString(),
-                                  style: Theme.of(
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.all(breakpoint.gutters),
+                      child: Column(
+                        children: [
+                          Text(
+                            appState.setting.starHistory.length.toString(),
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                          Text('收藏'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    vertical: breakpoint.gutters / 2,
+                  ),
+                  child: VerticalDivider(width: 2),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        pageRoute(
+                          builder: (context) => ReplysPage(
+                            title: "发言",
+                            listDelegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final re = appState.setting.replyHistory[index];
+                                return HistoryReply(
+                                  re: re,
+                                  onTap: () => appState.navigateThreadPage2(
                                     context,
-                                  ).textTheme.headlineMedium,
-                                ),
-                                Text('收藏'),
-                              ],
+                                    re.threadId,
+                                    false,
+                                    thread: ThreadJson.fromReplyJson(
+                                      re.thread,
+                                      [],
+                                    ),
+                                  ),
+                                );
+                              },
+                              childCount: appState.setting.replyHistory.length,
                             ),
                           ),
                         ),
+                      );
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.all(breakpoint.gutters),
+                      child: Column(
+                        children: [
+                          Text(
+                            appState.setting.replyHistory.length.toString(),
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                          Text('发言'),
+                        ],
                       ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: breakpoint.gutters / 2,
-                        ),
-                        child: VerticalDivider(width: 2),
-                      ),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              pageRoute(
-                                builder: (context) => ReplysPage(
-                                  title: "发言",
-                                  listDelegate: SliverChildBuilderDelegate(
-                                    (context, index) {
-                                      final re =
-                                          appState.setting.replyHistory[index];
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    vertical: breakpoint.gutters / 2,
+                  ),
+                  child: VerticalDivider(width: 2),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        pageRoute(
+                          builder: (context) => StatefulBuilder(
+                            builder: (context, setState) {
+                              return ReplysPage(
+                                title: "浏览",
+                                listDelegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    final re = appState.setting.viewHistory
+                                        .getIndex(index);
+                                    if (re != null) {
                                       return HistoryReply(
                                         re: re,
+                                        contentHeroTag:
+                                            'ThreadCard ${re.thread.id}',
+                                        onLongPress: () => showDialog(
+                                          context: context,
+                                          builder: (BuildContext context) {
+                                            return AlertDialog(
+                                              title: Text('删除浏览记录？'),
+                                              actions: <Widget>[
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                  child: Text('取消'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.of(context).pop();
+                                                    appState.setState((_) {
+                                                      appState
+                                                          .setting
+                                                          .viewHistory
+                                                          .remove(re.threadId);
+                                                    });
+                                                    setState(() {});
+                                                  },
+                                                  child: Text('删除'),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        ),
                                         onTap: () =>
                                             appState.navigateThreadPage2(
                                               context,
@@ -677,273 +759,177 @@ class MorePage extends StatelessWidget {
                                               ),
                                             ),
                                       );
-                                    },
-                                    childCount:
-                                        appState.setting.replyHistory.length,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: EdgeInsets.all(breakpoint.gutters),
-                            child: Column(
-                              children: [
-                                Text(
-                                  appState.setting.replyHistory.length
-                                      .toString(),
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.headlineMedium,
-                                ),
-                                Text('发言'),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: breakpoint.gutters / 2,
-                        ),
-                        child: VerticalDivider(width: 2),
-                      ),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              pageRoute(
-                                builder: (context) => StatefulBuilder(
-                                  builder: (context, setState) {
-                                    return ReplysPage(
-                                      title: "浏览",
-                                      listDelegate: SliverChildBuilderDelegate(
-                                        (context, index) {
-                                          final re = appState
-                                              .setting
-                                              .viewHistory
-                                              .getIndex(index);
-                                          if (re != null) {
-                                            return HistoryReply(
-                                              re: re,
-                                              contentHeroTag:
-                                                  'ThreadCard ${re.thread.id}',
-                                              onLongPress: () => showDialog(
-                                                context: context,
-                                                builder: (BuildContext context) {
-                                                  return AlertDialog(
-                                                    title: Text('删除浏览记录？'),
-                                                    actions: <Widget>[
-                                                      TextButton(
-                                                        onPressed: () {
-                                                          Navigator.of(
-                                                            context,
-                                                          ).pop();
-                                                        },
-                                                        child: Text('取消'),
-                                                      ),
-                                                      TextButton(
-                                                        onPressed: () {
-                                                          Navigator.of(
-                                                            context,
-                                                          ).pop();
-                                                          appState.setState((
-                                                            _,
-                                                          ) {
-                                                            appState
-                                                                .setting
-                                                                .viewHistory
-                                                                .remove(
-                                                                  re.threadId,
-                                                                );
-                                                          });
-                                                          setState(() {});
-                                                        },
-                                                        child: Text('删除'),
-                                                      ),
-                                                    ],
-                                                  );
-                                                },
-                                              ),
-                                              onTap: () =>
-                                                  appState.navigateThreadPage2(
-                                                    context,
-                                                    re.threadId,
-                                                    false,
-                                                    thread:
-                                                        ThreadJson.fromReplyJson(
-                                                          re.thread,
-                                                          [],
-                                                        ),
-                                                  ),
-                                            );
-                                          } else {
-                                            return Text("?");
-                                          }
-                                        },
-                                        childCount:
-                                            appState.setting.viewHistory.length,
-                                      ),
-                                    );
+                                    } else {
+                                      return Text("?");
+                                    }
                                   },
+                                  childCount:
+                                      appState.setting.viewHistory.length,
                                 ),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: EdgeInsets.all(breakpoint.gutters),
-                            child: Column(
-                              children: [
-                                Text(
-                                  appState.setting.viewHistory.length
-                                      .toString(),
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.headlineMedium,
-                                ),
-                                Text('浏览'),
-                              ],
-                            ),
+                              );
+                            },
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: breakpoint.gutters),
-            ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: breakpoint.gutters,
-              ),
-              leading: Icon(Icons.color_lens_rounded),
-              title: Text('主题选择'),
-              onTap: () {
-                final appState = Provider.of<MyAppState>(
-                  context,
-                  listen: false,
-                );
-                final brightness = MediaQuery.of(context).platformBrightness;
-                final isSysDarkMode = brightness == Brightness.dark;
-                final isUserDarkMode = appState.setting.userSettingIsDarkMode;
-                final followSysDarkMode = appState.setting.followedSysDarkMode;
-                final initIndex = followSysDarkMode
-                    ? (isSysDarkMode ? 1 : 0)
-                    : (isUserDarkMode ? 1 : 0);
-                Navigator.push(
-                  context,
-                  pageRoute(
-                    builder: (context) =>
-                        ThemeSelectorPage(initIndex: initIndex),
-                  ),
-                );
-              },
-              trailing: SizedBox(
-                width: 150,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text('暗色', style: Theme.of(context).textTheme.labelSmall),
-                    SizedBox(width: 5),
-                    Switch(
-                      value: appState.setting.followedSysDarkMode
-                          ? isDarkMode
-                          : appState.setting.userSettingIsDarkMode,
-                      onChanged: (bool value) {
-                        if (appState.setting.followedSysDarkMode) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('已取消跟随系统暗色模式')),
-                          );
-                          appState.setState((state) {
-                            state.setting.followedSysDarkMode = false;
-                          });
-                        }
-                        appState.setState((state) {
-                          state.setting.userSettingIsDarkMode = value;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: breakpoint.gutters,
-              ),
-              leading: Icon(Icons.cookie),
-              title: Text('饼干管理'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  pageRoute(builder: (context) => CookieManagementPage()),
-                );
-              },
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: breakpoint.gutters,
-              ),
-              leading: Icon(Icons.visibility_off),
-              title: Text('屏蔽管理'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  pageRoute(builder: (context) => FiltersManagementPage()),
-                );
-              },
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: breakpoint.gutters,
-              ),
-              leading: Icon(Icons.manage_accounts),
-              title: Text('用户系统'),
-              onTap: () async {
-                final uri = Uri.parse('https://www.nmbxd1.com/Member');
-                await launchUrl(uri);
-              },
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: breakpoint.gutters,
-              ),
-              leading: Icon(Icons.settings),
-              title: Text('设置'),
-              onTap: () async {
-                Navigator.push(
-                  context,
-                  pageRoute(builder: (context) => SettingsPage()),
-                );
-              },
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: breakpoint.gutters,
-              ),
-              leading: Icon(Icons.info),
-              title: Text('关于'),
-              onTap: () async {
-                PackageInfo packageInfo = await PackageInfo.fromPlatform();
-                if (!context.mounted) return;
-                Navigator.push(
-                  context,
-                  pageRoute(
-                    builder: (context) {
-                      final appState = Provider.of<MyAppState>(context);
-                      return AboutPage(
-                        appState: appState,
-                        packageInfo: packageInfo,
                       );
                     },
+                    child: Padding(
+                      padding: EdgeInsets.all(breakpoint.gutters),
+                      child: Column(
+                        children: [
+                          Text(
+                            appState.setting.viewHistory.length.toString(),
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                          Text('浏览'),
+                        ],
+                      ),
+                    ),
                   ),
-                );
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      SizedBox(height: breakpoint.gutters),
+      ListTile(
+        contentPadding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+        leading: Icon(Icons.color_lens_rounded),
+        title: Text('主题选择'),
+        onTap: () {
+          final appState = Provider.of<MyAppState>(context, listen: false);
+          final brightness = MediaQuery.of(context).platformBrightness;
+          final isSysDarkMode = brightness == Brightness.dark;
+          final isUserDarkMode = appState.setting.userSettingIsDarkMode;
+          final followSysDarkMode = appState.setting.followedSysDarkMode;
+          final initIndex = followSysDarkMode
+              ? (isSysDarkMode ? 1 : 0)
+              : (isUserDarkMode ? 1 : 0);
+          Navigator.push(
+            context,
+            pageRoute(
+              builder: (context) => ThemeSelectorPage(initIndex: initIndex),
+            ),
+          );
+        },
+        trailing: SizedBox(
+          width: 150,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text('暗色', style: Theme.of(context).textTheme.labelSmall),
+              SizedBox(width: 5),
+              Switch(
+                value: appState.setting.followedSysDarkMode
+                    ? isDarkMode
+                    : appState.setting.userSettingIsDarkMode,
+                onChanged: (bool value) {
+                  if (appState.setting.followedSysDarkMode) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('已取消跟随系统暗色模式')));
+                    appState.setState((state) {
+                      state.setting.followedSysDarkMode = false;
+                    });
+                  }
+                  appState.setState((state) {
+                    state.setting.userSettingIsDarkMode = value;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      ListTile(
+        contentPadding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+        leading: Icon(Icons.cookie),
+        title: Text('饼干管理'),
+        onTap: () {
+          Navigator.push(
+            context,
+            pageRoute(builder: (context) => CookieManagementPage()),
+          );
+        },
+      ),
+      ListTile(
+        contentPadding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+        leading: Icon(Icons.visibility_off),
+        title: Text('屏蔽管理'),
+        onTap: () {
+          Navigator.push(
+            context,
+            pageRoute(builder: (context) => FiltersManagementPage()),
+          );
+        },
+      ),
+      ListTile(
+        contentPadding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+        leading: Icon(Icons.manage_accounts),
+        title: Text('用户系统'),
+        onTap: () async {
+          final uri = Uri.parse('https://www.nmbxd1.com/Member');
+          await launchUrl(uri);
+        },
+      ),
+      ListTile(
+        contentPadding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+        leading: Icon(Icons.settings),
+        title: Text('设置'),
+        onTap: () async {
+          Navigator.push(
+            context,
+            pageRoute(builder: (context) => SettingsPage()),
+          );
+        },
+      ),
+      ListTile(
+        contentPadding: EdgeInsets.symmetric(horizontal: breakpoint.gutters),
+        leading: Icon(Icons.info),
+        title: Text('关于'),
+        onTap: () async {
+          PackageInfo packageInfo = await PackageInfo.fromPlatform();
+          if (!context.mounted) return;
+          Navigator.push(
+            context,
+            pageRoute(
+              builder: (context) {
+                final appState = Provider.of<MyAppState>(context);
+                return AboutPage(appState: appState, packageInfo: packageInfo);
               },
             ),
-          ],
-        ),
+          );
+        },
+      ),
+    ];
+
+    // 手机竖屏（底部导航）：与改动前完全一致（固定的 AppBar + 可滚动的列表）。
+    // 这一页内容短，改动前顶栏也没跟手收起过，所以竖屏下始终固定。
+    if (topBarMode == TopBarMode.phone) {
+      return Scaffold(
+        appBar: AppBar(title: Text('更多')),
+        body: SafeArea(child: ListView(children: tiles)),
+      );
+    }
+
+    // 侧栏导航模式：内容从顶栏下面滑过；顶栏固定时半透明 + 背景模糊，矮屏时
+    // 纯色跟手隐藏（都由 top_bar.dart 判定）。
+    final bool pinnedTopBar = topBarMode == TopBarMode.pinnedGlass;
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          if (pinnedTopBar)
+            glassTopBarHeader(
+              extent: MediaQuery.paddingOf(context).top + kToolbarHeight,
+              child: GlassTopBar(title: Text('更多')),
+            )
+          else
+            solidTopBarSliver(context: context, title: Text('更多')),
+          SliverSafeArea(
+            top: false,
+            sliver: SliverList(delegate: SliverChildListDelegate(tiles)),
+          ),
+        ],
       ),
     );
   }
