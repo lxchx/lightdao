@@ -109,7 +109,9 @@ class SliverAnchoredList extends SliverMultiBoxAdaptorWidget {
 /// shortest lane. Every lane keeps its item at the anchor line still, so the
 /// row of items across the anchor line does not move when items above change
 /// size. When the lane count changes, the layout is rebuilt around the item
-/// in the middle of that row, which keeps its position on screen.
+/// in the middle of that row, which keeps its position on screen; while the
+/// leading edge is on screen the lanes are refilled in index order instead, so
+/// the head of the list matches a layout that started with that lane count.
 class SliverAnchoredMasonry extends SliverMultiBoxAdaptorWidget {
   /// Creates a masonry sliver with a fixed number of lanes.
   const SliverAnchoredMasonry.count({

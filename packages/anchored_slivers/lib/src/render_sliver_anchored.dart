@@ -499,6 +499,18 @@ class RenderSliverAnchoredMasonry extends RenderSliverMultiBoxAdaptor {
       ]..sort((RenderBox a, RenderBox b) => indexOf(a).compareTo(indexOf(b)));
       main = candidates.isEmpty ? ref : candidates[(candidates.length - 1) ~/ 2];
     }
+    // When the lane count changes while the leading edge is on screen, every
+    // live child belongs to the head of the list and every lane starts at
+    // offset zero, so there is no position worth keeping. Such a re-seed has to
+    // behave like a fresh layout with n lanes: fill the lanes in index order
+    // from the first one. Keeping the anchor's proportional lane instead would
+    // leave item 0 in a later lane — a 1 -> 2 column change would put the
+    // first item in the right column.
+    final bool reseedFromStart = selN != n &&
+        pinned == null &&
+        indexOf(firstChild!) == 0 &&
+        scrollOffset <= _eps;
+    if (reseedFromStart) main = firstChild!;
     final double mainOldOffset = _pd(main).offset!;
 
     // Keep the lane memo aligned with index shifts (e.g. head insertion).
@@ -523,7 +535,8 @@ class RenderSliverAnchoredMasonry extends RenderSliverMultiBoxAdaptor {
       final double fraction = oldCrossExtent <= 0
           ? 0.0
           : (mpd.lane! * oldStride + oldLaneWidth / 2) / oldCrossExtent;
-      final int newLane = (fraction * n).floor().clamp(0, n - 1);
+      final int newLane =
+          reseedFromStart ? 0 : (fraction * n).floor().clamp(0, n - 1);
       lanes = _Lanes(n, mainOldOffset);
       main.layout(cc, parentUsesSize: true);
       _place(main, newLane, mainOldOffset, lanes);
