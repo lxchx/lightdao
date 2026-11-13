@@ -6,7 +6,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lightdao/data/phrase.dart';
 import 'package:lightdao/utils/kv_store.dart';
-import 'package:lightdao/utils/time_parse.dart';
 
 void main() {
   group('BUG-A LRUCache 的淘汰方向 (audit #7)', () {
@@ -53,6 +52,48 @@ void main() {
       expect(cache.contains(2), isTrue, reason: '较新的 2 应保留');
       expect(cache.contains(1), isFalse, reason: '最旧的 1 应被淘汰');
       expect(cache.length, 2);
+    });
+  });
+  group('BUG-B 内置表情不应重复 (audit #8)', () {
+    test('内置表情表的 key 唯一', () {
+      final keys = xDaoPhrases.map((phrase) => phrase.key).toList();
+      final dupes = <String>{};
+      final seen = <String>{};
+      for (final key in keys) {
+        if (!seen.add(key)) dupes.add(key);
+      }
+      expect(dupes, isEmpty, reason: '常量表里不许有重复表情');
+      expect(keys.length, seen.length);
+      expect(
+        keys.where((key) => key == '･ﾟ( ﾉヮ´ )').length,
+        1,
+        reason: '这条曾经在表里出现两次，表情面板出现两个相同格子',
+      );
+    });
+
+    test('mergePhraseLists([], xDaoPhrases) 不引入重复', () {
+      final merged = mergePhraseLists([], xDaoPhrases);
+      final keys = merged.map((phrase) => phrase.key).toList();
+      expect(keys.length, keys.toSet().length);
+      expect(merged.length, xDaoPhrases.length);
+    });
+
+    test('两份列表各自的重复也去掉，顺序保持先 base 后 additional', () {
+      final merged = mergePhraseLists(
+        [
+          const Phrase('a', 'A'),
+          const Phrase('b', 'B'),
+          const Phrase('a', 'A2'),
+        ],
+        [
+          const Phrase('b', 'B2'),
+          const Phrase('c', 'C'),
+          const Phrase('c', 'C2'),
+        ],
+      );
+
+      expect(merged.map((phrase) => phrase.key).toList(), ['a', 'b', 'c']);
+      expect(merged[0].value, 'A', reason: '同一 key 保留最先出现的那一条');
     });
   });
 }
