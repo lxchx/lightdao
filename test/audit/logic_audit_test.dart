@@ -6,6 +6,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lightdao/data/phrase.dart';
 import 'package:lightdao/utils/kv_store.dart';
+import 'package:lightdao/utils/time_parse.dart';
 
 void main() {
   group('BUG-A LRUCache 的淘汰方向 (audit #7)', () {
@@ -94,6 +95,36 @@ void main() {
 
       expect(merged.map((phrase) => phrase.key).toList(), ['a', 'b', 'c']);
       expect(merged[0].value, 'A', reason: '同一 key 保留最先出现的那一条');
+    });
+  });
+  group('BUG-C 未来时间不应显示负数 (audit #9)', () {
+    String fmt(DateTime t) =>
+        '${t.year}-${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')} '
+        '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}';
+
+    test('比本机快 5 秒的时间 → "0秒前"', () {
+      final future = DateTime.now().add(const Duration(seconds: 5));
+      final out = parseJsonTimeStr(fmt(future));
+      expect(out, '0秒前', reason: '负差直接拼进文案会显示 "-4秒前"');
+    });
+
+    test('未来更多的时间也不出负数', () {
+      for (final offset in const [
+        Duration(seconds: 1),
+        Duration(seconds: 30),
+        Duration(minutes: 10),
+      ]) {
+        final out = parseJsonTimeStr(fmt(DateTime.now().add(offset)));
+        expect(out.startsWith('-'), isFalse, reason: '$offset 之后不该是负数');
+        expect(out, endsWith('秒前'));
+      }
+    });
+
+    test('正常过去的时间文案不变', () {
+      final out = parseJsonTimeStr(
+        fmt(DateTime.now().subtract(const Duration(seconds: 30))),
+      );
+      expect(out, matches(RegExp(r'^\d+秒前$')));
     });
   });
 }

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:intl/intl.dart';
 
 DateTime replyTimeToDateTime(String timeStr) {
@@ -18,11 +20,18 @@ String parseJsonTimeStr(String timeStr, {bool displayExactTime = false}) {
   DateTime yesterdayStart = todayStart.subtract(Duration(days: 1));
   DateTime dayBeforeYesterdayStart = todayStart.subtract(Duration(days: 2));
 
+  // 服务器时钟可能比本机快几秒（刚发出的回复、时钟有偏差时都会这样），
+  // 差值要夹到 0，否则界面会出现 "-4秒前"。
+  //
+  // 只处理负数这一种情况；"今天 00:00:00 被算成昨天"是另一个边界，
+  // 属于既有行为，本次不动。
+  final diff = now.difference(time);
+
   String result;
-  if (now.difference(time).inSeconds < 60) {
-    result = '${now.difference(time).inSeconds}秒前';
-  } else if (now.difference(time).inMinutes < 60) {
-    result = '${now.difference(time).inMinutes}分钟前';
+  if (diff.inSeconds < 60) {
+    result = '${max(0, diff.inSeconds)}秒前';
+  } else if (diff.inMinutes < 60) {
+    result = '${diff.inMinutes}分钟前';
   } else if (time.isAfter(todayStart)) {
     result =
         '今天 ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
