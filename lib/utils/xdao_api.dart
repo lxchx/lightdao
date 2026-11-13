@@ -18,7 +18,23 @@ import 'package:lightdao/data/xdao/thread.dart';
 import 'package:lightdao/utils/throttle.dart';
 import 'package:lightdao/utils/xdao_cdn.dart';
 
-final http.Client _httpClient = http.Client();
+// ---------------------------------------------------------------------------
+// 测试注入点
+//
+// 默认值就是线上行为：真实网络客户端 + App 的线程缓存单例。单元测试把它们
+// 换掉就能离线跑——既不联网，也不碰 sqlite / path_provider 这类只有真机上才
+// 有的平台插件（flutter test 里它们会抛 MissingPluginException，或者一直挂着）。
+// ---------------------------------------------------------------------------
+
+/// 发请求用的 http client。
+http.Client httpClient = http.Client();
+
+/// 线程缓存管理器。
+///
+/// 用工厂而不是实例，是因为 [MyThreadCacheManager] 的构造函数本身就会去碰
+/// 平台目录。测试让它每次都返回同一个假实现即可。
+CacheManager Function() threadCacheManagerFactory = () =>
+    MyThreadCacheManager();
 
 const String defaultBaseCdn = 'https://api.nmb.best';
 const String defaultPostHost = 'https://www.nmbxd.com';
@@ -109,7 +125,7 @@ Future<http.Response> _getWithCookiePreservedRedirects(
       request.headers.addAll(requestHeaders);
     }
     final response = await http.Response.fromStream(
-      await _httpClient.send(request),
+      await httpClient.send(request),
     );
 
     if (!_isRedirectStatusCode(response.statusCode)) {
@@ -478,14 +494,14 @@ Future<ThreadJson> _getThreadGeneric(
     queryParameters: {'id': threadId.toString(), 'page': page.toString()},
   );
 
+  final threadCache = threadCacheManagerFactory();
+
   if (!forceFromWeb) {
     // 1. 从cache拿。解析不出来（半截 JSON、代理/网关的错误页）就先删掉缓存
     //    再回源——否则一条坏缓存会让这一页在整个 stalePeriod 内一直打不开。
     //    对照 fetchRefFromHtml 已经这么做了。
     final cacheKey = url.toString();
-    final threadJsonFile = await MyThreadCacheManager().getFileFromCache(
-      cacheKey,
-    );
+    final threadJsonFile = await threadCache.getFileFromCache(cacheKey);
     if (threadJsonFile != null) {
       try {
         final threadJsonStr = await threadJsonFile.file.readAsString();
@@ -497,7 +513,7 @@ Future<ThreadJson> _getThreadGeneric(
           return thread;
         }
       } catch (_) {
-        await MyThreadCacheManager().removeFile(cacheKey);
+        await threadCache.removeFile(cacheKey);
       }
     }
   }
@@ -517,7 +533,7 @@ Future<ThreadJson> _getThreadGeneric(
 
   if (response.statusCode == 200) {
     final thread = parseThreadJsonBody(response.body);
-    MyThreadCacheManager().putFile(url.toString(), response.bodyBytes);
+    threadCache.putFile(url.toString(), response.bodyBytes);
     return thread;
   } else {
     throw Exception(
@@ -645,7 +661,7 @@ Future<RefJson> fetchRef(int refId, String? cookie) async {
     headers = null;
   }
 
-  final refJsonFile = await MyThreadCacheManager().getSingleFile(
+  final refJsonFile = await threadCacheManagerFactory().getSingleFile(
     url.toString(),
     headers: headers,
   );
@@ -677,12 +693,13 @@ Future<RefHtml> fetchRefFromHtml(
     // 1. 从cache拿。只有能解析成功的内容才算命中；旧版本会把
     //    "必须登入领取饼干" 之类的错误页也缓存下来，这里顺手清掉并重新拉取。
     final cacheKey = url.toString();
-    final cached = await MyThreadCacheManager().getFileFromCache(cacheKey);
+    final threadCache = threadCacheManagerFactory();
+    final cached = await threadCache.getFileFromCache(cacheKey);
     if (cached != null) {
       try {
         return parseRefHtmlBody(await cached.file.readAsString());
       } catch (_) {
-        await MyThreadCacheManager().removeFile(cacheKey);
+        await threadCache.removeFile(cacheKey);
       }
     }
 
@@ -703,7 +720,7 @@ Future<RefHtml> fetchRefFromHtml(
 
     // 解析失败（错误页）会抛出，不写入缓存
     final ref = parseRefHtmlBody(utf8.decode(response.bodyBytes));
-    unawaited(MyThreadCacheManager().putFile(cacheKey, response.bodyBytes));
+    unawaited(threadCache.putFile(cacheKey, response.bodyBytes));
     return ref;
   });
 }
