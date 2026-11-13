@@ -15,6 +15,15 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+/// 把外部传入的初始下标夹到合法范围。
+///
+/// 调用方可能给出越界值（例如 `allImageNames.indexOf(...)` 未命中时的 -1），
+/// 直接拿去索引图片列表会抛 RangeError。
+int clampImageIndex(int index, int length) {
+  if (length <= 0) return 0;
+  return index.clamp(0, length - 1).toInt();
+}
+
 class XdaoImageViewer extends StatefulWidget {
   final String? heroTag;
   final List<String> imageNames;
@@ -44,12 +53,28 @@ class _XdaoImageViewerState extends State<XdaoImageViewer> {
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initIndex;
+    if (widget.imageNames.isEmpty) {
+      // 没有图片可看：此时 build 里 `widget.imageNames[_currentIndex]` 必然
+      // 越界，先把这一页关掉（build 里还会再兜一层空占位）。
+      _currentIndex = 0;
+      _pageViewController = PageController();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final navigator = Navigator.of(context);
+        if (navigator.canPop()) navigator.pop();
+      });
+      return;
+    }
+    _currentIndex = clampImageIndex(widget.initIndex, widget.imageNames.length);
     _pageViewController = PageController(initialPage: _currentIndex);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.imageNames.isEmpty) {
+      // 交给 initState 里安排的 pop 收尾，这里不做任何下标访问
+      return const SizedBox.shrink();
+    }
     final appState = Provider.of<MyAppState>(context);
     final breakpoint = Breakpoint.fromMediaQuery(context);
     final imageName = widget.imageNames[_currentIndex];
