@@ -636,8 +636,10 @@ class MyAppState with ChangeNotifier {
       phrases: setting.phrases,
       viewHistory: setting.viewHistory,
       viewPoOnlyHistory: setting.viewPoOnlyHistory,
-      baseCdn: setting.baseCdn,
-      refCdn: setting.refCdn,
+      // CDN 也是 App 配置：重置时一起回到默认的 auto，
+      // 与按钮文案"重置所有App配置为默认值"一致（饼干/历史等用户数据仍保留）。
+      baseCdn: 'auto',
+      refCdn: 'auto',
     );
     applyNetworkSettings();
     notifyListeners();
