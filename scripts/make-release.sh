@@ -1,18 +1,33 @@
 #!/bin/bash
 set -euo pipefail
 
-# lightdao release helper: 交互式创建规范的 annotated tag 并触发 CI 发布
-# 用法：./scripts/make-release.sh [version] [--push]
-#   version: 如 1.4.8，自动加 v 前缀
-#   --push: 立即推送到远端触发 CI（默认先在本地预览）
+# lightdao release helper: 创建规范的 annotated tag 并触发 CI 发布
+# 用法：
+#   ./scripts/make-release.sh <version> [--push] [--body <text>] [--body-file <path>]
+#   ./scripts/make-release.sh 1.4.8                    # 交互式填写
+#   ./scripts/make-release.sh 1.4.8 --body "..."       # 直接指定内容（agent 友好）
+#   ./scripts/make-release.sh 1.4.8 --body-file /tmp/changelog.md --push
 
-VERSION="${1:-}"
-PUSH_FLAG="${2:-}"
+VERSION=""
+PUSH_FLAG=""
+BODY_TEXT=""
+BODY_FILE=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --push) PUSH_FLAG="--push"; shift ;;
+    --body) BODY_TEXT="$2"; shift 2 ;;
+    --body-file) BODY_FILE="$2"; shift 2 ;;
+    -*) echo "Unknown option: $1"; exit 1 ;;
+    *) VERSION="$1"; shift ;;
+  esac
+done
 
 if [ -z "$VERSION" ]; then
-  echo "用法: $0 <version> [--push]"
-  echo "示例: $0 1.4.8        # 本地创建 v1.4.8"
-  echo "      $0 1.4.8 --push # 创建并推送到远端"
+  echo "用法: $0 <version> [--push] [--body <text>] [--body-file <path>]"
+  echo "示例: $0 1.4.8                        # 交互式"
+  echo "      $0 1.4.8 --body 'Fix bug'       # agent 调用"
+  echo "      $0 1.4.8 --body-file /tmp/cl.md # 从文件读"
   exit 1
 fi
 
@@ -42,14 +57,30 @@ fi
 CURRENT_BRANCH="$(git branch --show-current)"
 if [ "$CURRENT_BRANCH" != "master" ]; then
   echo "⚠️  当前分支是 $CURRENT_BRANCH，不是 master"
-  read -p "   继续吗？(y/N) " -n 1 -r
-  echo
-  [[ ! $REPLY =~ ^[Yy]$ ]] && exit 0
+  if [ -z "$BODY_TEXT" ] && [ -z "$BODY_FILE" ]; then
+    read -p "   继续吗？(y/N) " -n 1 -r
+    echo
+    [[ ! $REPLY =~ ^[Yy]$ ]] && exit 0
+  else
+    echo "   非交互模式，继续执行"
+  fi
 fi
 
-# 准备 changelog 模板
-CHANGELOG_FILE="/tmp/lightdao-release-$TAG_NAME.md"
-cat > "$CHANGELOG_FILE" <<'TEMPLATE'
+# 获取 changelog
+if [ -n "$BODY_FILE" ]; then
+  # 从文件读取
+  if [ ! -f "$BODY_FILE" ]; then
+    echo "❌ 文件不存在: $BODY_FILE"
+    exit 1
+  fi
+  NORMALIZED="$(grep -v '^#' "$BODY_FILE" | grep -v '^---' | tr -d '\r' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
+elif [ -n "$BODY_TEXT" ]; then
+  # 从参数读取（agent 友好）
+  NORMALIZED="$(printf '%s' "$BODY_TEXT" | tr -d '\r' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
+else
+  # 交互式编辑
+  CHANGELOG_FILE="/tmp/lightdao-release-$TAG_NAME.md"
+  cat > "$CHANGELOG_FILE" <<'TEMPLATE'
 本次版本的一句话总结（会作为 release 标题下方的摘要）
 
 ## Features
@@ -65,15 +96,13 @@ cat > "$CHANGELOG_FILE" <<'TEMPLATE'
 # 编辑完成后保存并关闭编辑器
 # 空行和注释（以 # 开头的行）会被自动删除
 # 每个条目用 * 开头（markdown 列表）
-# 可以引用 PR/issue，但用 PR #123 / issue #456 格式（带空格），避免 GitHub 自动链接
+# 可以引用 PR/issue，但用 "PR #123" / "issue #456" 格式（带空格），避免 GitHub 自动链接
 TEMPLATE
 
-# 打开编辑器
-EDITOR="${EDITOR:-vim}"
-$EDITOR "$CHANGELOG_FILE"
-
-# 规范化 changelog：删注释、删空开头结尾、统一换行
-NORMALIZED="$(grep -v '^#' "$CHANGELOG_FILE" | grep -v '^---' | tr -d '\r' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
+  EDITOR="${EDITOR:-vim}"
+  $EDITOR "$CHANGELOG_FILE"
+  NORMALIZED="$(grep -v '^#' "$CHANGELOG_FILE" | grep -v '^---' | tr -d '\r' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
+fi
 
 if [ -z "$NORMALIZED" ]; then
   echo "❌ Changelog 为空，取消发布"
@@ -88,7 +117,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "$NORMALIZED"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-if [ "$PUSH_FLAG" != "--push" ]; then
+if [ "$PUSH_FLAG" != "--push" ] && [ -z "$BODY_TEXT" ] && [ -z "$BODY_FILE" ]; then
   read -p "创建 tag 到本地？(Y/n) " -n 1 -r
   echo
   [[ $REPLY =~ ^[Nn]$ ]] && exit 0
