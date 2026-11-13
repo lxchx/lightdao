@@ -166,6 +166,29 @@ class CookieManagementPage extends StatelessWidget {
   }
 }
 
+/// 解析二维码里的饼干信息，返回 (name, cookieHash)。
+///
+/// 二维码内容必须是 JSON 对象且带 name / cookie 两个键；解析失败或格式
+/// 不对都返回 null，由调用方提示用户。原来的实现是直接 `jsonDecode`（还要
+/// 先判空），非 JSON 的二维码会抛未捕获异常。
+(String, String)? parseCookieQrCode(String? raw) {
+  if (raw == null) return null;
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+  Object? decoded;
+  try {
+    decoded = jsonDecode(trimmed);
+  } on FormatException {
+    return null;
+  }
+  if (decoded is! Map<String, dynamic>) return null;
+  final name = decoded['name'];
+  final cookie = decoded['cookie'];
+  if (name is! String || cookie is! String) return null;
+  if (name.isEmpty || cookie.isEmpty) return null;
+  return (name, cookie);
+}
+
 // name, cookieHash
 Future<(String, String)?> showAddCookieDialog(BuildContext context) {
   return showDialog<(String, String)>(
@@ -228,16 +251,17 @@ Future<(String, String)?> showAddCookieDialog(BuildContext context) {
             if (result == null) {
               navigator.pop();
               scaffoldMessenger.showSnackBar(SnackBar(content: Text("识别失败")));
+              return;
             }
-            final Map<String, dynamic> jsonMap = jsonDecode(result ?? '');
-            if (jsonMap.containsKey('cookie') && jsonMap.containsKey('name')) {
-              navigator.pop((jsonMap['name'], jsonMap['cookie']));
-            } else {
+            final parsed = parseCookieQrCode(result);
+            if (parsed == null) {
               navigator.pop();
               scaffoldMessenger.showSnackBar(
                 SnackBar(content: Text("无效的二维码格式")),
               );
+              return;
             }
+            navigator.pop(parsed);
           },
         ),
         SimpleDialogOption(

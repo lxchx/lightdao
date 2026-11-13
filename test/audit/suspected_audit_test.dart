@@ -4,6 +4,7 @@
 // #9 / #10 / #11 / #12。运行：flutter test test/audit/suspected_audit_test.dart
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lightdao/ui/page/more/cookies_management.dart';
 import 'package:lightdao/ui/page/thread2.dart';
 import 'package:lightdao/utils/xdao_api.dart';
 
@@ -99,6 +100,25 @@ void main() {
         isFalse,
       );
       expect(responseSaysSuccess('', '订阅大成功→_→'), isFalse);
+    });
+  });
+  group('疑似#10 二维码相册分支：解析失败不该抛未捕获异常', () {
+    test('合法二维码内容解析出 (name, cookie)', () {
+      final parsed = parseCookieQrCode(
+        '{"name":"my phone","cookie":"AbCdEf1234567890"}',
+      );
+      expect(parsed, ('my phone', 'AbCdEf1234567890'));
+    });
+
+    test('非 JSON / 缺字段 / 空内容都返回 null（调用方提示"无效的二维码格式"）', () {
+      expect(parseCookieQrCode(null), isNull);
+      expect(parseCookieQrCode(''), isNull);
+      expect(parseCookieQrCode('   '), isNull, reason: '取消选图后拿到的是空串');
+      expect(parseCookieQrCode('https://nmb.best'), isNull);
+      expect(parseCookieQrCode('{"name":"x"}'), isNull);
+      expect(parseCookieQrCode('{"cookie":"y"}'), isNull);
+      expect(parseCookieQrCode('{"name":"","cookie":"y"}'), isNull);
+      expect(parseCookieQrCode('[1,2,3]'), isNull);
     });
   });
 }
