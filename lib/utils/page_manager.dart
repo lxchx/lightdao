@@ -261,11 +261,17 @@ abstract class PageManager<T> {
         if (items.isNotEmpty) {
           _pageItems[nextPage] = items;
           _onAfterPageLoad(nextPage, items);
+        }
+        // 整页都是已见条目时去重结果为空，但这一页确实已经请求过了：
+        // 不推进页码的话，下一次滚动会把同一页再请求一遍，永远翻不到
+        // 下一页。所以页码按服务器的原始返回（rawItems）推进，末页判定
+        // 也同样只看 rawItems，不由去重后的条数反推。
+        if (rawItems.isNotEmpty) {
           _maxLoadedPage = nextPage;
         }
         if (_isLastPage(rawItems)) {
           nextPageStateNotifier.value = const PageFullLoaded();
-          _knownMaxPage = items.isEmpty ? nextPage - 1 : nextPage;
+          _knownMaxPage = rawItems.isEmpty ? nextPage - 1 : nextPage;
         } else {
           nextPageStateNotifier.value = const PageHasMore();
         }
