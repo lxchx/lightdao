@@ -26,6 +26,8 @@ class AboutPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final breakpoint = Breakpoint.fromMediaQuery(context);
+    // 检查更新要访问 GitHub（第三方服务器），没同意时不可用。
+    final thirdPartyAllowed = appState.isThirdPartyAllowed;
     return Scaffold(
       appBar: AppBar(title: Text('关于')),
       body: SafeArea(
@@ -59,10 +61,14 @@ class AboutPage extends StatelessWidget {
                 '${packageInfo.version} (${packageInfo.buildNumber})',
               ),
               trailing: TextButton(
+                onPressed: thirdPartyAllowed
+                    ? () => _checkForUpdates(context)
+                    : () => _showConsentRequired(context),
                 child: Text('检查更新'),
-                onPressed: () => _checkForUpdates(context),
               ),
-              onTap: () => _checkForUpdates(context),
+              onTap: thirdPartyAllowed
+                  ? () => _checkForUpdates(context)
+                  : () => _showConsentRequired(context),
             ),
             ListTile(title: Text('作者'), subtitle: Text('9ionKfO')),
             ListTile(
@@ -77,7 +83,21 @@ class AboutPage extends StatelessWidget {
     );
   }
 
+  /// 未同意第三方服务时的提示：检查更新要访问 GitHub。
+  void _showConsentRequired(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('需要先在「设置 - 网络 - 第三方服务」里同意第三方服务，检查更新要访问 GitHub'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> _checkForUpdates(BuildContext context) async {
+    if (!appState.isThirdPartyAllowed) {
+      _showConsentRequired(context);
+      return;
+    }
     try {
       final updateInfo = await UpdateChecker.checkUpdate();
       if (!context.mounted) return;

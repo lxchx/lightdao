@@ -96,6 +96,69 @@ void main() {
     });
   });
 
+  group('resolveConsentedUpdatePolicy 未同意第三方服务', () {
+    test('拒绝时无论存了哪一档都返回永不检查', () {
+      for (final stored in [null, 0, 1, 2, 9]) {
+        expect(
+          resolveConsentedUpdatePolicy(
+            thirdPartyConsented: false,
+            storedPolicy: stored,
+            legacyCheckUpdateOnLaunch: true,
+          ),
+          UpdatePolicy.never,
+          reason: 'storedPolicy=$stored',
+        );
+      }
+    });
+
+    test('拒绝时不走到老开关的推导（老开关为 true 也不检查）', () {
+      expect(
+        resolveConsentedUpdatePolicy(
+          thirdPartyConsented: false,
+          storedPolicy: null,
+          legacyCheckUpdateOnLaunch: true,
+        ),
+        UpdatePolicy.never,
+      );
+    });
+  });
+
+  group('resolveConsentedUpdatePolicy 已同意第三方服务', () {
+    test('与 resolveUpdatePolicy 的结果一致', () {
+      for (final stored in [null, 0, 1, 2]) {
+        for (final legacy in [true, false]) {
+          for (final isAndroid in [true, false]) {
+            expect(
+              resolveConsentedUpdatePolicy(
+                thirdPartyConsented: true,
+                storedPolicy: stored,
+                legacyCheckUpdateOnLaunch: legacy,
+                isAndroid: isAndroid,
+              ),
+              resolveUpdatePolicy(
+                storedPolicy: stored,
+                legacyCheckUpdateOnLaunch: legacy,
+                isAndroid: isAndroid,
+              ),
+              reason: 'stored=$stored legacy=$legacy android=$isAndroid',
+            );
+          }
+        }
+      }
+    });
+
+    test('已同意时照常按存储值解析', () {
+      expect(
+        resolveConsentedUpdatePolicy(
+          thirdPartyConsented: true,
+          storedPolicy: UpdatePolicy.check.value,
+          legacyCheckUpdateOnLaunch: false,
+        ),
+        UpdatePolicy.check,
+      );
+    });
+  });
+
   group('UpdatePolicy 常量', () {
     test('持久化值与档位一一对应', () {
       expect(UpdatePolicy.fromValue(0), UpdatePolicy.auto);

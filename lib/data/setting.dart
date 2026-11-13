@@ -15,6 +15,7 @@ import 'package:lightdao/data/xdao/timeline.dart';
 import 'package:lightdao/ui/page/thread.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/xdao_api.dart';
+import 'package:lightdao/utils/xdao_cdn.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 import 'package:swipeable_page_route/swipeable_page_route.dart';
 
@@ -224,6 +225,15 @@ class LightDaoSetting extends HiveObject {
   @HiveField(48, defaultValue: null)
   int? updatePolicy;
 
+  /// 第三方服务使用许可：null = 尚未询问、true = 同意、false = 拒绝。
+  ///
+  /// 老版本的用户数据里没有这个字段，读出来是 null，等价于「尚未询问」，
+  /// 所以这个字段要允许为空，null 时启动先问一次。
+  ///
+  /// 这是用户的决定而不是 App 配置，[resetAppSettings] 不会重置它。
+  @HiveField(49, defaultValue: null)
+  bool? thirdPartyConsent;
+
   LightDaoSetting({
     required this.cookies,
     required this.currentCookie,
@@ -273,6 +283,7 @@ class LightDaoSetting extends HiveObject {
     required this.baseCdn,
     required this.refCdn,
     this.updatePolicy,
+    this.thirdPartyConsent,
     LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
   }) : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
        viewPoOnlyHistory =
@@ -294,6 +305,7 @@ class LightDaoSetting extends HiveObject {
     required this.favoredItems,
     required this.baseCdn,
     required this.refCdn,
+    this.thirdPartyConsent,
     LRUCache<int, ReplyJsonWithPage>? viewHistory,
     LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
   }) : refCollapsing = 2,
@@ -336,8 +348,10 @@ class LightDaoSetting extends HiveObject {
   ///
   /// [updatePolicy] 为 null（老用户升级上来的数据 / 全新安装）时按
   /// [checkUpdateOnLaunch] 推导；非 Android 平台没有安装 APK 的能力，
-  /// 自动更新会退化成自动检查。
-  UpdatePolicy get effectiveUpdatePolicy => resolveUpdatePolicy(
+  /// 自动更新会退化成自动检查。未同意第三方服务时一律是
+  /// [UpdatePolicy.never]，见 [resolveConsentedUpdatePolicy]。
+  UpdatePolicy get effectiveUpdatePolicy => resolveConsentedUpdatePolicy(
+    thirdPartyConsented: thirdPartyConsent == true,
     storedPolicy: updatePolicy,
     legacyCheckUpdateOnLaunch: checkUpdateOnLaunch,
     isAndroid: Platform.isAndroid,
@@ -409,8 +423,11 @@ class MyAppState with ChangeNotifier {
   }) async {
     final prevBaseCdn = setting.baseCdn;
     final prevRefCdn = setting.refCdn;
+    final prevThirdPartyConsent = setting.thirdPartyConsent;
     fun(this);
-    if (setting.baseCdn != prevBaseCdn || setting.refCdn != prevRefCdn) {
+    if (setting.baseCdn != prevBaseCdn ||
+        setting.refCdn != prevRefCdn ||
+        setting.thirdPartyConsent != prevThirdPartyConsent) {
       applyNetworkSettings();
     }
     if (markRebuild) {
@@ -616,8 +633,23 @@ class MyAppState with ChangeNotifier {
     notifyListeners();
   }
 
+  /// 是否已同意使用第三方服务（GitHub 更新检查、第三方 CDN 线路等）。
+  ///
+  /// 只有明确同意（true）才算数，null（尚未询问）与 false 都不行。
+  bool get isThirdPartyAllowed => setting.thirdPartyConsent == true;
+
+  /// 把实际生效的线路设置应用给网络层。
+  ///
+  /// 实际生效值由同意状态与保存值共同决定（见
+  /// [resolveEffectiveCdnSetting]）：未同意时固定官方线路、不做测速，
+  /// 但保存的 baseCdn/refCdn 不删，同意后原样生效。
   void applyNetworkSettings() {
-    applyCdnSetting(baseCdn: setting.baseCdn, refCdn: setting.refCdn);
+    final cdn = resolveEffectiveCdnSetting(
+      thirdPartyConsented: isThirdPartyAllowed,
+      storedBaseCdn: setting.baseCdn,
+      storedRefCdn: setting.refCdn,
+    );
+    applyCdnSetting(baseCdn: cdn.baseCdn, refCdn: cdn.refCdn);
   }
 
   Future<void> saveSettings() async {
@@ -645,6 +677,8 @@ class MyAppState with ChangeNotifier {
       // 与按钮文案"重置所有App配置为默认值"一致（饼干/历史等用户数据仍保留）。
       baseCdn: 'auto',
       refCdn: 'auto',
+      // 同意与否是用户的决定，不是 App 配置，重置时保留。
+      thirdPartyConsent: setting.thirdPartyConsent,
     );
     applyNetworkSettings();
     notifyListeners();

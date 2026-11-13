@@ -172,6 +172,7 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
       baseCdn: fields[46] == null ? 'auto' : fields[46] as String,
       refCdn: fields[47] == null ? 'auto' : fields[47] as String,
       updatePolicy: fields[48] as int?,
+      thirdPartyConsent: fields[49] as bool?,
       viewPoOnlyHistory: fields[39] as LRUCache<int, ReplyJsonWithPage>?,
     );
   }
@@ -179,7 +180,7 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
   @override
   void write(BinaryWriter writer, LightDaoSetting obj) {
     writer
-      ..writeByte(49)
+      ..writeByte(50)
       ..writeByte(0)
       ..write(obj.cookies)
       ..writeByte(1)
@@ -277,7 +278,9 @@ class LightDaoSettingAdapter extends TypeAdapter<LightDaoSetting> {
       ..writeByte(47)
       ..write(obj.refCdn)
       ..writeByte(48)
-      ..write(obj.updatePolicy);
+      ..write(obj.updatePolicy)
+      ..writeByte(49)
+      ..write(obj.thirdPartyConsent);
   }
 
   @override
