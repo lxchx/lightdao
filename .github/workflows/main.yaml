@@ -165,5 +165,4 @@ jobs:
             artifacts/**/*.apk
           draft: false
           prerelease: false
-          allowUpdates: true
           make_latest: true
