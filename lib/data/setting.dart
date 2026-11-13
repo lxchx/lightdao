@@ -473,8 +473,12 @@ class MyAppState with ChangeNotifier {
           .catchError((err) {
             fetchTimelinesStatus = SimpleStatus.error;
             notifyListeners();
-            if (!scaffoldMessengerKey.currentContext!.mounted) return;
-            scaffoldMessengerKey.currentState?.showSnackBar(
+            // 这个守卫原来写成 currentContext!.mounted：currentContext 为 null
+            // 时直接空断言崩掉，而它要么是 null 要么已 mounted，这个判断本身
+            // 也是死代码。改成拿 currentState 判空。
+            final messenger = scaffoldMessengerKey.currentState;
+            if (messenger == null) return;
+            messenger.showSnackBar(
               SnackBar(
                 content: Text('拉取时间线错误： ${err.toString()}'),
                 action: SnackBarAction(
@@ -512,8 +516,9 @@ class MyAppState with ChangeNotifier {
           .catchError((err) {
             fetchForumsStatus = SimpleStatus.completed;
             notifyListeners();
-            if (!scaffoldMessengerKey.currentContext!.mounted) return;
-            scaffoldMessengerKey.currentState?.showSnackBar(
+            final messenger = scaffoldMessengerKey.currentState;
+            if (messenger == null) return;
+            messenger.showSnackBar(
               SnackBar(
                 content: Text('拉取板块错误： ${err.toString()}'),
                 action: SnackBarAction(
