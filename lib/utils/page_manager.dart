@@ -390,7 +390,10 @@ class ThreadPageManager extends PageManager<ReplyJson> {
   Future<List<ReplyJson>> fetchPage(int page) async {
     final getItems = isPoOnly ? getThreadPoOnly : getThread;
     final pageThread = await getItems(threadId, page, cookie).timeout(timeout);
-    _threadMaxPage = max(_threadMaxPage, pageThread.replyCount ~/ 19 + 1);
+    _threadMaxPage = max(
+      _threadMaxPage,
+      threadPageCount(pageThread.replyCount),
+    );
     _fid ??= pageThread.fid;
     headerReply = pageThread;
 
