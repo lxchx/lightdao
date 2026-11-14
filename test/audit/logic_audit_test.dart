@@ -102,8 +102,15 @@ void main() {
         '${t.year}-${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')} '
         '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}';
 
+    // 服务端时间串是东八区墙上时间，parseJsonTimeStr 也会把「现在」换算成东八区
+    // 墙上时间再比较。所以拼串时要用东八区墙上时间，不能直接用本机本地时间：
+    // 在非东八区的机器（例如 UTC 的 CI runner）上，直接用本地时间拼出来的串会
+    // 差一个时区偏移，这组用例必红。
+    DateTime bjWallClockNow() =>
+        DateTime.now().toUtc().add(const Duration(hours: 8));
+
     test('比本机快 5 秒的时间 → "0秒前"', () {
-      final future = DateTime.now().add(const Duration(seconds: 5));
+      final future = bjWallClockNow().add(const Duration(seconds: 5));
       final out = parseJsonTimeStr(fmt(future));
       expect(out, '0秒前', reason: '负差直接拼进文案会显示 "-4秒前"');
     });
@@ -114,7 +121,7 @@ void main() {
         Duration(seconds: 30),
         Duration(minutes: 10),
       ]) {
-        final out = parseJsonTimeStr(fmt(DateTime.now().add(offset)));
+        final out = parseJsonTimeStr(fmt(bjWallClockNow().add(offset)));
         expect(out.startsWith('-'), isFalse, reason: '$offset 之后不该是负数');
         expect(out, endsWith('秒前'));
       }
@@ -122,7 +129,7 @@ void main() {
 
     test('正常过去的时间文案不变', () {
       final out = parseJsonTimeStr(
-        fmt(DateTime.now().subtract(const Duration(seconds: 30))),
+        fmt(bjWallClockNow().subtract(const Duration(seconds: 30))),
       );
       expect(out, matches(RegExp(r'^\d+秒前$')));
     });
