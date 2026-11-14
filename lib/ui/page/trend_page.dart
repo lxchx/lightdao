@@ -11,6 +11,7 @@ import 'package:lightdao/data/xdao/thread.dart';
 import 'package:lightdao/ui/widget/icon_text.dart';
 import 'package:lightdao/ui/widget/reply_item.dart';
 import 'package:lightdao/ui/widget/scaffold_accessory_builder.dart';
+import 'package:lightdao/ui/widget/top_bar.dart';
 import 'package:lightdao/utils/kv_store.dart';
 import 'package:lightdao/utils/throttle.dart';
 import 'package:lightdao/utils/time_parse.dart';
@@ -130,59 +131,99 @@ class _TrendPageState extends ScaffoldAccessoryBuilder<TrendPage> {
   Widget build(BuildContext context) {
     final appState = Provider.of<MyAppState>(context);
     final breakpoint = Breakpoint.fromMediaQuery(context);
-    final titleBar = AppBar(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('趋势'),
-          if (_dailyTrend != null)
-            Text(
-              DateFormat('yyyy-MM-dd').format(_dailyTrend!.date),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).hintColor,
-              ),
+    final TopBarMode topBarMode = topBarModeOf(
+      context,
+      fixedBottomBar: appState.setting.fixedBottomBar,
+    );
+    // 顶栏图标、文字的同色柔光由 GlassTopBar 自己在 build 里按当前 Theme 取
+    // （见 top_bar.dart），这里不再把颜色烘进图标里。
+    // 标题块按内容高度排（不要撑满顶栏），否则在 GlassTopBar 里会被顶上对齐。
+    final Widget topBarTitle = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('趋势'),
+        if (_dailyTrend != null)
+          Text(
+            DateFormat('yyyy-MM-dd').format(_dailyTrend!.date),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).hintColor,
             ),
-        ],
+          ),
+      ],
+    );
+    final List<Widget> topBarActions = [
+      IconButton(
+        icon: const Icon(Icons.info_outline),
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('说明'),
+              content: const Text('数据取自No.50248044'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    appState.navigateThreadPage2(context, 50248044, false);
+                  },
+                  child: const Text('查看原串'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('好的'),
+                ),
+              ],
+            ),
+          );
+        },
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.info_outline),
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('说明'),
-                content: const Text('数据取自No.50248044'),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      appState.navigateThreadPage2(context, 50248044, false);
-                    },
-                    child: const Text('查看原串'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('好的'),
-                  ),
-                ],
-              ),
+    ];
+
+    // 手机竖屏（底部导航）保持改动前的一整套：设置里打开「固定底栏&顶栏」时是
+    // Scaffold 的固定 AppBar，否则是跟手顶栏。
+    if (topBarMode == TopBarMode.phone) {
+      final AppBar titleBar = AppBar(
+        title: topBarTitle,
+        actions: topBarActions,
+      );
+      // 设置里打开“固定底栏&顶栏”时保持原来的固定顶栏。
+      if (appState.setting.fixedBottomBar) {
+        return Scaffold(
+          appBar: titleBar,
+          body: Center(child: _buildTrendBody(appState, breakpoint)),
+        );
+      }
+
+      // 跟手顶栏：和首页、串页是同一套（SliverAnchoredFloatingHeader）。
+      // 顶栏自己把状态栏那一条算进高度里，所以外面不能再套 SafeArea(top: true)。
+      return Scaffold(
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final forumRowCount = _forumRowCount(
+              appState,
+              constraints.maxWidth,
+            );
+            return CustomScrollView(
+              controller: _scrollController,
+              cacheExtent: 10000,
+              slivers: [
+                SliverAnchoredFloatingHeader(
+                  controller: _anchorController,
+                  extent: kToolbarHeight + MediaQuery.of(context).padding.top,
+                  child: titleBar,
+                ),
+                ..._buildTrendSlivers(appState, breakpoint, forumRowCount),
+              ],
             );
           },
         ),
-      ],
-    );
-
-    // 设置里打开“固定底栏&顶栏”时保持原来的固定顶栏。
-    if (appState.setting.fixedBottomBar) {
-      return Scaffold(
-        appBar: titleBar,
-        body: Center(child: _buildTrendBody(appState, breakpoint)),
       );
     }
 
-    // 跟手顶栏：和首页、串页是同一套（SliverAnchoredFloatingHeader）。
-    // 顶栏自己把状态栏那一条算进高度里，所以外面不能再套 SafeArea(top: true)。
+    // 侧栏导航模式：顶栏固定时半透明 + 背景模糊，矮屏时跟手隐藏；两种都在同一个
+    // CustomScrollView 里，内容要能从顶栏下面滑过去（否则模糊层下面没东西可糊）。
+    final bool pinnedTopBar = topBarMode == TopBarMode.pinnedGlass;
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -194,7 +235,14 @@ class _TrendPageState extends ScaffoldAccessoryBuilder<TrendPage> {
               SliverAnchoredFloatingHeader(
                 controller: _anchorController,
                 extent: kToolbarHeight + MediaQuery.of(context).padding.top,
-                child: titleBar,
+                pinned: pinnedTopBar,
+                child: pinnedTopBar
+                    ? GlassTopBar(title: topBarTitle, actions: topBarActions)
+                    : solidTopBar(
+                        context: context,
+                        title: topBarTitle,
+                        actions: topBarActions,
+                      ),
               ),
               ..._buildTrendSlivers(appState, breakpoint, forumRowCount),
             ],

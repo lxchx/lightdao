@@ -20,6 +20,7 @@ import '../../data/setting.dart';
 import '../../data/xdao/thread.dart';
 import '../widget/reply_item.dart';
 import 'package:lightdao/ui/widget/scaffold_accessory_builder.dart';
+import 'package:lightdao/ui/widget/top_bar.dart';
 
 /// 一个数据类，用于封装AppPage和ForumPage之间传递的板块选择信息。
 class ForumSelection {
@@ -280,6 +281,127 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                 child: ValueListenableBuilder(
                   valueListenable: _pageManager.nextPageStateNotifier,
                   builder: (context, value, child) {
+                    // 顶栏用哪一支由 top_bar.dart 统一判定：手机竖屏保持原样，
+                    // 侧栏模式固定时半透明 + 模糊、矮屏跟手隐藏。下面先备好三支
+                    // 共用的顶栏内容，再按形态挑容器。
+                    final TopBarMode topBarMode = topBarModeOf(
+                      context,
+                      fixedBottomBar: appState.setting.fixedBottomBar,
+                    );
+                    final double topBarToolbarHeight =
+                        breakpoint.window >= WindowSize.small
+                        ? kToolbarHeight + 20
+                        : kToolbarHeight;
+                    final Widget? topBarLeading =
+                        breakpoint.window < WindowSize.small
+                        ? IconButton(
+                            icon: const Icon(Icons.menu),
+                            onPressed: () => Scaffold.of(context).openDrawer(),
+                          )
+                        : null;
+                    // 顶栏图标、文字的同色柔光由 GlassTopBar 自己在 build 里按当前
+                    // Theme 取（见 top_bar.dart），这里不再把颜色烘进图标里。
+                    final List<Widget> topBarActions = <Widget>[
+                      if (forumInfo.trim() != '')
+                        IconButton(
+                          onPressed: () => showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('版规'),
+                              content: SizedBox(
+                                width: double.maxFinite,
+                                height: 150,
+                                child: FadingScrollView(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      SelectionArea(
+                                        child: HtmlWidget(forumInfo),
+                                      ),
+                                      const SizedBox(height: 20),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  child: const Text('了解'),
+                                  onPressed: () => Navigator.of(context).pop(),
+                                ),
+                              ],
+                            ),
+                          ),
+                          icon: const Icon(Icons.info),
+                        ),
+                      IconButton(
+                        onPressed: _showSearchDialog,
+                        icon: const Icon(Icons.search),
+                      ),
+                      if (breakpoint.window >= WindowSize.small)
+                        FloatingActionButton.extended(
+                          elevation: 0,
+                          onPressed: () => showReplyBottomSheet(
+                            context,
+                            true,
+                            currentSelection.isTimeline
+                                ? appState.forumMap.values
+                                      .firstWhere(
+                                        (forum) => forum.name == "综合版1",
+                                        orElse: () =>
+                                            appState.forumMap.values.first,
+                                      )
+                                      .id
+                                : currentSelection.id,
+                            -1,
+                            fakeThread,
+                            _postImageFile,
+                            (image) => _postImageFile = image,
+                            _postTitleControler,
+                            _postAuthorControler,
+                            _postTextControler,
+                            () => _initializePageManager(),
+                          ),
+                          tooltip: '发串',
+                          label: const Text('发串'),
+                          icon: const Icon(Icons.edit),
+                        ),
+                      SizedBox(width: breakpoint.gutters),
+                    ];
+                    final Widget topBarTitle = GestureDetector(
+                      onTap: () async {
+                        if (_scrollController.hasClients) {
+                          await _scrollController.animateTo(
+                            0,
+                            duration: Durations.medium1,
+                            curve: Curves.linearToEaseOut,
+                          );
+                        }
+                      },
+                      child: Row(
+                        children: [
+                          // 标题块按内容高度排（不要撑满顶栏），否则在 GlassTopBar 里
+                          // 会被顶上对齐，和右边的图标/发串按钮不在一条中线上。
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              HtmlWidget(currentSelection.name),
+                              Text(
+                                'X岛・nmbxd.com',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: Theme.of(context).hintColor,
+                                    ),
+                              ),
+                            ],
+                          ),
+                          Expanded(child: Container()),
+                        ],
+                      ),
+                    );
+
                     return CustomScrollView(
                       physics: value is PageLoading && _pageManager.isEmpty
                           ? const NeverScrollableScrollPhysics()
@@ -289,127 +411,40 @@ class _ForumPageState extends ScaffoldAccessoryBuilder<ForumPage> {
                       ),
                       controller: _scrollController,
                       slivers: [
-                        SliverAppBar(
-                          surfaceTintColor: Colors.transparent,
-                          toolbarHeight: breakpoint.window >= WindowSize.small
-                              ? kToolbarHeight + 20
-                              : kToolbarHeight,
-                          leading: breakpoint.window < WindowSize.small
-                              ? IconButton(
-                                  icon: const Icon(Icons.menu),
-                                  onPressed: () =>
-                                      Scaffold.of(context).openDrawer(),
-                                )
-                              : null,
-                          automaticallyImplyLeading: false,
-                          pinned:
-                              appState.setting.fixedBottomBar ||
-                              breakpoint.window >= WindowSize.small,
-                          snap: false,
-                          floating: breakpoint.window < WindowSize.small,
-                          actions: [
-                            if (forumInfo.trim() != '')
-                              IconButton(
-                                onPressed: () => showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: const Text('版规'),
-                                    content: SizedBox(
-                                      width: double.maxFinite,
-                                      height: 150,
-                                      child: FadingScrollView(
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            SelectionArea(
-                                              child: HtmlWidget(forumInfo),
-                                            ),
-                                            const SizedBox(height: 20),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        child: const Text('了解'),
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                icon: const Icon(Icons.info),
-                              ),
-                            IconButton(
-                              onPressed: _showSearchDialog,
-                              icon: const Icon(Icons.search),
-                            ),
-                            if (breakpoint.window >= WindowSize.small)
-                              FloatingActionButton.extended(
-                                elevation: 0,
-                                onPressed: () => showReplyBottomSheet(
-                                  context,
-                                  true,
-                                  currentSelection.isTimeline
-                                      ? appState.forumMap.values
-                                            .firstWhere(
-                                              (forum) => forum.name == "综合版1",
-                                              orElse: () => appState
-                                                  .forumMap
-                                                  .values
-                                                  .first,
-                                            )
-                                            .id
-                                      : currentSelection.id,
-                                  -1,
-                                  fakeThread,
-                                  _postImageFile,
-                                  (image) => _postImageFile = image,
-                                  _postTitleControler,
-                                  _postAuthorControler,
-                                  _postTextControler,
-                                  () => _initializePageManager(),
-                                ),
-                                tooltip: '发串',
-                                label: const Text('发串'),
-                                icon: const Icon(Icons.edit),
-                              ),
-                            SizedBox(width: breakpoint.gutters),
-                          ],
-                          title: GestureDetector(
-                            onTap: () async {
-                              if (_scrollController.hasClients) {
-                                await _scrollController.animateTo(
-                                  0,
-                                  duration: Durations.medium1,
-                                  curve: Curves.linearToEaseOut,
-                                );
-                              }
-                            },
-                            child: Row(
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    HtmlWidget(currentSelection.name),
-                                    Text(
-                                      'X岛・nmbxd.com',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                            color: Theme.of(context).hintColor,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                                Expanded(child: Container()),
-                              ],
+                        if (topBarMode == TopBarMode.phone)
+                          // 手机竖屏：与改动前完全一致（含 M3 的滑动后变色）。
+                          SliverAppBar(
+                            surfaceTintColor: Colors.transparent,
+                            toolbarHeight: topBarToolbarHeight,
+                            leading: topBarLeading,
+                            automaticallyImplyLeading: false,
+                            pinned: appState.setting.fixedBottomBar,
+                            snap: false,
+                            floating: true,
+                            actions: topBarActions,
+                            title: topBarTitle,
+                          )
+                        else if (topBarMode == TopBarMode.hideOnScroll)
+                          // 侧栏模式 + 矮屏 + 没开固定底栏：纯色、跟手隐藏。
+                          solidTopBarSliver(
+                            context: context,
+                            toolbarHeight: topBarToolbarHeight,
+                            automaticallyImplyLeading: false,
+                            actions: topBarActions,
+                            title: topBarTitle,
+                          )
+                        else
+                          // 侧栏模式其余情况：固定，半透明 + 背景模糊。
+                          glassTopBarHeader(
+                            extent:
+                                MediaQuery.paddingOf(context).top +
+                                topBarToolbarHeight,
+                            child: GlassTopBar(
+                              toolbarHeight: topBarToolbarHeight,
+                              actions: topBarActions,
+                              title: topBarTitle,
                             ),
                           ),
-                        ),
                         Builder(
                           builder: (context) {
                             if (_pageManager.isEmpty && value is PageError) {
