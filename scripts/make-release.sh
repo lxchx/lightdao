@@ -73,7 +73,7 @@ if [ -n "$BODY_FILE" ]; then
     echo "❌ 文件不存在: $BODY_FILE"
     exit 1
   fi
-  NORMALIZED="$(grep -v '^#' "$BODY_FILE" | grep -v '^---' | tr -d '\r' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
+  NORMALIZED="$(grep -v '^---' "$BODY_FILE" | tr -d '\r' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
 elif [ -n "$BODY_TEXT" ]; then
   # 从参数读取（agent 友好）
   NORMALIZED="$(printf '%s' "$BODY_TEXT" | tr -d '\r' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
@@ -91,17 +91,16 @@ else
 
 ## Chore & CI
 * 构建/工具链改进
-
----
-# 编辑完成后保存并关闭编辑器
-# 空行和注释（以 # 开头的行）会被自动删除
-# 每个条目用 * 开头（markdown 列表）
-# 可以引用 PR/issue，但用 "PR #123" / "issue #456" 格式（带空格），避免 GitHub 自动链接
 TEMPLATE
+
+  echo "提示：编辑完成后保存并关闭编辑器。"
+  echo "      每个条目用 * 开头；Markdown 标题（## 小标题）会原样保留在 tag 正文里。"
+  echo "      引用 PR/issue 时写成「PR N」「issue N」（不要带 #），避免 GitHub 自动链接。"
+  echo "      仅 '---' 分隔行和末尾空行会被丢弃。"
 
   EDITOR="${EDITOR:-vim}"
   $EDITOR "$CHANGELOG_FILE"
-  NORMALIZED="$(grep -v '^#' "$CHANGELOG_FILE" | grep -v '^---' | tr -d '\r' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
+  NORMALIZED="$(grep -v '^---' "$CHANGELOG_FILE" | tr -d '\r' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
 fi
 
 if [ -z "$NORMALIZED" ]; then
@@ -124,7 +123,11 @@ if [ "$PUSH_FLAG" != "--push" ] && [ -z "$BODY_TEXT" ] && [ -z "$BODY_FILE" ]; t
 fi
 
 # 创建 annotated tag
-git tag -a "$TAG_NAME" -m "$NORMALIZED"
+# 用 --cleanup=verbatim 从临时文件写入，避免默认 cleanup 删掉以 # 开头的行（Markdown 标题）
+BODY_TMP="$(mktemp -t lightdao-release-body.XXXXXX)"
+trap 'rm -f "$BODY_TMP"' EXIT
+printf '%s\n' "$NORMALIZED" > "$BODY_TMP"
+git tag -a "$TAG_NAME" --cleanup=verbatim -F "$BODY_TMP"
 echo "✓ Tag $TAG_NAME 已创建"
 
 if [ "$PUSH_FLAG" = "--push" ]; then
