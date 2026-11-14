@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lightdao/data/third_party_consent.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// 第三方服务说明 / 同意页。
@@ -12,6 +13,7 @@ class ThirdPartyConsentPage extends StatelessWidget {
     super.key,
     required this.onDecided,
     this.firstRun = true,
+    this.newServices = const [],
   });
 
   /// 用户做出选择后回调：true = 同意，false = 不同意。
@@ -19,6 +21,12 @@ class ThirdPartyConsentPage extends StatelessWidget {
 
   /// 是否首次启动模式（不可跳过）。
   final bool firstRun;
+
+  /// 清单里新增、用户还没同意过的服务项。
+  ///
+  /// 启动时如果发现之前同意过、但清单里多了新项，就带着新项再走一遍这一页，
+  /// 页首会标出新增的是哪几项，让用户知道这次要确认什么。
+  final List<ThirdPartyService> newServices;
 
   /// X岛官网，也是本客户端全部内容的来源。
   static const String xDaoHomeUrl = 'https://www.nmbxd.com';
@@ -65,6 +73,46 @@ class ThirdPartyConsentPage extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (newServices.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Card.filled(
+                        color: colorScheme.secondaryContainer,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '本说明新增了以下第三方服务，需要你重新确认：',
+                                style: textTheme.titleSmall?.copyWith(
+                                  color: colorScheme.onSecondaryContainer,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              for (final service in newServices)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Text(
+                                    '· ${service.name}：${service.summary}',
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: colorScheme.onSecondaryContainer,
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '点「不同意」只影响上面这几项：它们会被拦下，'
+                                '你之前同意过的其他服务照常可用，之后也不会再追问。',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSecondaryContainer,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     Text(
                       '氢岛（lightdao）是X岛的第三方客户端，由爱好者开发维护，'
@@ -73,7 +121,7 @@ class ThirdPartyConsentPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '为了提供论坛浏览以外的功能（检查更新、可选的加速线路），'
+                      '为了提供论坛浏览以外的功能（检查更新、串搜索、可选的加速线路），'
                       '本客户端会与X岛官方以外的服务器通信。首次使用前请先阅读下面的说明，'
                       '同意后才可以继续使用。',
                       style: textTheme.bodyMedium,
@@ -93,6 +141,16 @@ class ThirdPartyConsentPage extends StatelessWidget {
                           '用途：检查是否有新版本、下载新版本的安装包（app-release.apk）。'
                           '发出：网络 IP、客户端 User-Agent、版本接口与安装包的请求地址；'
                           '不会发送你的饼干、账号或浏览内容。',
+                    ),
+                    const _Item(
+                      title: 'Google 自定义搜索（www.googleapis.com，由 Google 运营）',
+                      body:
+                          '用途：只在你使用「串搜索」时才会请求，用来按关键词搜索X岛上的串；'
+                          '搜索由 Google 的自定义搜索接口完成，关键词与结果都经过 Google。'
+                          '不使用搜索就不会连接它。'
+                          '发出：你输入的搜索关键词、本客户端内置的搜索引擎编号与接口密钥、'
+                          '网络 IP、User-Agent；不会发送你的饼干、账号或浏览历史。'
+                          '搜索结果里的缩略图由客户端直接从图片所在的原站点加载。',
                     ),
                     const _Item(
                       title: 'api.nmb.best（第三方镜像线路）',
@@ -157,23 +215,44 @@ class ThirdPartyConsentPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     const _SectionTitle('不同意的后果'),
-                    Text('不同意也可以继续使用，且不影响主要功能：', style: textTheme.bodyMedium),
-                    const _Item(
-                      body:
-                          '看时间线、看串、发串、看图、收藏等全部照常可用，请求只走X岛官方线路'
-                          '（www.nmbxd.com、www.nmbxd1.com，图片走 image.nmb.best，'
-                          '公告走 nmb.ovear.info）。',
+                    Text(
+                      // 重新询问时点「不同意」只影响新增项，别让这里的措辞
+                      // 读成「点下去这些旧功能也没了」。
+                      newServices.isEmpty
+                          ? '不同意也可以继续使用，且不影响主要功能：'
+                          : '这次点「不同意」只影响上面新增的这几项，其余照旧：',
+                      style: textTheme.bodyMedium,
                     ),
-                    const _Item(
-                      body:
-                          '不能使用第三方镜像线路与自定义线路，也不会做自动测速选线；'
-                          '你在设置里保存的线路不会被删除，同意后照原样生效。',
-                    ),
-                    const _Item(
-                      body:
-                          '不能检查更新，也不能下载更新包（需要访问 GitHub）。'
-                          '想更新时可以在这里或设置里重新同意第三方服务。',
-                    ),
+                    if (newServices.isEmpty) ...[
+                      const _Item(
+                        body:
+                            '看时间线、看串、发串、看图、收藏等全部照常可用，请求只走X岛官方线路'
+                            '（www.nmbxd.com、www.nmbxd1.com，图片走 image.nmb.best，'
+                            '公告走 nmb.ovear.info）。',
+                      ),
+                      const _Item(
+                        body:
+                            '不能使用第三方镜像线路与自定义线路，也不会做自动测速选线；'
+                            '你在设置里保存的线路不会被删除，同意后照原样生效。',
+                      ),
+                      const _Item(
+                        body:
+                            '不能检查更新，也不能下载更新包（需要访问 GitHub）。'
+                            '想更新时可以在这里或设置里重新同意第三方服务。',
+                      ),
+                      const _Item(
+                        body:
+                            '不能使用串搜索：它要把搜索关键词发给 Google（www.googleapis.com）。'
+                            '打开搜索页会说明原因，并给出去同意的入口。',
+                      ),
+                    ] else
+                      // 重新询问时列「不能检查更新」这类话会读成「旧的也没了」，
+                      // 这里只讲新增项与旧项各自的状态。
+                      Text(
+                        '上面新增的这几项在同意之前不会使用：相关功能会说明原因并给出去同意的入口；'
+                        '你已经同意过的其他服务照常可用，之后也不会再为这几项追问。',
+                        style: textTheme.bodyMedium,
+                      ),
                     const SizedBox(height: 8),
                     Text(
                       '点击「同意」表示你已阅读并接受上面的第三方服务说明；'

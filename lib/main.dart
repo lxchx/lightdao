@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:lightdao/data/const_data.dart';
 import 'package:lightdao/data/phrase.dart';
+import 'package:lightdao/data/third_party_consent.dart';
 import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/data/trend_data.dart';
 import 'package:lightdao/data/update_policy.dart';
@@ -185,7 +186,10 @@ class App extends StatelessWidget {
   }
 }
 
-/// 启动入口：还没被问过第三方服务时先显示同意页，决定之后再进首页。
+/// 启动入口：当前清单里还有没问过用户的第三方服务时先显示同意页。
+///
+/// 没问过的情况有两种：第一次启动（什么都没问过），以及清单里新增了服务
+/// （新增的 id 没问过）。问过之后再也不会重复问——包括用户点了「不同意」的那些项。
 ///
 /// 时间线、板块、更新检查这些网络请求都在 [MyHomePage] 的 initState 里，
 /// 决定之前 [MyHomePage] 根本不会被创建，请求也就不会发出去。
@@ -195,18 +199,22 @@ class _AppRoot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<MyAppState>(context);
-    if (appState.setting.thirdPartyConsent != null) {
-      return MyHomePage();
+    final setting = appState.setting;
+    // 门禁只看「当前清单里还有没有没问过的项」，见 [shouldAskConsent]。
+    if (shouldAskConsent(setting.askedServices)) {
+      final unaskedServices = setting.pendingThirdPartyServices;
+      // 清单里有没问过的项：首次启动时是整份清单，清单新增服务后只有新增的那几项。
+      // 只有后者才需要在页首标出「新增了哪几项」；首次启动看到的就是整份说明。
+      // 用户在这里点「不同意」只把这几项记成「问过」，之前同意过的服务照常可用。
+      return ThirdPartyConsentPage(
+        newServices: setting.askedServices.isEmpty ? const [] : unaskedServices,
+        onDecided: (allowed) {
+          // 写入后 applyNetworkSettings 会立刻按新的同意状态重设线路。
+          appState.recordConsentPageDecision(allowed);
+        },
+      );
     }
-    return ThirdPartyConsentPage(
-      onDecided: (allowed) {
-        // 写入后 applyNetworkSettings 会立刻按新的同意状态重设线路：
-        // 同意时恢复用户保存的线路设置，不同意时固定走官方线路且不测速。
-        appState.setState((state) {
-          state.setting.thirdPartyConsent = allowed;
-        });
-      },
-    );
+    return MyHomePage();
   }
 }
 

@@ -1,5 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:lightdao/data/third_party_consent.dart';
+
+/// 搜索请求用的 HTTP 客户端。
+///
+/// 单独留一个可替换的实例，测试里换成假客户端就能断言「有没有发请求」，
+/// 不用真的连 www.googleapis.com。
+http.Client searchHttpClient = http.Client();
 
 /// 单条搜索结果
 class GcseItem {
@@ -82,12 +89,25 @@ class GcseSearchResult {
 }
 
 /// 调用 Google CSE API
+///
+/// [allowed] 是第三方服务的同意结果（见 [resolveSearchAllowed]）：
+/// 没同意就直接抛 [ThirdPartyConsentRequiredException]，一个字节都不发出去。
+/// 放在这一层而不是只放在界面上，是为了任何调用路径都发不出请求。
+///
+/// 只发搜索关键词、客户端内置的搜索引擎编号与密钥、页码，
+/// 不带饼干、userhash 或任何登录信息。
 Future<GcseSearchResult> googleCseSearch({
   required String q,
+  required bool allowed,
   String cx = 'a72793f0a2020430b',
   String key = 'AIzaSyD2OeVt3FHS98PqRzynqcKnCRzc47igpbM',
   int? start,
+  http.Client? client,
 }) async {
+  if (!allowed) {
+    throw const ThirdPartyConsentRequiredException('串搜索');
+  }
+
   final params = {'q': q, 'cx': cx, 'key': key, 'num': '10'};
   if (start != null) {
     params['start'] = start.toString();
@@ -95,7 +115,7 @@ Future<GcseSearchResult> googleCseSearch({
 
   final uri = Uri.https('www.googleapis.com', '/customsearch/v1', params);
 
-  final response = await http.get(uri);
+  final response = await (client ?? searchHttpClient).get(uri);
   if (response.statusCode == 200) {
     final jsonMap = json.decode(response.body) as Map<String, dynamic>;
     return GcseSearchResult.fromJson(jsonMap);

@@ -555,8 +555,15 @@ class CSEPageManager extends PageManager<GcseItem> {
   final String key;
   final Duration timeout;
 
+  /// 第三方服务的同意结果（搜索走 Google，属第三方服务）。
+  ///
+  /// false 时 [fetchPage] 不会发出请求，改为抛
+  /// [ThirdPartyConsentRequiredException]，界面会把原因显示出来。
+  final bool searchAllowed;
+
   CSEPageManager({
     required this.query,
+    this.searchAllowed = false,
     this.cx = 'a72793f0a2020430b',
     this.key = 'AIzaSyD2OeVt3FHS98PqRzynqcKnCRzc47igpbM',
     this.timeout = const Duration(seconds: 10),
@@ -575,6 +582,7 @@ class CSEPageManager extends PageManager<GcseItem> {
     }
     final result = await googleCseSearch(
       q: query,
+      allowed: searchAllowed,
       cx: cx,
       key: key,
       start: start,

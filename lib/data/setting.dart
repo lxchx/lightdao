@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/phrase.dart';
+import 'package:lightdao/data/third_party_consent.dart';
 import 'package:lightdao/data/thread_filter.dart';
 import 'package:lightdao/data/trend_data.dart';
 import 'package:lightdao/data/update_policy.dart';
@@ -225,14 +226,22 @@ class LightDaoSetting extends HiveObject {
   @HiveField(48, defaultValue: null)
   int? updatePolicy;
 
-  /// 第三方服务使用许可：null = 尚未询问、true = 同意、false = 拒绝。
+  /// 已经问过用户的第三方服务 id，取值见 [kThirdPartyServices]。
   ///
-  /// 老版本的用户数据里没有这个字段，读出来是 null，等价于「尚未询问」，
-  /// 所以这个字段要允许为空，null 时启动先问一次。
+  /// 「问过」与「同意」分开记：用户在重新询问时点了「不同意」，那些项算问过、
+  /// 不算同意；只记同意的话，下次启动还会把这些项当成「新增」再问他一遍。
+  /// 清单以后新增服务时，新增的 id 不在里面，于是启动再问一次。
   ///
   /// 这是用户的决定而不是 App 配置，[resetAppSettings] 不会重置它。
-  @HiveField(49, defaultValue: null)
-  bool? thirdPartyConsent;
+  @HiveField(49, defaultValue: [])
+  List<String> askedServices;
+
+  /// 用户同意过的第三方服务 id，取值见 [kThirdPartyServices]。
+  ///
+  /// 某一项能不能用只看它（见 [hasConsentedService]）。重新询问时对新增项
+  /// 点「不同意」只影响新增的这几项，不会把这里的旧项删掉。
+  @HiveField(50, defaultValue: [])
+  List<String> consentedServices;
 
   LightDaoSetting({
     required this.cookies,
@@ -283,7 +292,8 @@ class LightDaoSetting extends HiveObject {
     required this.baseCdn,
     required this.refCdn,
     this.updatePolicy,
-    this.thirdPartyConsent,
+    required this.askedServices,
+    required this.consentedServices,
     LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
   }) : viewHistory = viewHistory ?? LRUCache<int, ReplyJsonWithPage>(5000),
        viewPoOnlyHistory =
@@ -305,7 +315,8 @@ class LightDaoSetting extends HiveObject {
     required this.favoredItems,
     required this.baseCdn,
     required this.refCdn,
-    this.thirdPartyConsent,
+    required this.askedServices,
+    required this.consentedServices,
     LRUCache<int, ReplyJsonWithPage>? viewHistory,
     LRUCache<int, ReplyJsonWithPage>? viewPoOnlyHistory,
   }) : refCollapsing = 2,
@@ -351,11 +362,27 @@ class LightDaoSetting extends HiveObject {
   /// 自动更新会退化成自动检查。未同意第三方服务时一律是
   /// [UpdatePolicy.never]，见 [resolveConsentedUpdatePolicy]。
   UpdatePolicy get effectiveUpdatePolicy => resolveConsentedUpdatePolicy(
-    thirdPartyConsented: thirdPartyConsent == true,
+    thirdPartyConsented: hasConsentedService(kUpdateServiceId),
     storedPolicy: updatePolicy,
     legacyCheckUpdateOnLaunch: checkUpdateOnLaunch,
     isAndroid: Platform.isAndroid,
   );
+
+  /// 某一项第三方服务是否已被同意，见 [isServiceConsented]。
+  ///
+  /// 清单新增服务后，新增项不在 [consentedServices] 里，所以是 false
+  /// （会被拦下并重新询问），已经同意过的项仍是 true。
+  bool hasConsentedService(String serviceId) => isServiceConsented(
+    consentedServices: consentedServices,
+    serviceId: serviceId,
+  );
+
+  /// 某项第三方服务是否已经问过用户（同意或拒绝都算问过）。
+  bool hasAskedService(String serviceId) => askedServices.contains(serviceId);
+
+  /// 当前清单里还没问过用户的服务项，启动时用来提示新增了哪几项。
+  List<ThirdPartyService> get pendingThirdPartyServices =>
+      unaskedThirdPartyServices(askedServices);
 }
 
 class MaterialColorAdapter extends TypeAdapter<MaterialColor> {
@@ -423,11 +450,11 @@ class MyAppState with ChangeNotifier {
   }) async {
     final prevBaseCdn = setting.baseCdn;
     final prevRefCdn = setting.refCdn;
-    final prevThirdPartyConsent = setting.thirdPartyConsent;
+    final prevConsented = List<String>.of(setting.consentedServices);
     fun(this);
     if (setting.baseCdn != prevBaseCdn ||
         setting.refCdn != prevRefCdn ||
-        setting.thirdPartyConsent != prevThirdPartyConsent) {
+        !_sameIds(setting.consentedServices, prevConsented)) {
       applyNetworkSettings();
     }
     if (markRebuild) {
@@ -616,6 +643,8 @@ class MyAppState with ChangeNotifier {
           favoredItems: [],
           baseCdn: 'auto',
           refCdn: 'auto',
+          askedServices: [],
+          consentedServices: [],
           viewPoOnlyHistory: LRUCache<int, ReplyJsonWithPage>(5000),
         );
     applyNetworkSettings();
@@ -633,19 +662,51 @@ class MyAppState with ChangeNotifier {
     notifyListeners();
   }
 
-  /// 是否已同意使用第三方服务（GitHub 更新检查、第三方 CDN 线路等）。
+  /// 是否同意过至少一项第三方服务（设置页用它区分「已同意 / 未同意」）。
   ///
-  /// 只有明确同意（true）才算数，null（尚未询问）与 false 都不行。
-  bool get isThirdPartyAllowed => setting.thirdPartyConsent == true;
+  /// 单个功能还要看它自己那一项，见 [isServiceAllowed]。
+  bool get hasConsentedAnyService => setting.consentedServices.isNotEmpty;
+
+  /// 某一项第三方服务（服务 id 见 [kThirdPartyServices]）是否可用。
+  bool isServiceAllowed(String serviceId) =>
+      setting.hasConsentedService(serviceId);
+
+  /// 同意页（首次询问或清单新增后的重新询问）上用户做出选择。
+  ///
+  /// - 同意：asked 与 consented 都写入当前清单的全部 id；
+  /// - 不同意：只把这次问到的项记进 asked，consented 保持原样。
+  ///   首次询问时原本什么都没同意，所以等于「拒绝全部」；重新询问时
+  ///   就只影响新增的那几项，之前同意过的服务照常可用，也不会再被追问。
+  void recordConsentPageDecision(bool allowed) {
+    setState((state) {
+      final ids = allThirdPartyServiceIds();
+      state.setting.askedServices = ids;
+      if (allowed) {
+        state.setting.consentedServices = ids;
+      }
+    });
+  }
+
+  /// 在设置里改主意：同意则整份同意，不同意则撤销全部第三方服务。
+  ///
+  /// 设置页是用户主动来改设置的，这里点「不同意」就是真的不要了，
+  /// 与启动时那次重新询问的语义不同（那次点不同意只拒绝新增项）。
+  void setThirdPartyConsentFromSettings(bool allowed) {
+    setState((state) {
+      final ids = allThirdPartyServiceIds();
+      state.setting.askedServices = ids;
+      state.setting.consentedServices = allowed ? ids : [];
+    });
+  }
 
   /// 把实际生效的线路设置应用给网络层。
   ///
   /// 实际生效值由同意状态与保存值共同决定（见
-  /// [resolveEffectiveCdnSetting]）：未同意时固定官方线路、不做测速，
+  /// [resolveEffectiveCdnSetting]）：没同意第三方线路时固定官方线路、不做测速，
   /// 但保存的 baseCdn/refCdn 不删，同意后原样生效。
   void applyNetworkSettings() {
     final cdn = resolveEffectiveCdnSetting(
-      thirdPartyConsented: isThirdPartyAllowed,
+      thirdPartyConsented: isServiceAllowed(kCdnServiceId),
       storedBaseCdn: setting.baseCdn,
       storedRefCdn: setting.refCdn,
     );
@@ -678,7 +739,8 @@ class MyAppState with ChangeNotifier {
       baseCdn: 'auto',
       refCdn: 'auto',
       // 同意与否是用户的决定，不是 App 配置，重置时保留。
-      thirdPartyConsent: setting.thirdPartyConsent,
+      askedServices: setting.askedServices,
+      consentedServices: setting.consentedServices,
     );
     applyNetworkSettings();
     notifyListeners();
@@ -784,4 +846,14 @@ extension SafeElementAtOrNull<E> on List<E> {
     }
     return this[index];
   }
+}
+
+/// 两个服务 id 列表的内容是否相同（与顺序无关）。
+///
+/// 用来判断「同意项变没变、要不要重设网络」：列表是整体替换的，
+/// 直接比引用永远不相等。
+bool _sameIds(List<String> a, List<String> b) {
+  if (a.length != b.length) return false;
+  final ids = a.toSet();
+  return b.every(ids.contains);
 }
