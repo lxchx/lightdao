@@ -31,6 +31,8 @@ class FakeAppState extends MyAppState {
       favoredItems: [],
       baseCdn: 'auto',
       refCdn: 'auto',
+      askedServices: [],
+      consentedServices: [],
       viewHistory: LRUCache<int, ReplyJsonWithPage>(100),
       viewPoOnlyHistory: LRUCache<int, ReplyJsonWithPage>(100),
     );

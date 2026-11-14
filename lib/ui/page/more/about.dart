@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:lightdao/data/const_data.dart';
 import 'package:lightdao/data/setting.dart';
+import 'package:lightdao/data/third_party_consent.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lightdao/utils/update_checker.dart';
 import 'package:lightdao/utils/update_downloader.dart';
@@ -26,8 +27,8 @@ class AboutPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final breakpoint = Breakpoint.fromMediaQuery(context);
-    // 检查更新要访问 GitHub（第三方服务器），没同意时不可用。
-    final thirdPartyAllowed = appState.isThirdPartyAllowed;
+    // 检查更新要访问 GitHub（第三方服务器），没同意这一项时不可用。
+    final updateAllowed = appState.isServiceAllowed(kUpdateServiceId);
     return Scaffold(
       appBar: AppBar(title: Text('关于')),
       body: SafeArea(
@@ -61,12 +62,12 @@ class AboutPage extends StatelessWidget {
                 '${packageInfo.version} (${packageInfo.buildNumber})',
               ),
               trailing: TextButton(
-                onPressed: thirdPartyAllowed
+                onPressed: updateAllowed
                     ? () => _checkForUpdates(context)
                     : () => _showConsentRequired(context),
                 child: Text('检查更新'),
               ),
-              onTap: thirdPartyAllowed
+              onTap: updateAllowed
                   ? () => _checkForUpdates(context)
                   : () => _showConsentRequired(context),
             ),
@@ -94,7 +95,7 @@ class AboutPage extends StatelessWidget {
   }
 
   Future<void> _checkForUpdates(BuildContext context) async {
-    if (!appState.isThirdPartyAllowed) {
+    if (!appState.isServiceAllowed(kUpdateServiceId)) {
       _showConsentRequired(context);
       return;
     }

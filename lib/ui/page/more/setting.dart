@@ -7,6 +7,7 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:lightdao/data/global_storage.dart';
 import 'package:lightdao/data/const_data.dart';
 import 'package:lightdao/data/phrase.dart';
+import 'package:lightdao/data/third_party_consent.dart';
 import 'package:lightdao/data/update_policy.dart';
 import 'package:lightdao/ui/page/more/icon_select.dart';
 import 'package:lightdao/ui/page/third_party_consent_page.dart';
@@ -40,8 +41,14 @@ class SettingsPage extends StatelessWidget {
     final baseCdnPresets = [xdaoCdnAuto, ...xdaoBaseCdns];
     final refCdnPresets = [xdaoCdnAuto, ...xdaoRefCdns];
     String cdnLabel(String value) => value == xdaoCdnAuto ? '自动' : value;
-    // 未同意第三方服务时，需要访问第三方的设置项都不可用（见下面各处的说明）。
-    final thirdPartyAllowed = appState.isThirdPartyAllowed;
+    // 单个设置项按它自己那一项服务的同意结果判断：清单新增服务后，
+    // 新增项不能用，已经同意过的旧项照常可用（见下面各处的说明）。
+    final cdnAllowed = appState.isServiceAllowed(kCdnServiceId);
+    final updateAllowed = appState.isServiceAllowed(kUpdateServiceId);
+    final consentedServiceCount = appState.setting.consentedServices.length;
+    // 三项都同意 / 一项都没同意 / 只同意了一部分（清单里新增了服务的用户）。
+    final allServicesAllowed =
+        consentedServiceCount == kThirdPartyServices.length;
 
     Future<void> pickCdn({required bool isBase}) async {
       final presets = isBase ? baseCdnPresets : refCdnPresets;
@@ -575,12 +582,16 @@ class SettingsPage extends StatelessWidget {
                 ),
                 title: Text('第三方服务'),
                 subtitle: Text(
-                  thirdPartyAllowed
-                      ? '已同意：可使用第三方线路、检查更新，点击可改主意'
-                      : '未同意：只走X岛官方线路，不检查更新，点击可查看说明',
+                  allServicesAllowed
+                      ? '已同意：可使用第三方线路、检查更新、串搜索，点击可改主意'
+                      : consentedServiceCount > 0
+                      ? '部分同意：只有已同意过的服务可用，点开可查看说明'
+                      : '未同意：只走X岛官方线路，不检查更新、不能用串搜索，点击可查看说明',
                 ),
                 trailing: Text(
-                  thirdPartyAllowed ? '已同意' : '不同意',
+                  allServicesAllowed
+                      ? '已同意'
+                      : (consentedServiceCount > 0 ? '部分同意' : '不同意'),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 onTap: () {
@@ -590,11 +601,10 @@ class SettingsPage extends StatelessWidget {
                       builder: (context) => ThirdPartyConsentPage(
                         firstRun: false,
                         onDecided: (allowed) {
-                          // setState 里会顺带 applyNetworkSettings，
-                          // 改了主意立刻生效：同意就恢复保存的线路设置。
-                          appState.setState((state) {
-                            state.setting.thirdPartyConsent = allowed;
-                          });
+                          // 设置页是用户主动来改设置的，这里点「不同意」就是真的不要了
+                          // （与启动时那次重新询问不同：那次点不同意只拒绝新增项）。
+                          // setState 里会顺带 applyNetworkSettings，改了主意立刻生效。
+                          appState.setThirdPartyConsentFromSettings(allowed);
                         },
                       ),
                     ),
@@ -605,39 +615,33 @@ class SettingsPage extends StatelessWidget {
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: breakpoint.gutters,
                 ),
-                enabled: thirdPartyAllowed,
+                enabled: cdnAllowed,
                 title: Text('默认请求CDN'),
                 subtitle: Text(
-                  thirdPartyAllowed
+                  cdnAllowed
                       ? '影响看串/发串等请求，建议保持自动'
-                      : '未同意第三方服务，暂时固定走官方线路（www.nmbxd.com）',
+                      : '未同意第三方线路，暂时固定走官方线路（www.nmbxd.com）',
                 ),
                 trailing: Text(
-                  thirdPartyAllowed
-                      ? cdnLabel(appState.setting.baseCdn)
-                      : '官方线路',
+                  cdnAllowed ? cdnLabel(appState.setting.baseCdn) : '官方线路',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                onTap: thirdPartyAllowed ? () => pickCdn(isBase: true) : null,
+                onTap: cdnAllowed ? () => pickCdn(isBase: true) : null,
               ),
               ListTile(
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: breakpoint.gutters,
                 ),
-                enabled: thirdPartyAllowed,
+                enabled: cdnAllowed,
                 title: Text('引用请求CDN'),
                 subtitle: Text(
-                  thirdPartyAllowed
-                      ? '影响引用加载'
-                      : '未同意第三方服务，暂时固定走官方线路（www.nmbxd1.com）',
+                  cdnAllowed ? '影响引用加载' : '未同意第三方线路，暂时固定走官方线路（www.nmbxd1.com）',
                 ),
                 trailing: Text(
-                  thirdPartyAllowed
-                      ? cdnLabel(appState.setting.refCdn)
-                      : '官方线路',
+                  cdnAllowed ? cdnLabel(appState.setting.refCdn) : '官方线路',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                onTap: thirdPartyAllowed ? () => pickCdn(isBase: false) : null,
+                onTap: cdnAllowed ? () => pickCdn(isBase: false) : null,
               ),
             ],
           ),
@@ -649,15 +653,15 @@ class SettingsPage extends StatelessWidget {
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: breakpoint.gutters,
                 ),
-                enabled: thirdPartyAllowed,
+                enabled: updateAllowed,
                 title: Text('更新策略'),
                 subtitle: Text(
-                  thirdPartyAllowed
+                  updateAllowed
                       ? appState.setting.effectiveUpdatePolicy.label
                       : '需要先在「网络 - 第三方服务」里同意，检查更新要访问 GitHub',
                 ),
                 trailing: Icon(Icons.chevron_right),
-                onTap: thirdPartyAllowed ? () => pickUpdatePolicy() : null,
+                onTap: updateAllowed ? () => pickUpdatePolicy() : null,
               ),
               SettingsTile.inputTile(
                 contentPadding: breakpoint.gutters,

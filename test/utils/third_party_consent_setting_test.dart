@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lightdao/data/setting.dart';
+import 'package:lightdao/data/third_party_consent.dart';
 import 'package:lightdao/data/update_policy.dart';
 
 /// 构造一个只关心第三方服务同意状态与更新策略的设置对象。
-LightDaoSetting buildSetting({bool? thirdPartyConsent, int? updatePolicy}) {
+///
+/// 两个集合默认都是「整份清单都问过、都同意」，这样这些用例只关注各自要验的那一层。
+LightDaoSetting buildSetting({
+  List<String>? askedServices,
+  List<String>? consentedServices,
+  int? updatePolicy,
+}) {
   return LightDaoSetting.withAppDefaults(
     cookies: [],
     currentCookie: -1,
@@ -20,32 +27,27 @@ LightDaoSetting buildSetting({bool? thirdPartyConsent, int? updatePolicy}) {
     favoredItems: [],
     baseCdn: 'auto',
     refCdn: 'auto',
-    thirdPartyConsent: thirdPartyConsent,
+    askedServices: askedServices ?? allThirdPartyServiceIds(),
+    consentedServices: consentedServices ?? allThirdPartyServiceIds(),
   )..updatePolicy = updatePolicy;
 }
 
 void main() {
-  group('thirdPartyConsent 的取值', () {
-    test('全新安装 / 老用户升级上来时是 null（尚未询问）', () {
-      expect(buildSetting().thirdPartyConsent, isNull);
-    });
-
-    test('同意与拒绝分别存为 true / false', () {
-      expect(buildSetting(thirdPartyConsent: true).thirdPartyConsent, isTrue);
-      expect(buildSetting(thirdPartyConsent: false).thirdPartyConsent, isFalse);
-    });
-  });
-
-  group('effectiveUpdatePolicy 在未同意时不检查更新', () {
-    test('尚未询问（null）时按永不检查处理', () {
-      // 老用户升级上来字段是 null：在用户做出选择之前也不许连 GitHub。
-      expect(buildSetting().effectiveUpdatePolicy, UpdatePolicy.never);
-    });
-
-    test('拒绝时即使开着自动检查也不检查', () {
+  group('effectiveUpdatePolicy 在没同意更新检查时不检查', () {
+    test('全新安装（什么都没同意）时按永不检查处理', () {
       expect(
         buildSetting(
-          thirdPartyConsent: false,
+          askedServices: [],
+          consentedServices: [],
+        ).effectiveUpdatePolicy,
+        UpdatePolicy.never,
+      );
+    });
+
+    test('同意过整份说明但没同意更新检查这一项：也不检查', () {
+      expect(
+        buildSetting(
+          consentedServices: [kCdnServiceId, kSearchServiceId],
           updatePolicy: UpdatePolicy.check.value,
         ).effectiveUpdatePolicy,
         UpdatePolicy.never,
@@ -53,18 +55,16 @@ void main() {
     });
   });
 
-  group('effectiveUpdatePolicy 在已同意时照常解析', () {
+  group('effectiveUpdatePolicy 在同意更新检查后照常解析', () {
     test('按存储的更新策略档位生效', () {
       expect(
         buildSetting(
-          thirdPartyConsent: true,
           updatePolicy: UpdatePolicy.check.value,
         ).effectiveUpdatePolicy,
         UpdatePolicy.check,
       );
       expect(
         buildSetting(
-          thirdPartyConsent: true,
           updatePolicy: UpdatePolicy.never.value,
         ).effectiveUpdatePolicy,
         UpdatePolicy.never,
@@ -72,10 +72,46 @@ void main() {
     });
 
     test('未存过策略时按老开关推导（默认开启 → 自动检查）', () {
-      expect(
-        buildSetting(thirdPartyConsent: true).effectiveUpdatePolicy,
-        UpdatePolicy.check,
+      expect(buildSetting().effectiveUpdatePolicy, UpdatePolicy.check);
+    });
+  });
+
+  group('各项服务各自判定', () {
+    test('同意过当前清单：三项都可用，没有待询问的项', () {
+      final setting = buildSetting();
+      for (final service in kThirdPartyServices) {
+        expect(
+          setting.hasConsentedService(service.id),
+          isTrue,
+          reason: service.id,
+        );
+        expect(setting.hasAskedService(service.id), isTrue, reason: service.id);
+      }
+      expect(setting.pendingThirdPartyServices, isEmpty);
+    });
+
+    test('同意过旧清单：新增项不可用，旧项照旧可用', () {
+      final setting = buildSetting(
+        askedServices: [kUpdateServiceId, kCdnServiceId],
+        consentedServices: [kUpdateServiceId, kCdnServiceId],
       );
+      expect(setting.hasConsentedService(kUpdateServiceId), isTrue);
+      expect(setting.hasConsentedService(kCdnServiceId), isTrue);
+      expect(setting.hasConsentedService(kSearchServiceId), isFalse);
+      expect(setting.pendingThirdPartyServices.map((service) => service.id), [
+        kSearchServiceId,
+      ]);
+    });
+
+    test('一项都没同意：三项都不可用', () {
+      final setting = buildSetting(askedServices: [], consentedServices: []);
+      for (final service in kThirdPartyServices) {
+        expect(
+          setting.hasConsentedService(service.id),
+          isFalse,
+          reason: service.id,
+        );
+      }
     });
   });
 }
